@@ -37,3 +37,6 @@ Firefly-docs/
 cache/
 package/
 .obsidian/
+
+src/content/posts/同步文章/
+.temp-posts/
