@@ -1,0 +1,21 @@
+name: Trigger Blog Deployments
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/content/posts/**'  # 只有文章变更时才触发
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Sigrika-Blog Deploy
+        run: |
+          curl -X POST "${{ secrets.VERCEL_HOOK_SIGRIKA }}" \
+               -H "Content-Type: application/json"
+
+      - name: Trigger Aemeath-Blog Deploy
+        run: |
+          curl -X POST "${{ secrets.VERCEL_HOOK_AEMEATH }}" \
+               -H "Content-Type: application/json"

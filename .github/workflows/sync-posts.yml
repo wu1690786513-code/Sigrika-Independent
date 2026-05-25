@@ -1,0 +1,23 @@
+name: 文章更新后触发全站同步
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  trigger_sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 通知 Sigrika 同步
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          repository: wu1690786513-code/Sigrika-Blog
+          event-type: sync-posts
+
+      - name: 通知 Aemeath 同步
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          repository: wu1690786513-code/Aemeath-Blog
+          event-type: sync-posts
