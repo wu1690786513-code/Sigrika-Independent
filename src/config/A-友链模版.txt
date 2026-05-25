@@ -1,0 +1,11 @@
+	{
+		title: "Sigrika-善良耙耙柑🍊",
+		imgurl: "https://avatars.githubusercontent.com/u/172878250",
+		desc: "记录我的二次元之旅^^",
+		siteurl: "https://weavatar.com/avatar/bc0dba25ea5949e8290d012e081ceec669aa7784c7ad765173473c80cbaee404",
+		tags: ["Blog"],
+	},
+Sigrika-善良耙耙柑🍊
+记录我的二次元之旅^^
+https://qwq.sigrika.cc/
+https://weavatar.com/avatar/bc0dba25ea5949e8290d012e081ceec669aa7784c7ad765173473c80cbaee404

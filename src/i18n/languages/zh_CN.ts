@@ -152,7 +152,7 @@ export const zh_CN: Translation = {
 
 	// 404页面
 	[Key.notFound]: "404",
-	[Key.notFoundTitle]: "页面未找到",
+	[Key.notFoundTitle]: "这还是国内吗？",
 	[Key.notFoundDescription]: "抱歉，您访问的页面不存在或已被移动。",
 	[Key.backToHome]: "返回首页",
 
@@ -176,8 +176,8 @@ export const zh_CN: Translation = {
 	[Key.rssCopyFailed]: "复制失败，请手动复制链接",
 
 	//最后编辑时间卡片
-	[Key.lastModifiedPrefix]: "最后更新于 ",
-	[Key.lastModifiedOutdated]: "部分内容可能已过时",
+	[Key.lastModifiedPrefix]: "最后更新",
+	[Key.lastModifiedOutdated]: "部分内容可能已过时，注意时效性qwq",
 	[Key.lastModifiedDaysAgo]: "距今已过 {days} 天",
 	[Key.year]: "年",
 	[Key.month]: "月",
@@ -250,16 +250,19 @@ export const zh_CN: Translation = {
 	[Key.shareOnSocialDescription]: "如果这篇文章对你有帮助，欢迎分享给更多人！",
 
 	// 站点统计
-	[Key.siteStats]: "站点统计",
+	[Key.siteStats]: "站点数据",
 	[Key.siteStatsPostCount]: "文章",
 	[Key.siteStatsCategoryCount]: "分类",
 	[Key.siteStatsTagCount]: "标签",
 	[Key.siteStatsTotalWords]: "总字数",
 	[Key.siteStatsRunningDays]: "运行时长",
-	[Key.siteStatsLastUpdate]: "最后活动",
+	[Key.siteStatsLastUpdate]: "近期活动",
 	[Key.siteStatsDaysAgo]: "{days} 天前",
 	[Key.siteStatsDays]: "{days} 天",
 	[Key.today]: "今天",
+	// 自定义
+	[Key.siteStatsVisitCount]: "全站浏览",
+	[Key.pageStatsVisitCount]: "本页浏览",
 
 	// 日历组件
 	[Key.calendarSunday]: "日",
@@ -297,7 +300,7 @@ export const zh_CN: Translation = {
 
 	// 相册页面
 	[Key.gallery]: "相册",
-	[Key.galleryDescription]: "记录生活中的美好瞬间",
+	[Key.galleryDescription]: "再模糊的图片也比记忆清晰",
 	[Key.galleryPhotos]: "张照片",
 	[Key.galleryAlbums]: "本相册",
 	[Key.galleryNoAlbums]: "暂无相册",

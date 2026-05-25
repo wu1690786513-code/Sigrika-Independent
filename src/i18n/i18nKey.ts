@@ -256,6 +256,10 @@ enum I18nKey {
 	siteStatsDaysAgo = "siteStatsDaysAgo",
 	siteStatsDays = "siteStatsDays",
 	today = "today",
+	// 全站浏览
+	siteStatsVisitCount = "siteStatsVisitCount",
+	// 本页浏览
+	pageStatsVisitCount = "pageStatsVisitCount",
 
 	// 日历组件
 	calendarSunday = "calendarSunday",

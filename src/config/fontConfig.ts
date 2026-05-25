@@ -1,11 +1,11 @@
 // 字体配置
 export const fontConfig = {
 	// 是否启用自定义字体功能
-	enable: false,
+	enable: true,
 	// 是否预加载字体文件
 	preload: true,
 	// 当前选择的字体，支持多个字体组合
-	selected: ["misans-regular"],
+	selected: ["lxgw-wenkai-screen"],
 
 	// 字体列表
 	// 推荐使用可靠的 CDN 服务商提供的字体链接，它天然做了按需分片加载，且性能较好
@@ -68,6 +68,14 @@ export const fontConfig = {
 			family: "MiSans",
 			weight: 600,
 			display: "swap" as const,
+		},
+		"lxgw-wenkai-screen": {
+		id: "lxgw-wenkai-screen",
+		name: "霞鹜文楷 屏幕版",
+		src: "https://cdn.bootcdn.net/ajax/libs/lxgw-wenkai-screen-webfont/1.7.0/style.min.css",
+		family: "LXGW WenKai Screen",
+		weight: 400,
+		display: "swap" as const,
 		},
 	},
 

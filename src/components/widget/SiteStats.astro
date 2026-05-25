@@ -43,6 +43,9 @@ for (const post of posts) {
 		totalWords += chineseChars.length + englishChars.length;
 	}
 }
+// 标记-统计全站访问量
+// let site_pv = 114514;
+
 
 // 格式化数字（添加千位分隔符）
 function formatNumber(num: number): string {
@@ -91,6 +94,24 @@ const stats = [
 		dynamic: true,
 		id: "running-days",
 	},
+// 自定义站点访问次数-本页面浏览-标记
+  {
+    icon: "mdi:account-details-outline",
+    label: i18n(I18nKey.pageStatsVisitCount),
+    value: 114514, // 占位
+    suffix: " 次",
+    dynamic: true,
+    id: "vercount_value_page_pv",
+  },
+  // 自定义站点访问次数-全站访问-标记
+  {
+    icon: "material-symbols:admin-panel-settings-outline",
+    label: i18n(I18nKey.siteStatsVisitCount),
+    value: 1919810, // 占位
+    suffix: " 次",
+    dynamic: true,
+    id: "vercount_value_site_pv",
+},
 	{
 		icon: "mingcute:heartbeat-line",
 		label: i18n(I18nKey.siteStatsLastUpdate),
@@ -132,7 +153,8 @@ const stats = [
   </div>
 </WidgetLayout>
 
-<script is:inline define:vars={{ siteStartDate, lastPostDate, todayText }}>
+<script is:inline define:vars={{ siteStartDate, lastPostDate, todayText}}>
+
   function updateDynamicStats() {
     const today = new Date();
 
@@ -168,7 +190,19 @@ const stats = [
       });
     }
   }
+  // 分割
 
+  // 页面加载时执行
+  updateDynamicStats();
+ 
+
+  // 页面切换时执行
+  document.addEventListener("swup:contentReplaced", () => {
+    setTimeout(() => {
+      updateDynamicStats();
+      loadSitePV();
+    }, 100);
+  });
   // 页面加载时更新
   updateDynamicStats();
 
@@ -176,4 +210,8 @@ const stats = [
   document.addEventListener("swup:contentReplaced", () => {
     setTimeout(updateDynamicStats, 100);
   });
+</script>
+
+<script>
+
 </script>

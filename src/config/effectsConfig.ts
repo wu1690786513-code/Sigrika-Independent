@@ -4,13 +4,13 @@ import type { SakuraConfig } from "../types/config";
 
 export const sakuraConfig: SakuraConfig = {
 	// 是否启用樱花特效
-	enable: false,
+	enable: true,
 
 	// 是否允许用户在设置中切换
 	switchable: true,
 
 	// 樱花数量
-	sakuraNum: 21,
+	sakuraNum: 5,
 
 	// 樱花越界限制次数，-1为无限循环
 	limitTimes: -1,

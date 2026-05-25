@@ -1,1 +1,71 @@
-这里是HTML注入示例，你可以在这个文件中添加自定义的HTML内容
+<div style="width: 100%; margin: 15px 0; text-align: center;">
+  <!-- 萌ICP备案 -->
+
+  <div style="margin-bottom: 8px;">
+    <a href="https://icp.gov.moe/?keyword=20261087" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: #666; font-size: 14px; vertical-align: middle;">
+      <img src="https://icp.gov.moe/images/gov.svg" style="height: 18px;">
+      <span>萌ICP备20261087号</span>
+    </a>
+  </div>
+
+  <!-- 又拍云加速 -->
+  <div style="margin-bottom: 10px;">
+    <a href="https://www.upyun.com/league" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: #666; font-size: 14px; vertical-align: middle;">
+      本站由<img src="http://upload.codexing.top/Blogs/Sigrika/upyun.png" style="height: 25px;">提供图片加速服务
+    </a>
+  </div>
+
+  <!-- 美化访客统计 -->
+<div style="letter-spacing:1px;cursor:pointer;" onclick="location.href='/guestbook/'">
+    有幸与您相遇，您是本站第<span style="margin:0 4px;" id="vercount_value_site_uv">加载中...qwq</span>位访客
+</div>
+</div>
+
+<!-- 不蒜子统计脚本 -->
+<!-- <script src="//cdn.busuanzi.cc/busuanzi/3.6.9/busuanzi.min.js" defer></script> -->
+ <!-- <script defer src="https://events.vercount.one/js"></script> -->
+<script>
+  async function loadSitePV() {
+  const elements_page_pv = document.querySelectorAll('[data-stat-id="vercount_value_page_pv"]');
+  const elements_site_pv = document.querySelectorAll('[data-stat-id="vercount_value_site_pv"]');
+  // 每个子域名独立 KEY（官方原版逻辑）
+  const host = window.location.host;
+  const cookieKey = "vercount_uv_" + host;
+
+  // 判断新用户（子域名独立）
+  const isNewUv = !document.cookie.split("; ").find(i=>i.startsWith(cookieKey+"="));
+  if (isNewUv) {
+    // 写入当前域名专属 Cookie
+    document.cookie = `${cookieKey}=1; path=/; max-age=31536000; SameSite=Lax`;
+  }
+  try {
+    const resp = await fetch('https://events.vercount.one/api/v2/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: window.location.href,
+        isNewUv: isNewUv,   // 非新用户 false
+        onlyCount: false  // 正常计数 +1
+      })
+    });
+
+    const data = await resp.json();
+    const page_pv = data.data?.page_pv  || 0;
+    const site_pv = data.data?.site_pv || 0;
+    const site_uv = data.data?.site_uv || 0;
+    // 更新本页访问
+    elements_page_pv.forEach(el => el.textContent = page_pv.toString());
+    // 更新 PV（总访问次数）
+    elements_site_pv.forEach(el => el.textContent = site_pv.toString());
+
+    // 更新 UV（第1145位访客）
+    console.log(data);
+    
+    const elements_site_uv = document.getElementById('vercount_value_site_uv');
+    if (elements_site_uv) {
+      elements_site_uv.textContent = site_uv.toString();
+    }
+  } catch (e) {}
+}
+ loadSitePV(); //加载 PV
+</script>
