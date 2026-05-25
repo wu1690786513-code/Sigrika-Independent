@@ -3,7 +3,7 @@
   "type": "module",
   "version": "6.10.3",
   "scripts": {
-    "prebuild": "node scripts/fetch-posts.js", 
+    "prebuild": "node scripts/fetch-posts.cjs", 
     "dev": "astro dev",
     "start": "astro dev",
     "check": "astro check",
