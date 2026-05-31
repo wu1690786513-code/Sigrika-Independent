@@ -72,7 +72,7 @@ export const friendsConfig: FriendLink[] = [
 	},
 		{
 		title: "MmzMing的博客",
-		imgurl: "https://tblog.mmzhiku.xyz/_astro/MyLogoSvg.qdF32ni__1liR9E.webp",
+		imgurl: "https://i.stardots.io/784774835/StarDots-2026052116374135506.jpg",
 		desc: "菲比啾比",
 		siteurl: "https://tblog.mmzhiku.xyz/",
 		tags: ["Blogs"],
@@ -96,6 +96,15 @@ export const friendsConfig: FriendLink[] = [
 		tags: ["Blogs"],
 		weight: 8,
 		enabled: true,
+	},
+	{
+		"title": "L!!!!ght",
+		"imgurl": "https://easyimg.kejk.cn/i/4484873c-c2cc-4b3d-bc35-5c72ed01cfd9.webp",
+		"desc": "阳光正好，慢慢前行。",
+		"siteurl": "https://sunlight.kejk.cn",
+		"tags": ["Blogs"],
+		"weight": 8,
+		"enabled": true
 	},
 	// {
 	// 	title: "小曹同学",
