@@ -106,6 +106,15 @@ export const friendsConfig: FriendLink[] = [
 		"weight": 8,
 		"enabled": true
 	},
+	{
+	"title": "Eric-Terminal的博客",
+	"imgurl": "https://assets.ericterminal.com/logo-transparent.png",
+	"desc": "刃は鞘に、心は花に",
+	"siteurl": "https://blog.ericterminal.com",
+	"tags": ["Blogs"],
+	"weight": 8,
+	"enabled": true
+	}
 	// {
 	// 	title: "小曹同学",
 	// 	imgurl: "https://pic.caotx.cn/home/friends/avatars_0_myweb.webp",
