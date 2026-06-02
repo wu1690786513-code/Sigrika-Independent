@@ -114,6 +114,15 @@ export const friendsConfig: FriendLink[] = [
 	"tags": ["Blogs"],
 	"weight": 8,
 	"enabled": true
+	},
+	{
+	"title": "woodfish的博客",
+	"imgurl": "https://pic1.imgdb.cn/item/682f3d1658cb8da5c807b704.jpg",
+	"desc": "是一名 学生 / ACMer / 前端开发 / 电子音乐制作人",
+	"siteurl": "https://www.woodfish.site/",
+	"tags": ["Blogs"],
+	"weight": 8,
+	"enabled": true
 	}
 	// {
 	// 	title: "小曹同学",
