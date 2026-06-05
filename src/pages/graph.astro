@@ -155,6 +155,8 @@ const graphData = {
       <!-- 悬浮提示 -->
       <div id="graphTooltip" class="graph-tooltip hidden">
         <div class="tooltip-card">
+          <!-- 关闭按钮 -->
+          <button class="tooltip-close" id="tooltipClose" aria-label="关闭">✕</button>
           <!-- 头部装饰 -->
           <div class="tooltip-header">
             <div class="tooltip-name" id="tooltipName"></div>
@@ -209,6 +211,7 @@ const graphData = {
   const tooltipPosts = document.getElementById("tooltipPosts");
   const tooltipTags = document.getElementById("tooltipTags");
   const tooltipHint = document.getElementById("tooltipHint");
+  const tooltipClose = document.getElementById("tooltipClose");
   let tooltipCurrentNode = null;
   let tooltipCurrentPage = 1;
   let isTooltipHovered = false;
@@ -275,8 +278,14 @@ const graphData = {
   svg.call(zoomBehavior).on("dblclick.zoom", null);
 
   function resetZoom() {
-    const s = Math.min(width / 900, height / 600, 1) * 0.92;
-    svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity.translate((width - 900 * s) / 2, (height - 600 * s) / 2).scale(s));
+    // 手机端默认放大到65%，桌面端自适应
+    const mobileScale = 0.65;
+    const desktopScale = Math.min(width / 900, height / 600, 1) * 0.92;
+    const s = isMobile ? mobileScale : desktopScale;
+    // 以画布中心为基准进行缩放，确保居中
+    const tx = width / 2 * (1 - s);
+    const ty = height / 2 * (1 - s);
+    svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(s));
   }
 
   // ========== 力导向模拟 ==========
@@ -635,12 +644,28 @@ const graphData = {
     tooltip.classList.remove("hidden");
 
     const rect = wrapper.getBoundingClientRect();
+    const padding = 16; // 安全边距
     let x = event.clientX - rect.left + 12;
     let y = event.clientY - rect.top - 8;
     const ttRect = tooltip.getBoundingClientRect();
-    if (x + ttRect.width > rect.width) x = event.clientX - rect.left - ttRect.width - 12;
-    if (y + ttRect.height > rect.height) y = event.clientY - rect.top - ttRect.height - 8;
-    if (y < 0) y = 8;
+    
+    // 确保卡片不会超出右侧边界
+    if (x + ttRect.width > rect.width - padding) {
+      x = rect.width - ttRect.width - padding;
+    }
+    // 确保卡片不会超出左侧边界
+    if (x < padding) {
+      x = padding;
+    }
+    // 确保卡片不会超出底部边界
+    if (y + ttRect.height > rect.height - padding) {
+      y = rect.height - ttRect.height - padding;
+    }
+    // 确保卡片不会超出顶部边界
+    if (y < padding) {
+      y = padding;
+    }
+    
     tooltip.style.left = x + "px";
     tooltip.style.top = y + "px";
   }
@@ -738,6 +763,14 @@ const graphData = {
     tooltipCurrentPage = 1;
   });
 
+  // 关闭按钮点击事件
+  tooltipClose.addEventListener("click", (e) => {
+    e.stopPropagation();
+    tooltip.classList.add("hidden");
+    tooltipCurrentNode = null;
+    tooltipCurrentPage = 1;
+  });
+
   // ========== 搜索 ==========
   const searchInput = document.getElementById("graphSearch");
   const searchBtn = document.getElementById("graphSearchBtn");
@@ -745,14 +778,40 @@ const graphData = {
   function doSearch() {
     const kw = searchInput.value.trim().toLowerCase();
     if (!kw) {
-      d3.selectAll(".graph-node").classed("is-dimmed", false);
-      d3.selectAll(".graph-link").classed("is-dimmed", false);
-      d3.selectAll(".graph-label").classed("is-dimmed", false);
+      // 清空搜索时显示所有内容
+      d3.selectAll(".graph-node").classed("is-dimmed", false).style("display", "");
+      d3.selectAll(".graph-link").classed("is-dimmed", false).style("display", "");
+      d3.selectAll(".graph-label").classed("is-dimmed", false).style("display", "");
       return;
     }
-    d3.selectAll(".graph-node").classed("is-dimmed", d => !d.name.toLowerCase().includes(kw));
-    d3.selectAll(".graph-label").classed("is-dimmed", d => !d.name.toLowerCase().includes(kw));
-    d3.selectAll(".graph-link").classed("is-dimmed", true);
+    
+    // 获取匹配的标签节点ID
+    const matchedTagIds = new Set();
+    d3.selectAll(".graph-node").each(function(d) {
+      if (d && d.name && d.name.toLowerCase().includes(kw)) {
+        matchedTagIds.add(d.id);
+      }
+    });
+    
+    // 获取与匹配标签相关的节点ID（包括关联的文章）
+    const visibleIds = new Set(matchedTagIds);
+    d3.selectAll(".graph-link").each(function(d) {
+      const sid = d.source.id || d.source;
+      const tid = d.target.id || d.target;
+      if (matchedTagIds.has(sid) || matchedTagIds.has(tid)) {
+        visibleIds.add(sid);
+        visibleIds.add(tid);
+      }
+    });
+    
+    // 只显示匹配的节点和相关节点，隐藏其他
+    d3.selectAll(".graph-node").style("display", d => visibleIds.has(d.id) ? "" : "none");
+    d3.selectAll(".graph-label").style("display", d => visibleIds.has(d.id) ? "" : "none");
+    d3.selectAll(".graph-link").style("display", function(d) {
+      const sid = d.source.id || d.source;
+      const tid = d.target.id || d.target;
+      return (visibleIds.has(sid) && visibleIds.has(tid)) ? "" : "none";
+    });
   }
 
   let searchDebounce;
@@ -766,14 +825,14 @@ const graphData = {
   // ========== 返回总览 ==========
   backBtn.addEventListener("click", () => {
     searchInput.value = "";
-    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false);
+    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false).style("display", "");
     switchToTagView();
   });
 
   // ========== 重置视图 ==========
   document.getElementById("graphReset").addEventListener("click", () => {
     searchInput.value = "";
-    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false);
+    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false).style("display", "");
     if (currentView === 'posts' && activeTag) {
       const tag = allTagNodes.find(t => t.id === activeTag);
       if (tag) switchToPostView(tag);
@@ -1028,6 +1087,34 @@ const graphData = {
     backdrop-filter: blur(10px);
     width: 320px;
     padding: 18px 20px;
+    position: relative;
+  }
+  
+  /* 关闭按钮 */
+  .tooltip-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+    border-radius: 50%;
+    color: var(--primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+    padding: 0;
+    line-height: 1;
+  }
+  .tooltip-close:hover {
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    transform: scale(1.1);
   }
   
   /* 头部区域 */
@@ -1281,6 +1368,48 @@ const graphData = {
   .hint-link:active {
     transform: translateY(0);
     box-shadow: 0 1px 6px color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  
+  /* 手机端响应式适配 */
+  @media (max-width: 480px) {
+    .tooltip-card {
+      width: calc(100vw - 32px) !important;
+      max-width: 280px;
+      padding: 14px 16px;
+      box-sizing: border-box;
+    }
+    
+    .tooltip-close {
+      top: 8px;
+      right: 10px;
+      width: 22px;
+      height: 22px;
+      font-size: 12px;
+    }
+    
+    .tooltip-name {
+      font-size: 16px;
+      line-height: 1.3;
+    }
+    
+    .tooltip-stats {
+      font-size: 12px;
+    }
+    
+    .post-description {
+      font-size: 0.75rem;
+      padding: 6px 8px;
+    }
+    
+    .post-item {
+      padding: 5px 6px;
+      font-size: 13px;
+    }
+    
+    .hint-link {
+      padding: 12px 16px;
+      font-size: 13px;
+    }
   }
   
 
