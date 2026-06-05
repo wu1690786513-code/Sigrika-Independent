@@ -1,0 +1,773 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { getCollection } from "astro:content";
+import { getPostUrlBySlug, removeFileExtension } from "@utils/url-utils";
+
+// 获取所有文章
+const allPosts = await getCollection("posts", ({ data }) => {
+  return import.meta.env.PROD ? data.draft !== true : true;
+});
+
+// 构建节点和边的数据结构
+interface GraphNode {
+  id: string;
+  name: string;
+  type: "post" | "tag" | "category";
+  url?: string;
+  published?: string;
+  description?: string;
+  image?: string;
+  tagCount?: number;
+  radius?: number;
+}
+
+interface GraphLink {
+  source: string;
+  target: string;
+  type: "post-tag" | "post-category";
+  weight: number;
+}
+
+const nodes: GraphNode[] = [];
+const links: GraphLink[] = [];
+const tagSet = new Set<string>();
+const categorySet = new Set<string>();
+const tagToPosts: Map<string, string[]> = new Map();
+const categoryToPosts: Map<string, string[]> = new Map();
+
+// 收集标签和分类
+for (const post of allPosts) {
+  for (const tag of post.data.tags || []) {
+    tagSet.add(tag);
+    if (!tagToPosts.has(tag)) tagToPosts.set(tag, []);
+    tagToPosts.get(tag)!.push(post.id);
+  }
+  if (post.data.category) {
+    categorySet.add(post.data.category);
+    if (!categoryToPosts.has(post.data.category)) categoryToPosts.set(post.data.category, []);
+    categoryToPosts.get(post.data.category)!.push(post.id);
+  }
+}
+
+// 添加文章节点
+for (const post of allPosts) {
+  const tagCount = post.data.tags?.length || 0;
+  nodes.push({
+    id: `post-${post.id}`,
+    name: post.data.title,
+    type: "post",
+    url: getPostUrlBySlug(removeFileExtension(post.id)),
+    published: post.data.published?.toISOString?.() || String(post.data.published),
+    description: post.data.description || "",
+    image: post.data.image || "",
+    tagCount,
+    radius: Math.max(6, Math.min(20, 6 + tagCount * 2)),
+  });
+}
+
+// 添加标签节点
+for (const tag of tagSet) {
+  nodes.push({
+    id: `tag-${tag}`,
+    name: tag,
+    type: "tag",
+    radius: 10,
+  });
+}
+
+// 添加分类节点
+for (const category of categorySet) {
+  nodes.push({
+    id: `category-${category}`,
+    name: category,
+    type: "category",
+    radius: 14,
+  });
+}
+
+// 添加 post-tag 边
+for (const post of allPosts) {
+  for (const tag of post.data.tags || []) {
+    links.push({
+      source: `post-${post.id}`,
+      target: `tag-${tag}`,
+      type: "post-tag",
+      weight: 1,
+    });
+  }
+}
+
+// 添加 post-category 边
+for (const post of allPosts) {
+  if (post.data.category) {
+    links.push({
+      source: `post-${post.id}`,
+      target: `category-${post.data.category}`,
+      type: "post-category",
+      weight: 2,
+    });
+  }
+}
+
+const graphData = { nodes, links };
+---
+
+<MainGridLayout title="关系图谱" description="探索文章、标签与分类之间的关联">
+  <div class="graph-page-container">
+    <!-- 控制面板 -->
+    <div class="graph-controls card-base">
+      <div class="controls-header">
+        <h2 class="text-xl font-bold">关系图谱</h2>
+        <p class="text-sm text-black/50 dark:text-white/50">
+          共 {allPosts.length} 篇文章 · {tagSet.size} 个标签 · {categorySet.size} 个分类
+        </p>
+      </div>
+      
+      <div class="controls-filters">
+        <div class="filter-group">
+          <label class="filter-label">节点类型</label>
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">全部</button>
+            <button class="filter-btn" data-filter="post">文章</button>
+            <button class="filter-btn" data-filter="tag">标签</button>
+            <button class="filter-btn" data-filter="category">分类</button>
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">关系类型</label>
+          <div class="filter-checkboxes">
+            <label class="filter-checkbox">
+              <input type="checkbox" checked data-link="post-tag" />
+              <span>文章-标签</span>
+            </label>
+            <label class="filter-checkbox">
+              <input type="checkbox" checked data-link="post-category" />
+              <span>文章-分类</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="filter-group">
+          <label class="filter-label">搜索</label>
+          <input type="text" class="search-input" placeholder="搜索文章、标签或分类..." />
+        </div>
+      </div>
+      
+      <div class="controls-legend">
+        <div class="legend-item">
+          <span class="legend-dot post"></span>
+          <span>文章</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot tag"></span>
+          <span>标签</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot category"></span>
+          <span>分类</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 图谱容器 -->
+    <div class="graph-container card-base">
+      <div id="graph-svg-wrapper"></div>
+      
+      <!-- 悬浮提示 -->
+      <div id="graph-tooltip" class="graph-tooltip hidden">
+        <div class="tooltip-content"></div>
+      </div>
+    </div>
+  </div>
+</MainGridLayout>
+
+<script is:inline src="https://d3js.org/d3.v7.min.js"></script>
+
+<script is:inline define:vars={{ graphData }}>
+  (function() {
+    const data = graphData;
+    const container = document.getElementById('graph-svg-wrapper');
+    const tooltip = document.getElementById('graph-tooltip');
+    const tooltipContent = tooltip.querySelector('.tooltip-content');
+    
+    if (!container) return;
+    
+    // 获取容器尺寸
+    let width = container.clientWidth || 800;
+    let height = Math.max(500, window.innerHeight * 0.6);
+    
+    // 创建 SVG
+    const svg = d3.select('#graph-svg-wrapper')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', [0, 0, width, height]);
+    
+    // 添加缩放行为
+    const g = svg.append('g');
+    
+    const zoom = d3.zoom()
+      .scaleExtent([0.1, 4])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+      });
+    
+    svg.call(zoom);
+    
+    // 颜色配置
+    const colors = {
+      post: 'var(--primary)',
+      tag: '#60a5fa',
+      category: '#f59e0b',
+      link: {
+        'post-tag': 'rgba(150, 150, 150, 0.3)',
+        'post-category': 'rgba(245, 158, 11, 0.3)',
+      }
+    };
+    
+    // 当前筛选状态
+    let currentNodeFilter = 'all';
+    let activeLinkTypes = new Set(['post-tag', 'post-category']);
+    let searchQuery = '';
+    
+    // 力导向模拟 - 优化参数减少卡顿
+    let simulation = d3.forceSimulation(data.nodes)
+      .force('link', d3.forceLink(data.links).id(d => d.id).distance(d => {
+        if (d.type === 'post-tag') return 60;
+        if (d.type === 'post-category') return 100;
+        return 80;
+      }).strength(d => {
+        if (d.type === 'post-tag') return 0.6;
+        if (d.type === 'post-category') return 0.4;
+        return 0.3;
+      }))
+      .force('charge', d3.forceManyBody().strength(d => {
+        if (d.type === 'post') return -60;
+        if (d.type === 'tag') return -120;
+        return -180;
+      }).distanceMax(300))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(d => (d.radius || 10) + 3).strength(0.5))
+      .force('x', d3.forceX(width / 2).strength(0.03))
+      .force('y', d3.forceY(height / 2).strength(0.03));
+    
+    // 绘制边
+    const link = g.append('g')
+      .attr('class', 'links')
+      .selectAll('line')
+      .data(data.links)
+      .join('line')
+      .attr('stroke-width', 1.5)
+      .attr('stroke', d => colors.link[d.type]);
+    
+    // 绘制节点
+    const node = g.append('g')
+      .attr('class', 'nodes')
+      .selectAll('g')
+      .data(data.nodes)
+      .join('g')
+      .attr('class', 'node')
+      .attr('cursor', d => d.type === 'post' ? 'pointer' : 'grab')
+      .call(d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended));
+    
+    // 根据类型绘制不同形状
+    node.each(function(d) {
+      const el = d3.select(this);
+      const r = d.radius || 8;
+      
+      if (d.type === 'post') {
+        el.append('circle')
+          .attr('r', r)
+          .attr('fill', colors.post)
+          .attr('stroke', 'var(--card-bg)')
+          .attr('stroke-width', 2);
+      } else if (d.type === 'tag') {
+        const size = r;
+        el.append('rect')
+          .attr('x', -size)
+          .attr('y', -size)
+          .attr('width', size * 2)
+          .attr('height', size * 2)
+          .attr('rx', 3)
+          .attr('fill', colors.tag)
+          .attr('stroke', 'var(--card-bg)')
+          .attr('stroke-width', 2);
+      } else if (d.type === 'category') {
+        const size = r;
+        el.append('polygon')
+          .attr('points', `0,-${size} ${size},0 0,${size} -${size},0`)
+          .attr('fill', colors.category)
+          .attr('stroke', 'var(--card-bg)')
+          .attr('stroke-width', 2);
+      }
+    });
+    
+    // 节点标签
+    const labels = g.append('g')
+      .attr('class', 'labels')
+      .selectAll('text')
+      .data(data.nodes)
+      .join('text')
+      .text(d => d.name)
+      .attr('font-size', d => d.type === 'post' ? 10 : 11)
+      .attr('font-weight', d => d.type === 'category' ? 'bold' : 'normal')
+      .attr('fill', 'var(--deep-text)')
+      .attr('dx', d => (d.radius || 8) + 4)
+      .attr('dy', 3)
+      .attr('pointer-events', 'none')
+      .style('opacity', d => d.type === 'post' ? 0.8 : 1);
+    
+    // 交互事件
+    node
+      .on('mouseover', function(event, d) {
+        // 高亮当前节点和连接的边
+        link.style('opacity', l => {
+          if (l.source.id === d.id || l.target.id === d.id) return 1;
+          return 0.1;
+        });
+        
+        node.style('opacity', n => {
+          if (n.id === d.id) return 1;
+          // 检查是否直接连接
+          const isConnected = data.links.some(l => 
+            (l.source.id === d.id && l.target.id === n.id) ||
+            (l.target.id === d.id && l.source.id === n.id)
+          );
+          return isConnected ? 0.7 : 0.2;
+        });
+        
+        labels.style('opacity', n => {
+          if (n.id === d.id) return 1;
+          const isConnected = data.links.some(l => 
+            (l.source.id === d.id && l.target.id === n.id) ||
+            (l.target.id === d.id && l.source.id === n.id)
+          );
+          return isConnected ? 0.7 : 0.1;
+        });
+        
+        // 显示提示
+        showTooltip(event, d);
+      })
+      .on('mouseout', function() {
+        // 恢复默认样式
+        link.style('opacity', 1);
+        node.style('opacity', 1);
+        labels.style('opacity', d => d.type === 'post' ? 0.8 : 1);
+        hideTooltip();
+      })
+      .on('click', function(_event, d) {
+        if (d.type === 'post' && d.url) {
+          window.open(d.url, '_blank');
+        }
+      });
+    
+    // 提示框
+    function showTooltip(event, d) {
+      let html = '';
+      if (d.type === 'post') {
+        html = `
+          <div class="tooltip-title">${d.name}</div>
+          <div class="tooltip-meta">
+            ${d.published ? '<span>📅 ' + new Date(d.published).toLocaleDateString('zh-CN') + '</span>' : ''}
+            ${d.tagCount ? '<span>🏷️ ' + d.tagCount + ' 个标签</span>' : ''}
+          </div>
+          ${d.description ? '<div class="tooltip-desc">' + d.description + '</div>' : ''}
+          <div class="tooltip-hint">点击查看文章</div>
+        `;
+      } else if (d.type === 'tag') {
+        const connectedPosts = data.links.filter(l => 
+          (l.source.id === d.id || l.target.id === d.id) && l.type === 'post-tag'
+        ).length;
+        html = `
+          <div class="tooltip-title">🏷️ ${d.name}</div>
+          <div class="tooltip-meta">
+            <span>${connectedPosts} 篇文章</span>
+          </div>
+        `;
+      } else if (d.type === 'category') {
+        const connectedPosts = data.links.filter(l => 
+          (l.source.id === d.id || l.target.id === d.id) && l.type === 'post-category'
+        ).length;
+        html = `
+          <div class="tooltip-title">📁 ${d.name}</div>
+          <div class="tooltip-meta">
+            <span>${connectedPosts} 篇文章</span>
+          </div>
+        `;
+      }
+      
+      tooltipContent.innerHTML = html;
+      tooltip.classList.remove('hidden');
+      
+      // 定位提示框
+      const rect = container.getBoundingClientRect();
+      const x = event.clientX - rect.left + 15;
+      const y = event.clientY - rect.top + 15;
+      
+      tooltip.style.left = x + 'px';
+      tooltip.style.top = y + 'px';
+    }
+    
+    function hideTooltip() {
+      tooltip.classList.add('hidden');
+    }
+    
+    // 拖拽函数
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+    
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+    
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+    
+    // 更新位置
+    simulation.on('tick', () => {
+      link
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+      
+      node.attr('transform', d => `translate(${d.x},${d.y})`);
+      
+      labels
+        .attr('x', d => d.x)
+        .attr('y', d => d.y);
+    });
+    
+    // 筛选功能
+    function updateVisibility() {
+      const visibleNodes = new Set();
+      
+      data.nodes.forEach(d => {
+        let nodeVisible = true;
+        
+        // 节点类型筛选
+        if (currentNodeFilter !== 'all' && d.type !== currentNodeFilter) {
+          nodeVisible = false;
+        }
+        
+        // 搜索筛选
+        if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+          nodeVisible = false;
+        }
+        
+        if (nodeVisible) {
+          visibleNodes.add(d.id);
+        }
+      });
+      
+      // 更新节点可见性
+      node.style('display', d => visibleNodes.has(d.id) ? null : 'none');
+      labels.style('display', d => visibleNodes.has(d.id) ? null : 'none');
+      
+      // 更新边可见性
+      link.style('display', d => {
+        if (!activeLinkTypes.has(d.type)) return 'none';
+        if (!visibleNodes.has(d.source.id) || !visibleNodes.has(d.target.id)) return 'none';
+        return null;
+      });
+    }
+    
+    // 绑定筛选事件
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentNodeFilter = btn.dataset.filter;
+        updateVisibility();
+      });
+    });
+    
+    document.querySelectorAll('.filter-checkbox input').forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        activeLinkTypes.clear();
+        document.querySelectorAll('.filter-checkbox input:checked').forEach(cb => {
+          activeLinkTypes.add(cb.dataset.link);
+        });
+        updateVisibility();
+      });
+    });
+    
+    document.querySelector('.search-input').addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      updateVisibility();
+    });
+    
+    // 响应式调整
+    window.addEventListener('resize', () => {
+      const newWidth = container.clientWidth;
+      const newHeight = Math.max(500, window.innerHeight * 0.6);
+      
+      svg.attr('width', newWidth).attr('height', newHeight);
+      simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2));
+      simulation.alpha(0.3).restart();
+    });
+    
+  })();
+</script>
+
+<style>
+  .graph-page-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .graph-controls {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  
+  .controls-header h2 {
+    color: var(--deep-text);
+    margin-bottom: 0.25rem;
+  }
+  
+  .controls-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .filter-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--content-meta);
+  }
+  
+  .filter-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .filter-btn {
+    padding: 0.375rem 0.875rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--line-color);
+    background: var(--btn-regular-bg);
+    color: var(--btn-content);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .filter-btn:hover {
+    background: var(--btn-regular-bg-hover);
+  }
+  
+  .filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  
+  .filter-checkboxes {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--content-meta);
+    cursor: pointer;
+  }
+  
+  .filter-checkbox input {
+    accent-color: var(--primary);
+  }
+  
+  .search-input {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--line-color);
+    background: var(--card-bg);
+    color: var(--deep-text);
+    font-size: 0.875rem;
+    width: 220px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  
+  .search-input:focus {
+    border-color: var(--primary);
+  }
+  
+  .search-input::placeholder {
+    color: var(--content-meta);
+    opacity: 0.6;
+  }
+  
+  .controls-legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--line-divider);
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--content-meta);
+  }
+  
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    display: inline-block;
+  }
+  
+  .legend-dot.post {
+    border-radius: 50%;
+    background: var(--primary);
+  }
+  
+  .legend-dot.tag {
+    border-radius: 2px;
+    background: #60a5fa;
+  }
+  
+  .legend-dot.category {
+    width: 10px;
+    height: 10px;
+    transform: rotate(45deg);
+    background: #f59e0b;
+  }
+  
+  .graph-container {
+    position: relative;
+    overflow: hidden;
+    min-height: 500px;
+  }
+  
+  #graph-svg-wrapper {
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
+  }
+  
+  #graph-svg-wrapper svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .graph-tooltip {
+    position: absolute;
+    z-index: 100;
+    pointer-events: none;
+    max-width: 280px;
+  }
+  
+  .graph-tooltip.hidden {
+    display: none;
+  }
+  
+  .tooltip-content {
+    background: var(--float-panel-bg);
+    border: 1px solid var(--line-color);
+    border-radius: 0.75rem;
+    padding: 0.875rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(8px);
+  }
+  
+  .tooltip-title {
+    font-weight: 700;
+    font-size: 0.9375rem;
+    color: var(--deep-text);
+    margin-bottom: 0.375rem;
+    line-height: 1.4;
+  }
+  
+  .tooltip-meta {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    color: var(--content-meta);
+    margin-bottom: 0.5rem;
+  }
+  
+  .tooltip-desc {
+    font-size: 0.8125rem;
+    color: var(--content-meta);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .tooltip-hint {
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 500;
+  }
+  
+  /* 暗色模式适配 */
+  :root.dark .tooltip-content {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  
+  /* 节点动画 */
+  .node {
+    transition: opacity 0.2s;
+  }
+  
+  .node:hover {
+    filter: brightness(1.2);
+  }
+  
+  /* 响应式 */
+  @media (max-width: 768px) {
+    .controls-filters {
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .search-input {
+      width: 100%;
+    }
+    
+    .graph-container {
+      min-height: 400px;
+    }
+    
+    #graph-svg-wrapper {
+      min-height: 400px;
+    }
+  }
+</style>
