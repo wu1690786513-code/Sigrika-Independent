@@ -144,7 +144,7 @@ const graphData = {
           </filter>
         </defs>
         <g id="graphViewport">
-          <circle id="graphBoundary" class="graph-boundary" fill="none" stroke="oklch(0.75 0.06 var(--hue) / 0.12)" stroke-width="1.5" stroke-dasharray="6 8"/>
+          <circle id="graphBoundary" class="graph-boundary" fill="none" stroke="rgba(214, 69, 58, 0.3)" stroke-width="1.5" stroke-dasharray="6 8"/>
           <g id="graphLinks"></g>
           <g id="graphNodes"></g>
           <g id="graphLabels"></g>
@@ -218,16 +218,8 @@ const graphData = {
   const allTagNodes = RAW.tags.map(d => ({ ...d, x: cx + (Math.random() - 0.5) * boundaryR * 0.5, y: cy + (Math.random() - 0.5) * boundaryR * 0.5 }));
   const allTagLinks = RAW.tagLinks.filter(l => visibleTagIds.has(l.source) && visibleTagIds.has(l.target));
 
-  // ========== 闲置检测 ==========
-  function resetIdleTimer() {
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      if (simulation) simulation.stop();
-    }, 5000);
-  }
-  ['mousemove', 'touchstart', 'mousedown', 'wheel'].forEach(evt => {
-    document.addEventListener(evt, resetIdleTimer, { passive: true });
-  });
+  // 移除闲置检测，让模拟持续运行
+  function resetIdleTimer() {} // 空函数，保持兼容
 
   // ========== 初始化边界圆环 ==========
   function updateBoundary() {
@@ -315,7 +307,7 @@ const graphData = {
       .data(links)
       .join("line")
       .attr("class", d => `graph-link l-${escClass(d.source.id || d.source)}-${escClass(d.target.id || d.target)}`)
-      .attr("stroke", "oklch(0.75 0.06 var(--hue) / 0.15)")
+      .attr("stroke", "rgba(214, 69, 58, 0.35)")
       .attr("stroke-width", d => Math.max(0.6, Math.min(2.5, (d.strength || 1) * 0.5)))
       .attr("stroke-linecap", "round");
 
@@ -325,6 +317,9 @@ const graphData = {
       .join("circle")
       .attr("class", d => `graph-node n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} ${d.isHighFreq ? 'is-high' : 'is-low'}`)
       .attr("r", d => d.radius || 6)
+      .attr("fill", "rgb(214, 69, 58)")
+      .attr("stroke", "rgb(180, 55, 45)")
+      .attr("stroke-width", 1.5)
       .attr("cursor", "pointer")
       .call(d3.drag()
         .on("start", dragstarted)
@@ -340,6 +335,7 @@ const graphData = {
       .attr("dy", d => -(d.radius || 6) - 5)
       .attr("font-size", d => d.isPost ? 9 : Math.max(10, Math.min(13, 9 + (d.radius || 6) * 0.25)))
       .attr("font-weight", d => d.isHighFreq ? "600" : "400")
+      .attr("fill", "rgb(80, 50, 30)")
       .text(d => d.name);
 
     // 绑定交互
@@ -412,7 +408,7 @@ const graphData = {
     const els = renderGraph(nodes, links);
     simulation = createSimulation(nodes, links);
 
-    // 启动模拟，300 tick 后停止
+    // 启动模拟，持续运行
     simulation.on("tick", () => {
       tickCount++;
       els.linkSel
@@ -422,10 +418,6 @@ const graphData = {
         .attr("y2", d => d.target.y);
       els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
       els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
-
-      if (tickCount >= 300) {
-        simulation.stop();
-      }
     });
 
     simulation.restart();
@@ -490,8 +482,6 @@ const graphData = {
         .attr("y2", d => d.target.y);
       els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
       els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
-
-      if (tickCount >= 300) simulation.stop();
     });
 
     simulation.restart();
@@ -531,15 +521,7 @@ const graphData = {
     d.fy = null;
     d3.select(this).classed("is-dragging", false);
 
-    // 拖拽结束后运行20帧再停止
-    postDragTicks = 0;
-    simulation.on("tick.postdrag", () => {
-      postDragTicks++;
-      if (postDragTicks >= 20) {
-        simulation.stop();
-        simulation.on("tick.postdrag", null);
-      }
-    });
+    // 拖拽结束后继续运行，不停止模拟
   }
 
   // ========== Tooltip ==========
@@ -712,14 +694,14 @@ const graphData = {
     border-radius: 0.5rem;
     border: 1px solid var(--line-color);
     background: var(--card-bg);
-    color: var(--primary);
+    color: rgb(214, 69, 58);
     font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.2s;
   }
   .back-btn:hover {
     background: var(--btn-plain-bg-hover);
-    border-color: var(--primary);
+    border-color: rgb(214, 69, 58);
   }
   .back-btn.hidden { display: none; }
 
@@ -734,8 +716,8 @@ const graphData = {
     width: 200px;
   }
   .search-box:focus-within {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px oklch(0.70 0.08 var(--hue) / 0.12);
+    border-color: rgb(214, 69, 58);
+    box-shadow: 0 0 0 3px rgba(214, 69, 58, 0.25);
   }
   .search-input {
     flex: 1;
@@ -782,24 +764,27 @@ const graphData = {
     pointer-events: none;
   }
 
-  /* 节点 - 纯色实心 */
+  /* 节点 - 统一颜色 rgb(214, 69, 58) */
   .graph-node {
     transition: r 0.15s ease, filter 0.15s ease;
     cursor: pointer;
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
+    stroke-width: 1.5;
   }
   .graph-node.is-high {
-    fill: oklch(0.75 0.14 var(--hue));
-    stroke: oklch(0.68 0.12 var(--hue));
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
     stroke-width: 1.5;
   }
   .graph-node.is-low {
-    fill: oklch(0.88 0.04 var(--hue));
-    stroke: oklch(0.82 0.04 var(--hue));
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
     stroke-width: 1;
   }
   .graph-node.is-post {
-    fill: oklch(0.70 0.10 var(--hue));
-    stroke: oklch(0.62 0.10 var(--hue));
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
     stroke-width: 1;
   }
   .graph-node.is-hovered,
@@ -839,7 +824,7 @@ const graphData = {
       0 0 4px var(--page-bg),
       0 0 8px var(--page-bg),
       0 1px 2px var(--page-bg);
-    fill: var(--deep-text);
+    fill: rgb(80, 50, 30);
     opacity: 0;
     transition: opacity 0.2s ease;
   }
@@ -857,10 +842,10 @@ const graphData = {
   .graph-tooltip.hidden { display: none; }
   .tooltip-inner {
     background: var(--float-panel-bg);
-    border: 1px solid oklch(0.75 0.05 var(--hue) / 0.18);
+    border: 1px solid rgba(214, 69, 58, 0.3);
     border-radius: 0.625rem;
     padding: 0.75rem 1rem;
-    box-shadow: 0 6px 24px oklch(0.40 0.04 var(--hue) / 0.15);
+    box-shadow: 0 6px 24px rgba(214, 69, 58, 0.15);
     backdrop-filter: blur(10px);
   }
   .tooltip-name {
@@ -875,17 +860,17 @@ const graphData = {
     color: var(--content-meta);
     line-height: 1.5;
   }
-  .tt-count { color: var(--primary); font-weight: 500; }
+  .tt-count { color: rgb(80, 50, 30); font-weight: 500; }
   .tt-divider { margin: 0 0.375rem; opacity: 0.4; }
-  .tt-hint { color: var(--primary); font-weight: 500; font-size: 0.75rem; margin-top: 0.25rem; }
+  .tt-hint { color: rgb(214, 69, 58); font-weight: 500; font-size: 0.75rem; margin-top: 0.25rem; }
 
   /* 缩放指示器 */
   .zoom-badge {
     position: absolute;
     bottom: 10px;
     right: 10px;
-    background: oklch(0.30 0.02 var(--hue) / 0.5);
-    color: oklch(0.92 0.01 var(--hue));
+    background: rgba(214, 69, 58, 0.2);
+    color: var(--deep-text);
     font-size: 0.6875rem;
     padding: 0.25rem 0.5rem;
     border-radius: 0.375rem;
