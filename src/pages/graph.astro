@@ -212,6 +212,7 @@ const graphData = {
   let tooltipCurrentNode = null;
   let tooltipCurrentPage = 1;
   let isTooltipHovered = false;
+  let isDragging = false;  // 拖拽状态标志
   const zoomBadge = document.getElementById("zoomBadge");
   const backBtn = document.getElementById("backBtn");
   const graphTitle = document.getElementById("graphTitle");
@@ -529,6 +530,7 @@ const graphData = {
     d3.select(this).classed("is-dragging", true);
     postDragTicks = 0;
     simulation.on("tick.postdrag", null);
+    isDragging = true;  // 设置拖拽状态
   }
 
   function dragged(event, d) {
@@ -550,12 +552,14 @@ const graphData = {
     d.fx = null;
     d.fy = null;
     d3.select(this).classed("is-dragging", false);
+    isDragging = false;  // 清除拖拽状态
 
     // 拖拽结束后继续运行，不停止模拟
   }
 
   // ========== Tooltip ==========
   function showTooltip(event, d) {
+    if (isDragging) return;  // 拖拽时不显示tooltip
     tooltipCurrentNode = d;
     tooltipCurrentPage = 1;
     tooltipName.textContent = d.title || d.name;  // 文章用title，标签用name
@@ -582,7 +586,7 @@ const graphData = {
         tooltipTags.innerHTML = '';
       }
       
-      tooltipHint.innerHTML = '<a href="' + d.url + '" target="_blank" class="hint-link"><span class="hint-icon">→</span>点击查看文章</a>';
+      tooltipHint.innerHTML = '<a href="' + d.url + '" target="_blank" class="hint-link"><span class="hint-icon">Tips：点击查看文章</a>';
     } else {
       tooltip.classList.remove("is-post-tooltip");
       // 标签详情
@@ -624,9 +628,10 @@ const graphData = {
         tooltipPosts.innerHTML = '<div class="empty-state">暂无关联文章</div>';
       }
       
-      tooltipHint.innerHTML = '<span class="hint-link" onclick="switchToTagDetailView(\'' + d.id + '\')"><span class="hint-icon">→</span>点击查看所有关联文章</span>';
+      tooltipHint.innerHTML = '<span style="cursor:pointer !important;" class="hint-link" onclick="switchToTagDetailView(\'' + d.id + '\')"><span class="hint-icon"></span>Tips：点击查看所有关联文章</span>';
     }
-    
+
+  
     tooltip.classList.remove("hidden");
 
     const rect = wrapper.getBoundingClientRect();
@@ -1209,7 +1214,6 @@ const graphData = {
   .tooltip-tags {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
   }
   .tags-label {
     font-size: 12px;
@@ -1264,7 +1268,7 @@ const graphData = {
     transition: all 0.25s ease;
     box-shadow: 0 2px 10px color-mix(in srgb, var(--primary) 10%, transparent);
     box-sizing: border-box;
-    cursor: pointer;
+    cursor: pointer !important;
     user-select: none;
   }
   .hint-link:hover {
@@ -1272,6 +1276,7 @@ const graphData = {
     border-color: color-mix(in srgb, var(--primary) 40%, transparent) !important;
     box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 18%, transparent) !important;
     transform: translateY(-2px);
+    cursor: pointer !important;
   }
   .hint-link:active {
     transform: translateY(0);
