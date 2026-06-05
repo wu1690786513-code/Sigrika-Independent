@@ -8,15 +8,15 @@ const allPosts = await getCollection("posts", ({ data }) => {
   return import.meta.env.PROD ? data.draft !== true : true;
 });
 
-// 构建节点和边的数据结构
+// 构建节点和边的数据结构 —— 只包含文章和标签
 interface GraphNode {
   id: string;
   name: string;
-  type: "post" | "tag" | "category";
+  type: "post" | "tag";
   url?: string;
   published?: string;
   description?: string;
-  image?: string;
+  category?: string;
   tagCount?: number;
   radius?: number;
 }
@@ -24,28 +24,19 @@ interface GraphNode {
 interface GraphLink {
   source: string;
   target: string;
-  type: "post-tag" | "post-category";
-  weight: number;
 }
 
 const nodes: GraphNode[] = [];
 const links: GraphLink[] = [];
 const tagSet = new Set<string>();
-const categorySet = new Set<string>();
 const tagToPosts: Map<string, string[]> = new Map();
-const categoryToPosts: Map<string, string[]> = new Map();
 
-// 收集标签和分类
+// 收集标签统计
 for (const post of allPosts) {
   for (const tag of post.data.tags || []) {
     tagSet.add(tag);
     if (!tagToPosts.has(tag)) tagToPosts.set(tag, []);
     tagToPosts.get(tag)!.push(post.id);
-  }
-  if (post.data.category) {
-    categorySet.add(post.data.category);
-    if (!categoryToPosts.has(post.data.category)) categoryToPosts.set(post.data.category, []);
-    categoryToPosts.get(post.data.category)!.push(post.id);
   }
 }
 
@@ -59,9 +50,9 @@ for (const post of allPosts) {
     url: getPostUrlBySlug(removeFileExtension(post.id)),
     published: post.data.published?.toISOString?.() || String(post.data.published),
     description: post.data.description || "",
-    image: post.data.image || "",
+    category: post.data.category || undefined,
     tagCount,
-    radius: Math.max(6, Math.min(20, 6 + tagCount * 2)),
+    radius: Math.max(6, Math.min(18, 6 + tagCount * 1.5)),
   });
 }
 
@@ -75,36 +66,12 @@ for (const tag of tagSet) {
   });
 }
 
-// 添加分类节点
-for (const category of categorySet) {
-  nodes.push({
-    id: `category-${category}`,
-    name: category,
-    type: "category",
-    radius: 14,
-  });
-}
-
 // 添加 post-tag 边
 for (const post of allPosts) {
   for (const tag of post.data.tags || []) {
     links.push({
       source: `post-${post.id}`,
       target: `tag-${tag}`,
-      type: "post-tag",
-      weight: 1,
-    });
-  }
-}
-
-// 添加 post-category 边
-for (const post of allPosts) {
-  if (post.data.category) {
-    links.push({
-      source: `post-${post.id}`,
-      target: `category-${post.data.category}`,
-      type: "post-category",
-      weight: 2,
     });
   }
 }
@@ -112,14 +79,14 @@ for (const post of allPosts) {
 const graphData = { nodes, links };
 ---
 
-<MainGridLayout title="关系图谱" description="探索文章、标签与分类之间的关联">
+<MainGridLayout title="关系图谱" description="探索文章与标签之间的关联">
   <div class="graph-page-container">
     <!-- 控制面板 -->
     <div class="graph-controls card-base">
       <div class="controls-header">
         <h2 class="text-xl font-bold">关系图谱</h2>
         <p class="text-sm text-black/50 dark:text-white/50">
-          共 {allPosts.length} 篇文章 · {tagSet.size} 个标签 · {categorySet.size} 个分类
+          共 {allPosts.length} 篇文章 · {tagSet.size} 个标签
         </p>
       </div>
       
@@ -130,27 +97,12 @@ const graphData = { nodes, links };
             <button class="filter-btn active" data-filter="all">全部</button>
             <button class="filter-btn" data-filter="post">文章</button>
             <button class="filter-btn" data-filter="tag">标签</button>
-            <button class="filter-btn" data-filter="category">分类</button>
-          </div>
-        </div>
-        
-        <div class="filter-group">
-          <label class="filter-label">关系类型</label>
-          <div class="filter-checkboxes">
-            <label class="filter-checkbox">
-              <input type="checkbox" checked data-link="post-tag" />
-              <span>文章-标签</span>
-            </label>
-            <label class="filter-checkbox">
-              <input type="checkbox" checked data-link="post-category" />
-              <span>文章-分类</span>
-            </label>
           </div>
         </div>
         
         <div class="filter-group">
           <label class="filter-label">搜索</label>
-          <input type="text" class="search-input" placeholder="搜索文章、标签或分类..." />
+          <input type="text" class="search-input" placeholder="搜索文章或标签..." />
         </div>
       </div>
       
@@ -162,10 +114,6 @@ const graphData = { nodes, links };
         <div class="legend-item">
           <span class="legend-dot tag"></span>
           <span>标签</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-dot category"></span>
-          <span>分类</span>
         </div>
       </div>
     </div>
@@ -193,7 +141,6 @@ const graphData = { nodes, links };
     
     if (!container) return;
     
-    // 获取容器尺寸
     let width = container.clientWidth || 800;
     let height = Math.max(500, window.innerHeight * 0.6);
     
@@ -204,13 +151,19 @@ const graphData = { nodes, links };
       .attr('height', height)
       .attr('viewBox', [0, 0, width, height]);
     
-    // 添加缩放行为
     const g = svg.append('g');
     
+    // 当前缩放级别（用于控制标签显示）
+    let currentScale = 1;
+    const LABEL_SHOW_THRESHOLD = 1.2; // 放大到 1.2 倍以上才显示标签
+    
+    // 缩放行为
     const zoom = d3.zoom()
-      .scaleExtent([0.1, 4])
+      .scaleExtent([0.15, 4])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        currentScale = event.transform.k;
+        updateLabelsByZoom();
       });
     
     svg.call(zoom);
@@ -219,38 +172,24 @@ const graphData = { nodes, links };
     const colors = {
       post: 'var(--primary)',
       tag: '#60a5fa',
-      category: '#f59e0b',
-      link: {
-        'post-tag': 'rgba(150, 150, 150, 0.3)',
-        'post-category': 'rgba(245, 158, 11, 0.3)',
-      }
+      link: 'rgba(150, 150, 150, 0.25)',
     };
     
-    // 当前筛选状态
+    // 筛选状态
     let currentNodeFilter = 'all';
-    let activeLinkTypes = new Set(['post-tag', 'post-category']);
     let searchQuery = '';
     
-    // 力导向模拟 - 优化参数减少卡顿
+    // 力导向模拟
     let simulation = d3.forceSimulation(data.nodes)
-      .force('link', d3.forceLink(data.links).id(d => d.id).distance(d => {
-        if (d.type === 'post-tag') return 60;
-        if (d.type === 'post-category') return 100;
-        return 80;
-      }).strength(d => {
-        if (d.type === 'post-tag') return 0.6;
-        if (d.type === 'post-category') return 0.4;
-        return 0.3;
-      }))
+      .force('link', d3.forceLink(data.links).id(d => d.id).distance(70).strength(0.5))
       .force('charge', d3.forceManyBody().strength(d => {
-        if (d.type === 'post') return -60;
-        if (d.type === 'tag') return -120;
-        return -180;
-      }).distanceMax(300))
+        if (d.type === 'post') return -50;
+        return -120;
+      }).distanceMax(350))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(d => (d.radius || 10) + 3).strength(0.5))
-      .force('x', d3.forceX(width / 2).strength(0.03))
-      .force('y', d3.forceY(height / 2).strength(0.03));
+      .force('collision', d3.forceCollide().radius(d => (d.radius || 10) + 4).strength(0.6))
+      .force('x', d3.forceX(width / 2).strength(0.02))
+      .force('y', d3.forceY(height / 2).strength(0.02));
     
     // 绘制边
     const link = g.append('g')
@@ -258,10 +197,10 @@ const graphData = { nodes, links };
       .selectAll('line')
       .data(data.links)
       .join('line')
-      .attr('stroke-width', 1.5)
-      .attr('stroke', d => colors.link[d.type]);
+      .attr('stroke-width', 1)
+      .attr('stroke', colors.link);
     
-    // 绘制节点
+    // 绘制节点组
     const node = g.append('g')
       .attr('class', 'nodes')
       .selectAll('g')
@@ -274,7 +213,7 @@ const graphData = { nodes, links };
         .on('drag', dragged)
         .on('end', dragended));
     
-    // 根据类型绘制不同形状
+    // 绘制节点形状
     node.each(function(d) {
       const el = d3.select(this);
       const r = d.radius || 8;
@@ -285,7 +224,7 @@ const graphData = { nodes, links };
           .attr('fill', colors.post)
           .attr('stroke', 'var(--card-bg)')
           .attr('stroke-width', 2);
-      } else if (d.type === 'tag') {
+      } else {
         const size = r;
         el.append('rect')
           .attr('x', -size)
@@ -296,17 +235,10 @@ const graphData = { nodes, links };
           .attr('fill', colors.tag)
           .attr('stroke', 'var(--card-bg)')
           .attr('stroke-width', 2);
-      } else if (d.type === 'category') {
-        const size = r;
-        el.append('polygon')
-          .attr('points', `0,-${size} ${size},0 0,${size} -${size},0`)
-          .attr('fill', colors.category)
-          .attr('stroke', 'var(--card-bg)')
-          .attr('stroke-width', 2);
       }
     });
     
-    // 节点标签
+    // 节点标签 —— 默认隐藏，根据缩放控制
     const labels = g.append('g')
       .attr('class', 'labels')
       .selectAll('text')
@@ -314,49 +246,61 @@ const graphData = { nodes, links };
       .join('text')
       .text(d => d.name)
       .attr('font-size', d => d.type === 'post' ? 10 : 11)
-      .attr('font-weight', d => d.type === 'category' ? 'bold' : 'normal')
+      .attr('font-weight', d => d.type === 'tag' ? 'bold' : 'normal')
       .attr('fill', 'var(--deep-text)')
       .attr('dx', d => (d.radius || 8) + 4)
       .attr('dy', 3)
       .attr('pointer-events', 'none')
-      .style('opacity', d => d.type === 'post' ? 0.8 : 1);
+      .style('opacity', 0) // 默认隐藏
+      .style('display', 'none');
+    
+    // 根据缩放级别更新标签显示
+    function updateLabelsByZoom() {
+      const showLabels = currentScale >= LABEL_SHOW_THRESHOLD;
+      labels.style('display', d => {
+        // 标签节点始终显示（如果缩放够大）
+        // 文章节点只在缩放够大时显示
+        if (!showLabels) return 'none';
+        return null;
+      }).style('opacity', d => {
+        if (!showLabels) return 0;
+        return d.type === 'tag' ? 0.9 : 0.7;
+      });
+    }
     
     // 交互事件
     node
       .on('mouseover', function(event, d) {
         // 高亮当前节点和连接的边
         link.style('opacity', l => {
-          if (l.source.id === d.id || l.target.id === d.id) return 1;
-          return 0.1;
+          if (l.source.id === d.id || l.target.id === d.id) return 0.8;
+          return 0.05;
         });
         
         node.style('opacity', n => {
           if (n.id === d.id) return 1;
-          // 检查是否直接连接
           const isConnected = data.links.some(l => 
             (l.source.id === d.id && l.target.id === n.id) ||
             (l.target.id === d.id && l.source.id === n.id)
           );
-          return isConnected ? 0.7 : 0.2;
+          return isConnected ? 0.6 : 0.15;
         });
         
-        labels.style('opacity', n => {
-          if (n.id === d.id) return 1;
-          const isConnected = data.links.some(l => 
-            (l.source.id === d.id && l.target.id === n.id) ||
-            (l.target.id === d.id && l.source.id === n.id)
-          );
-          return isConnected ? 0.7 : 0.1;
-        });
+        // 悬停时显示当前节点标签（即使缩放不够）
+        labels.filter(n => n.id === d.id)
+          .style('display', null)
+          .style('opacity', 1);
         
         // 显示提示
         showTooltip(event, d);
       })
       .on('mouseout', function() {
-        // 恢复默认样式
         link.style('opacity', 1);
         node.style('opacity', 1);
-        labels.style('opacity', d => d.type === 'post' ? 0.8 : 1);
+        
+        // 恢复标签显示状态（由缩放控制）
+        updateLabelsByZoom();
+        
         hideTooltip();
       })
       .on('click', function(_event, d) {
@@ -365,48 +309,62 @@ const graphData = { nodes, links };
         }
       });
     
-    // 提示框
+    // 提示框 —— 标题（大字体）、发布时间（YYYY-MM-DD）、分类、描述
     function showTooltip(event, d) {
       let html = '';
+      
       if (d.type === 'post') {
-        html = `
-          <div class="tooltip-title">${d.name}</div>
-          <div class="tooltip-meta">
-            ${d.published ? '<span>📅 ' + new Date(d.published).toLocaleDateString('zh-CN') + '</span>' : ''}
-            ${d.tagCount ? '<span>🏷️ ' + d.tagCount + ' 个标签</span>' : ''}
-          </div>
-          ${d.description ? '<div class="tooltip-desc">' + d.description + '</div>' : ''}
-          <div class="tooltip-hint">点击查看文章</div>
-        `;
-      } else if (d.type === 'tag') {
+        // 格式化日期为 YYYY-MM-DD
+        let dateStr = '';
+        if (d.published) {
+          const date = new Date(d.published);
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          dateStr = `${y}-${m}-${day}`;
+        }
+        
+        html = `<div class="tooltip-title">${esc(d.name)}</div>`;
+        
+        if (dateStr) {
+          html += `<div class="tooltip-row"><span class="tooltip-label">发布时间</span><span class="tooltip-value">${dateStr}</span></div>`;
+        }
+        
+        if (d.category) {
+          html += `<div class="tooltip-row"><span class="tooltip-label">分类</span><span class="tooltip-value">${esc(d.category)}</span></div>`;
+        }
+        
+        if (d.tagCount) {
+          html += `<div class="tooltip-row"><span class="tooltip-label">标签</span><span class="tooltip-value">${d.tagCount} 个</span></div>`;
+        }
+        
+        if (d.description) {
+          html += `<div class="tooltip-desc">${esc(d.description)}</div>`;
+        }
+        
+        html += `<div class="tooltip-hint">点击查看文章</div>`;
+      } else {
+        // 标签节点
         const connectedPosts = data.links.filter(l => 
-          (l.source.id === d.id || l.target.id === d.id) && l.type === 'post-tag'
+          l.source.id === d.id || l.target.id === d.id
         ).length;
         html = `
-          <div class="tooltip-title">🏷️ ${d.name}</div>
-          <div class="tooltip-meta">
-            <span>${connectedPosts} 篇文章</span>
-          </div>
-        `;
-      } else if (d.type === 'category') {
-        const connectedPosts = data.links.filter(l => 
-          (l.source.id === d.id || l.target.id === d.id) && l.type === 'post-category'
-        ).length;
-        html = `
-          <div class="tooltip-title">📁 ${d.name}</div>
-          <div class="tooltip-meta">
-            <span>${connectedPosts} 篇文章</span>
-          </div>
+          <div class="tooltip-title" style="color:#60a5fa">🏷️ ${esc(d.name)}</div>
+          <div class="tooltip-row"><span class="tooltip-label">关联文章</span><span class="tooltip-value">${connectedPosts} 篇</span></div>
         `;
       }
       
       tooltipContent.innerHTML = html;
       tooltip.classList.remove('hidden');
       
-      // 定位提示框
       const rect = container.getBoundingClientRect();
-      const x = event.clientX - rect.left + 15;
-      const y = event.clientY - rect.top + 15;
+      let x = event.clientX - rect.left + 16;
+      let y = event.clientY - rect.top + 16;
+      
+      // 边界检查，防止提示框超出容器
+      const ttRect = tooltip.getBoundingClientRect();
+      if (x + ttRect.width > rect.width) x = event.clientX - rect.left - ttRect.width - 10;
+      if (y + ttRect.height > rect.height) y = event.clientY - rect.top - ttRect.height - 10;
       
       tooltip.style.left = x + 'px';
       tooltip.style.top = y + 'px';
@@ -414,6 +372,12 @@ const graphData = { nodes, links };
     
     function hideTooltip() {
       tooltip.classList.add('hidden');
+    }
+    
+    function esc(t) {
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
     }
     
     // 拖拽函数
@@ -455,32 +419,25 @@ const graphData = { nodes, links };
       
       data.nodes.forEach(d => {
         let nodeVisible = true;
-        
-        // 节点类型筛选
         if (currentNodeFilter !== 'all' && d.type !== currentNodeFilter) {
           nodeVisible = false;
         }
-        
-        // 搜索筛选
         if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
           nodeVisible = false;
         }
-        
-        if (nodeVisible) {
-          visibleNodes.add(d.id);
-        }
+        if (nodeVisible) visibleNodes.add(d.id);
       });
       
-      // 更新节点可见性
       node.style('display', d => visibleNodes.has(d.id) ? null : 'none');
       labels.style('display', d => visibleNodes.has(d.id) ? null : 'none');
       
-      // 更新边可见性
       link.style('display', d => {
-        if (!activeLinkTypes.has(d.type)) return 'none';
         if (!visibleNodes.has(d.source.id) || !visibleNodes.has(d.target.id)) return 'none';
         return null;
       });
+      
+      // 重新应用缩放标签控制
+      updateLabelsByZoom();
     }
     
     // 绑定筛选事件
@@ -489,16 +446,6 @@ const graphData = { nodes, links };
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentNodeFilter = btn.dataset.filter;
-        updateVisibility();
-      });
-    });
-    
-    document.querySelectorAll('.filter-checkbox input').forEach(checkbox => {
-      checkbox.addEventListener('change', () => {
-        activeLinkTypes.clear();
-        document.querySelectorAll('.filter-checkbox input:checked').forEach(cb => {
-          activeLinkTypes.add(cb.dataset.link);
-        });
         updateVisibility();
       });
     });
@@ -512,7 +459,6 @@ const graphData = { nodes, links };
     window.addEventListener('resize', () => {
       const newWidth = container.clientWidth;
       const newHeight = Math.max(500, window.innerHeight * 0.6);
-      
       svg.attr('width', newWidth).attr('height', newHeight);
       simulation.force('center', d3.forceCenter(newWidth / 2, newHeight / 2));
       simulation.alpha(0.3).restart();
@@ -586,25 +532,6 @@ const graphData = { nodes, links };
     border-color: var(--primary);
   }
   
-  .filter-checkboxes {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  
-  .filter-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.875rem;
-    color: var(--content-meta);
-    cursor: pointer;
-  }
-  
-  .filter-checkbox input {
-    accent-color: var(--primary);
-  }
-  
   .search-input {
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
@@ -658,13 +585,6 @@ const graphData = { nodes, links };
     background: #60a5fa;
   }
   
-  .legend-dot.category {
-    width: 10px;
-    height: 10px;
-    transform: rotate(45deg);
-    background: #f59e0b;
-  }
-  
   .graph-container {
     position: relative;
     overflow: hidden;
@@ -687,7 +607,7 @@ const graphData = { nodes, links };
     position: absolute;
     z-index: 100;
     pointer-events: none;
-    max-width: 280px;
+    max-width: 300px;
   }
   
   .graph-tooltip.hidden {
@@ -698,32 +618,43 @@ const graphData = { nodes, links };
     background: var(--float-panel-bg);
     border: 1px solid var(--line-color);
     border-radius: 0.75rem;
-    padding: 0.875rem;
+    padding: 1rem;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(8px);
   }
   
   .tooltip-title {
     font-weight: 700;
-    font-size: 0.9375rem;
+    font-size: 1.05rem;
     color: var(--deep-text);
-    margin-bottom: 0.375rem;
+    margin-bottom: 0.625rem;
     line-height: 1.4;
   }
   
-  .tooltip-meta {
+  .tooltip-row {
     display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    gap: 0.5rem;
     font-size: 0.8125rem;
+    margin-bottom: 0.375rem;
+    line-height: 1.5;
+  }
+  
+  .tooltip-label {
     color: var(--content-meta);
-    margin-bottom: 0.5rem;
+    opacity: 0.7;
+    min-width: 4em;
+    flex-shrink: 0;
+  }
+  
+  .tooltip-value {
+    color: var(--deep-text);
   }
   
   .tooltip-desc {
     font-size: 0.8125rem;
     color: var(--content-meta);
     line-height: 1.5;
+    margin-top: 0.5rem;
     margin-bottom: 0.5rem;
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -735,14 +666,13 @@ const graphData = { nodes, links };
     font-size: 0.75rem;
     color: var(--primary);
     font-weight: 500;
+    margin-top: 0.25rem;
   }
   
-  /* 暗色模式适配 */
   :root.dark .tooltip-content {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   }
   
-  /* 节点动画 */
   .node {
     transition: opacity 0.2s;
   }
@@ -751,7 +681,6 @@ const graphData = { nodes, links };
     filter: brightness(1.2);
   }
   
-  /* 响应式 */
   @media (max-width: 768px) {
     .controls-filters {
       flex-direction: column;
