@@ -1,97 +1,106 @@
 ---
 import MainGridLayout from "@layouts/MainGridLayout.astro";
 import { getCollection } from "astro:content";
-import { getTagUrl, url } from "@utils/url-utils";
+import { getPostUrlBySlug, removeFileExtension, getTagUrl } from "@utils/url-utils";
 
 // ========== 1. 读取文章数据 ==========
 const allPosts = await getCollection("posts", ({ data }) => {
   return import.meta.env.PROD ? data.draft !== true : true;
 });
 
-// ========== 2. 收集标签及关联 ==========
-const tagMap = new Map<string, { count: number; posts: string[] }>();
-
+// ========== 2. 收集标签 ==========
+const tagMap = new Map<string, { count: number; postIds: string[] }>();
 for (const post of allPosts) {
-  const tags = post.data.tags || [];
-  for (const tag of tags) {
-    if (!tagMap.has(tag)) {
-      tagMap.set(tag, { count: 0, posts: [] });
-    }
+  for (const tag of (post.data.tags || [])) {
+    if (!tagMap.has(tag)) tagMap.set(tag, { count: 0, postIds: [] });
     const t = tagMap.get(tag)!;
     t.count++;
-    t.posts.push(post.id);
+    t.postIds.push(post.id);
   }
 }
 
-// 只保留出现 >= 2 次的标签（避免过多孤立节点）
-const minTagCount = 1;
-const filteredTags = Array.from(tagMap.entries())
-  .filter(([_, v]) => v.count >= minTagCount)
-  .sort((a, b) => b[1].count - a[1].count);
-
-// 计算标签之间的关联强度（共享文章数）
-const tagNames = filteredTags.map(([name]) => name);
-const tagPostSets = new Map<string, Set<string>>();
-for (const [name, info] of filteredTags) {
-  tagPostSets.set(name, new Set(info.posts));
-}
-
-const links: { source: string; target: string; strength: number }[] = [];
-for (let i = 0; i < tagNames.length; i++) {
-  for (let j = i + 1; j < tagNames.length; j++) {
-    const a = tagNames[i];
-    const b = tagNames[j];
-    const setA = tagPostSets.get(a)!;
-    const setB = tagPostSets.get(b)!;
-    let shared = 0;
-    for (const pid of setA) {
-      if (setB.has(pid)) shared++;
-    }
-    if (shared > 0) {
-      links.push({ source: a, target: b, strength: shared });
-    }
-  }
-}
-
-// 节点大小：基于标签出现次数
-const counts = filteredTags.map(([_, v]) => v.count);
+// 标签按出现次数排序
+const sortedTags = Array.from(tagMap.entries()).sort((a, b) => b[1].count - a[1].count);
+const counts = sortedTags.map(([_, v]) => v.count);
 const maxCount = Math.max(...counts, 1);
 const minCount = Math.min(...counts, 1);
 const countRange = maxCount - minCount || 1;
+const medianCount = counts[Math.floor(counts.length / 2)] || 1;
 
-const nodes = filteredTags.map(([name, info]) => {
+const tagNodes = sortedTags.map(([name, info]) => {
   const normalized = (info.count - minCount) / countRange;
-  // 半径 6~18px
-  const radius = 6 + normalized * 12;
+  const radius = 5 + normalized * 14; // 5~19px
   return {
     id: name,
     name,
     count: info.count,
     url: getTagUrl(name),
     radius: Math.round(radius * 10) / 10,
-    isHighFreq: normalized >= 0.5,
+    isHighFreq: info.count >= medianCount,
+    postIds: info.postIds,
   };
 });
 
-// 序列化数据
+// ========== 3. 计算标签间关联（共享文章数）并裁剪弱关联 ==========
+const tagPostSets = new Map<string, Set<string>>();
+for (const t of tagNodes) {
+  tagPostSets.set(t.id, new Set(t.postIds));
+}
+
+const rawLinks: { source: string; target: string; strength: number }[] = [];
+for (let i = 0; i < tagNodes.length; i++) {
+  for (let j = i + 1; j < tagNodes.length; j++) {
+    const a = tagNodes[i].id;
+    const b = tagNodes[j].id;
+    const setA = tagPostSets.get(a)!;
+    const setB = tagPostSets.get(b)!;
+    let shared = 0;
+    for (const pid of setA) if (setB.has(pid)) shared++;
+    if (shared >= 2) { // 裁剪：只保留共享>=2篇的关联
+      rawLinks.push({ source: a, target: b, strength: shared });
+    }
+  }
+}
+
+// ========== 4. 文章数据（用于标签详情视图） ==========
+const postNodes = allPosts.map(post => ({
+  id: post.id,
+  title: post.data.title,
+  url: getPostUrlBySlug(removeFileExtension(post.id)),
+  published: post.data.published?.toISOString?.() || String(post.data.published),
+  description: post.data.description || "",
+  category: post.data.category || "未分类",
+  tags: post.data.tags || [],
+}));
+
+// ========== 5. 序列化数据 ==========
 const graphData = {
-  nodes: nodes.map(n => ({
-    id: n.id,
-    name: n.name,
-    count: n.count,
-    url: n.url,
-    radius: n.radius,
-    isHighFreq: n.isHighFreq,
+  tags: tagNodes.map(t => ({
+    id: t.id,
+    name: t.name,
+    count: t.count,
+    url: t.url,
+    radius: t.radius,
+    isHighFreq: t.isHighFreq,
   })),
-  links: links.map(l => ({
+  tagLinks: rawLinks.map(l => ({
     source: l.source,
     target: l.target,
     strength: l.strength,
   })),
+  posts: postNodes.map(p => ({
+    id: p.id,
+    title: p.title,
+    url: p.url,
+    published: p.published,
+    description: p.description,
+    category: p.category,
+    tags: p.tags,
+  })),
   stats: {
     totalPosts: allPosts.length,
-    totalTags: nodes.length,
-    totalLinks: links.length,
+    totalTags: tagNodes.length,
+    totalLinks: rawLinks.length,
   },
 };
 ---
@@ -101,14 +110,18 @@ const graphData = {
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" is:inline></script>
   </Fragment>
 
-  <div class="obsidian-graph">
+  <div class="obsidian-graph" id="obsidianGraph">
     <!-- 顶部工具栏 -->
     <div class="graph-toolbar card-base">
       <div class="toolbar-left">
-        <h1 class="graph-title">知识星球</h1>
-        <span class="graph-stats">{graphData.stats.totalPosts} 篇文章 · {graphData.stats.totalTags} 个标签 · {graphData.stats.totalLinks} 条关联</span>
+        <h1 class="graph-title" id="graphTitle">知识星球</h1>
+        <span class="graph-stats" id="graphStats">{graphData.stats.totalPosts} 篇文章 · {graphData.stats.totalTags} 个标签 · {graphData.stats.totalLinks} 条关联</span>
       </div>
       <div class="toolbar-right">
+        <button class="back-btn hidden" id="backBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          <span>返回总览</span>
+        </button>
         <div class="search-box">
           <input type="text" class="search-input" id="graphSearch" placeholder="搜索标签..." autocomplete="off"/>
           <button class="search-btn" id="graphSearchBtn">
@@ -125,32 +138,25 @@ const graphData = {
     <div class="graph-canvas-wrapper card-base" id="graphWrapper">
       <svg id="graphSvg" width="100%" height="100%">
         <defs>
-          <!-- 高频标签：实心主题橘红 -->
-          <radialGradient id="nodeHigh" cx="35%" cy="35%" r="65%">
-            <stop offset="0%" stop-color="oklch(0.88 0.06 var(--hue))"/>
-            <stop offset="100%" stop-color="oklch(0.72 0.14 var(--hue))"/>
-          </radialGradient>
-          <!-- 低频标签：同色系低饱和浅粉色 -->
-          <radialGradient id="nodeLow" cx="35%" cy="35%" r="65%">
-            <stop offset="0%" stop-color="oklch(0.94 0.02 var(--hue))"/>
-            <stop offset="100%" stop-color="oklch(0.86 0.05 var(--hue))"/>
-          </radialGradient>
-          <!-- hover 发光 -->
-          <filter id="nodeGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="5" result="blur"/>
+          <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <g id="graphBoundary"></g>
-        <g id="graphLinks"></g>
-        <g id="graphNodes"></g>
-        <g id="graphLabels"></g>
+        <g id="graphViewport">
+          <circle id="graphBoundary" class="graph-boundary" fill="none" stroke="oklch(0.75 0.06 var(--hue) / 0.12)" stroke-width="1.5" stroke-dasharray="6 8"/>
+          <g id="graphLinks"></g>
+          <g id="graphNodes"></g>
+          <g id="graphLabels"></g>
+        </g>
       </svg>
 
       <!-- 悬浮提示 -->
       <div id="graphTooltip" class="graph-tooltip hidden">
-        <div class="tooltip-name" id="tooltipName"></div>
-        <div class="tooltip-meta" id="tooltipMeta"></div>
+        <div class="tooltip-inner">
+          <div class="tooltip-name" id="tooltipName"></div>
+          <div class="tooltip-meta" id="tooltipMeta"></div>
+        </div>
       </div>
 
       <!-- 缩放指示器 -->
@@ -161,133 +167,348 @@ const graphData = {
 
 <script is:inline define:vars={{ graphData }}>
 (function() {
-  // 如果已经初始化过，先清理
   if (window.__obsidianGraphCleanup) {
     window.__obsidianGraphCleanup();
     window.__obsidianGraphCleanup = null;
   }
 
-  const data = graphData;
+  const RAW = graphData;
   const wrapper = document.getElementById("graphWrapper");
+  const container = document.getElementById("obsidianGraph");
   if (!wrapper || !window.d3) return;
 
   const d3 = window.d3;
   const svg = d3.select("#graphSvg");
+  const viewport = d3.select("#graphViewport");
   const tooltip = document.getElementById("graphTooltip");
   const tooltipName = document.getElementById("tooltipName");
   const tooltipMeta = document.getElementById("tooltipMeta");
   const zoomBadge = document.getElementById("zoomBadge");
+  const backBtn = document.getElementById("backBtn");
+  const graphTitle = document.getElementById("graphTitle");
+  const graphStats = document.getElementById("graphStats");
 
-  const width = wrapper.clientWidth || 800;
-  const height = wrapper.clientHeight || 500;
-  const cx = width / 2;
-  const cy = height / 2;
-  const boundaryR = Math.min(width, height) * 0.46;
+  // ========== 尺寸 & 边界 ==========
+  let width = wrapper.clientWidth || 800;
+  let height = wrapper.clientHeight || 500;
+  let cx = width / 2;
+  let cy = height / 2;
+  let boundaryR = Math.min(width, height) * 0.44;
 
-  // ========== 绘制边界虚线环 ==========
-  const boundaryG = d3.select("#graphBoundary");
-  boundaryG.append("circle")
-    .attr("cx", cx)
-    .attr("cy", cy)
-    .attr("r", boundaryR)
-    .attr("fill", "none")
-    .attr("stroke", "oklch(0.75 0.06 var(--hue) / 0.12)")
-    .attr("stroke-width", 1.5)
-    .attr("stroke-dasharray", "6 8");
+  const isMobile = window.innerWidth < 768;
 
-  // ========== 准备数据 ==========
-  const nodes = data.nodes.map(d => ({ ...d, x: cx + (Math.random() - 0.5) * boundaryR * 0.6, y: cy + (Math.random() - 0.5) * boundaryR * 0.6 }));
-  const links = data.links.map(d => ({ ...d }));
+  // ========== 状态 ==========
+  let currentView = 'tags'; // 'tags' | 'posts'
+  let activeTag = null;
+  let currentZoom = d3.zoomIdentity;
+  let simulation = null;
+  let tickCount = 0;
+  let postDragTicks = 0;
+  let idleTimer = null;
+  let resizeTimer = null;
+  let isVisible = false;
+  let hasInitialized = false;
 
-  // ========== D3 力导向模拟 ==========
-  const simulation = d3.forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id(d => d.id).distance(d => 120 / Math.sqrt(d.strength + 0.5)).strength(d => Math.min(0.6, d.strength * 0.15)))
-    .force("charge", d3.forceManyBody().strength(-280).distanceMax(250))
-    .force("center", d3.forceCenter(cx, cy).strength(0.04))
-    .force("collision", d3.forceCollide().radius(d => d.radius + 6).strength(0.7))
-    .force("boundary", () => {
-      for (const node of nodes) {
-        const dx = node.x - cx;
-        const dy = node.y - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > boundaryR - node.radius - 4) {
-          const angle = Math.atan2(dy, dx);
-          node.x = cx + Math.cos(angle) * (boundaryR - node.radius - 4);
-          node.y = cy + Math.sin(angle) * (boundaryR - node.radius - 4);
-        }
-      }
-    })
-    .alphaDecay(0.02)
-    .velocityDecay(0.35);
+  // ========== 数据准备 ==========
+  // 移动端过滤低频标签
+  const visibleTagIds = new Set(
+    isMobile ? RAW.tags.filter(t => t.count >= 3).map(t => t.id) : RAW.tags.map(t => t.id)
+  );
 
-  // ========== 绘制连线 ==========
-  const linkG = d3.select("#graphLinks");
-  const linkElements = linkG.selectAll("line")
-    .data(links)
-    .join("line")
-    .attr("class", "graph-link")
-    .attr("stroke", "oklch(0.75 0.06 var(--hue) / 0.15)")
-    .attr("stroke-width", d => Math.max(0.8, Math.min(3, d.strength * 0.6)))
-    .attr("stroke-linecap", "round");
+  const allTagNodes = RAW.tags.map(d => ({ ...d, x: cx + (Math.random() - 0.5) * boundaryR * 0.5, y: cy + (Math.random() - 0.5) * boundaryR * 0.5 }));
+  const allTagLinks = RAW.tagLinks.filter(l => visibleTagIds.has(l.source) && visibleTagIds.has(l.target));
 
-  // ========== 绘制节点 ==========
-  const nodeG = d3.select("#graphNodes");
-  const nodeElements = nodeG.selectAll("circle")
-    .data(nodes)
-    .join("circle")
-    .attr("class", "graph-node")
-    .attr("r", d => d.radius)
-    .attr("fill", d => d.isHighFreq ? "url(#nodeHigh)" : "url(#nodeLow)")
-    .attr("stroke", d => d.isHighFreq ? "oklch(0.68 0.12 var(--hue))" : "oklch(0.82 0.04 var(--hue))")
-    .attr("stroke-width", d => d.isHighFreq ? 1.5 : 1)
-    .attr("cursor", "pointer")
-    .call(d3.drag()
-      .on("start", dragstarted)
-      .on("drag", dragged)
-      .on("end", dragended));
+  // ========== 闲置检测 ==========
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      if (simulation) simulation.stop();
+    }, 5000);
+  }
+  ['mousemove', 'touchstart', 'mousedown', 'wheel'].forEach(evt => {
+    document.addEventListener(evt, resetIdleTimer, { passive: true });
+  });
 
-  // ========== 绘制标签（常态隐藏，hover/放大时显示） ==========
-  const labelG = d3.select("#graphLabels");
-  const labelElements = labelG.selectAll("text")
-    .data(nodes)
-    .join("text")
-    .attr("class", "graph-label")
-    .attr("text-anchor", "middle")
-    .attr("dy", d => -d.radius - 6)
-    .attr("font-size", d => Math.max(10, Math.min(13, 9 + d.radius * 0.3)))
-    .attr("font-weight", d => d.isHighFreq ? "600" : "400")
-    .attr("fill", "var(--deep-text)")
-    .attr("opacity", 0)
-    .text(d => d.name);
+  // ========== 初始化边界圆环 ==========
+  function updateBoundary() {
+    d3.select("#graphBoundary")
+      .attr("cx", cx)
+      .attr("cy", cy)
+      .attr("r", boundaryR);
+  }
+  updateBoundary();
 
   // ========== 缩放行为 ==========
-  let currentZoom = d3.zoomIdentity;
-
   const zoomBehavior = d3.zoom()
-    .scaleExtent([0.4, 3])
+    .scaleExtent([0.35, 3])
     .on("zoom", (event) => {
       currentZoom = event.transform;
-      const k = event.transform.k;
-      const layers = ["#graphBoundary", "#graphLinks", "#graphNodes", "#graphLabels"];
-      layers.forEach(sel => {
-        d3.select(sel).attr("transform", event.transform);
-      });
-      zoomBadge.textContent = Math.round(k * 100) + "%";
-      labelElements.attr("opacity", k >= 1.1 ? 0.85 : 0);
+      viewport.attr("transform", event.transform);
+      zoomBadge.textContent = Math.round(event.transform.k * 100) + "%";
+      // 根据缩放级别显示/隐藏标签
+      const showLabels = event.transform.k >= 1.05;
+      d3.selectAll(".graph-label").classed("is-visible", showLabels);
     });
 
-  svg.call(zoomBehavior)
-    .on("dblclick.zoom", null);
+  svg.call(zoomBehavior).on("dblclick.zoom", null);
 
-  const initialScale = Math.min(width / 900, height / 600, 1) * 0.95;
-  svg.call(zoomBehavior.transform, d3.zoomIdentity.translate((width - 900 * initialScale) / 2, (height - 600 * initialScale) / 2).scale(initialScale));
+  function resetZoom() {
+    const s = Math.min(width / 900, height / 600, 1) * 0.92;
+    svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity.translate((width - 900 * s) / 2, (height - 600 * s) / 2).scale(s));
+  }
+
+  // ========== 力导向模拟 ==========
+  function createSimulation(nodes, links) {
+    if (simulation) simulation.stop();
+    tickCount = 0;
+
+    const sim = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(d => {
+        // 关联越强距离越近
+        const base = currentView === 'tags' ? 100 : 80;
+        return base / Math.sqrt((d.strength || 1) + 0.3);
+      }).strength(d => {
+        return currentView === 'tags'
+          ? Math.min(0.5, (d.strength || 1) * 0.12)
+          : 0.4;
+      }))
+      .force("charge", d3.forceManyBody().strength(d => {
+        // 标签节点斥力大，文章节点斥力小
+        return d.isPost ? -120 : -220;
+      }).distanceMax(280))
+      .force("center", d3.forceCenter(cx, cy).strength(0.035))
+      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(0.6))
+      .force("boundary", () => {
+        for (const node of nodes) {
+          const dx = node.x - cx;
+          const dy = node.y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const limit = boundaryR - (node.radius || 6) - 6;
+          if (dist > limit) {
+            const angle = Math.atan2(dy, dx);
+            node.x = cx + Math.cos(angle) * limit;
+            node.y = cy + Math.sin(angle) * limit;
+          }
+        }
+      })
+      .alpha(1)
+      .alphaDecay(0.035)
+      .velocityDecay(0.4)
+      .stop(); // 先停止，等待渲染后启动
+
+    return sim;
+  }
+
+  // ========== 渲染函数 ==========
+  function renderGraph(nodes, links) {
+    const linkG = d3.select("#graphLinks");
+    const nodeG = d3.select("#graphNodes");
+    const labelG = d3.select("#graphLabels");
+
+    // 清空旧内容
+    linkG.selectAll("*").remove();
+    nodeG.selectAll("*").remove();
+    labelG.selectAll("*").remove();
+
+    // --- 连线 ---
+    const linkSel = linkG.selectAll("line")
+      .data(links)
+      .join("line")
+      .attr("class", d => `graph-link l-${escClass(d.source.id || d.source)}-${escClass(d.target.id || d.target)}`)
+      .attr("stroke", "oklch(0.75 0.06 var(--hue) / 0.15)")
+      .attr("stroke-width", d => Math.max(0.6, Math.min(2.5, (d.strength || 1) * 0.5)))
+      .attr("stroke-linecap", "round");
+
+    // --- 节点 ---
+    const nodeSel = nodeG.selectAll("circle")
+      .data(nodes)
+      .join("circle")
+      .attr("class", d => `graph-node n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} ${d.isHighFreq ? 'is-high' : 'is-low'}`)
+      .attr("r", d => d.radius || 6)
+      .attr("cursor", "pointer")
+      .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+    // --- 标签 ---
+    const labelSel = labelG.selectAll("text")
+      .data(nodes)
+      .join("text")
+      .attr("class", d => `graph-label n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''}`)
+      .attr("text-anchor", "middle")
+      .attr("dy", d => -(d.radius || 6) - 5)
+      .attr("font-size", d => d.isPost ? 9 : Math.max(10, Math.min(13, 9 + (d.radius || 6) * 0.25)))
+      .attr("font-weight", d => d.isHighFreq ? "600" : "400")
+      .text(d => d.name);
+
+    // 绑定交互
+    nodeSel
+      .on("mouseenter", function(event, d) {
+        const nid = d.id;
+        container.classList.add("highlight-mode");
+        d3.select(this).classed("is-hovered", true);
+
+        // 标记关联的连线和节点
+        const connectedIds = new Set();
+        links.forEach(l => {
+          const sid = l.source.id || l.source;
+          const tid = l.target.id || l.target;
+          if (sid === nid || tid === nid) {
+            connectedIds.add(sid === nid ? tid : sid);
+            d3.select(`.l-${escClass(sid)}-${escClass(tid)}`).classed("is-connected", true);
+            d3.select(`.l-${escClass(tid)}-${escClass(sid)}`).classed("is-connected", true);
+          }
+        });
+
+        d3.selectAll(".graph-node").each(function(n) {
+          if (n.id === nid) return;
+          d3.select(this).classed("is-connected", connectedIds.has(n.id));
+        });
+
+        d3.selectAll(".graph-label").each(function(n) {
+          if (n.id === nid) d3.select(this).classed("is-visible", true);
+          else d3.select(this).classed("is-visible", connectedIds.has(n.id));
+        });
+
+        showTooltip(event, d);
+      })
+      .on("mouseleave", function(event, d) {
+        container.classList.remove("highlight-mode");
+        d3.select(this).classed("is-hovered", false);
+        d3.selectAll(".graph-link").classed("is-connected", false);
+        d3.selectAll(".graph-node").classed("is-connected", false);
+        d3.selectAll(".graph-label").classed("is-visible", currentZoom.k >= 1.05);
+        hideTooltip();
+      })
+      .on("click", function(event, d) {
+        event.stopPropagation();
+        if (d.isPost && d.url) {
+          window.open(d.url, "_blank");
+        } else if (!d.isPost) {
+          // 点击标签 → 切换到文章-标签视图
+          switchToPostView(d);
+        }
+      });
+
+    return { linkSel, nodeSel, labelSel };
+  }
+
+  function escClass(s) {
+    return String(s).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+  }
+
+  // ========== 视图切换：标签总览 ==========
+  function switchToTagView() {
+    currentView = 'tags';
+    activeTag = null;
+    backBtn.classList.add("hidden");
+    graphTitle.textContent = "知识星球";
+    graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalTags} 个标签 · ${RAW.stats.totalLinks} 条关联`;
+
+    const nodes = allTagNodes.filter(n => visibleTagIds.has(n.id));
+    const links = allTagLinks.map(l => ({ ...l }));
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    // 启动模拟，300 tick 后停止
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+
+      if (tickCount >= 300) {
+        simulation.stop();
+      }
+    });
+
+    simulation.restart();
+    resetZoom();
+    resetIdleTimer();
+  }
+
+  // ========== 视图切换：文章-标签详情 ==========
+  function switchToPostView(tagNode) {
+    currentView = 'posts';
+    activeTag = tagNode.id;
+    backBtn.classList.remove("hidden");
+    graphTitle.textContent = `「${tagNode.name}」关联图谱`;
+
+    // 找到包含该标签的文章
+    const relatedPosts = RAW.posts.filter(p => p.tags.includes(tagNode.id));
+    graphStats.textContent = `${relatedPosts.length} 篇关联文章`;
+
+    // 中心标签节点
+    const centerNode = {
+      ...tagNode,
+      x: cx,
+      y: cy,
+      radius: 22,
+      isHighFreq: true,
+    };
+
+    // 文章节点：围绕中心分布
+    const postNodes = relatedPosts.map((p, i) => ({
+      id: p.id,
+      name: p.title,
+      url: p.url,
+      isPost: true,
+      radius: 5,
+      x: cx + (Math.random() - 0.5) * boundaryR * 0.5,
+      y: cy + (Math.random() - 0.5) * boundaryR * 0.5,
+      published: p.published,
+      description: p.description,
+      category: p.category,
+    }));
+
+    // 文章-标签连线
+    const postLinks = postNodes.map(p => ({
+      source: p.id,
+      target: tagNode.id,
+      strength: 1,
+    }));
+
+    const nodes = [centerNode, ...postNodes];
+    const links = postLinks;
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    tickCount = 0;
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+
+      if (tickCount >= 300) simulation.stop();
+    });
+
+    simulation.restart();
+    resetZoom();
+    resetIdleTimer();
+  }
 
   // ========== 拖拽节点 ==========
   function dragstarted(event, d) {
-    if (!event.active) simulation.alphaTarget(0.3).restart();
+    if (!event.active) {
+      simulation.alphaTarget(0.25).restart();
+    }
     d.fx = d.x;
     d.fy = d.y;
-    d3.select(this).attr("filter", "url(#nodeGlow)").attr("r", d.radius * 1.25);
+    d3.select(this).classed("is-dragging", true);
+    postDragTicks = 0;
+    simulation.on("tick.postdrag", null);
   }
 
   function dragged(event, d) {
@@ -296,10 +517,11 @@ const graphData = {
     const dx = event.x - cx;
     const dy = event.y - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > boundaryR - d.radius - 4) {
+    const limit = boundaryR - (d.radius || 6) - 6;
+    if (dist > limit) {
       const angle = Math.atan2(dy, dx);
-      d.fx = cx + Math.cos(angle) * (boundaryR - d.radius - 4);
-      d.fy = cy + Math.sin(angle) * (boundaryR - d.radius - 4);
+      d.fx = cx + Math.cos(angle) * limit;
+      d.fy = cy + Math.sin(angle) * limit;
     }
   }
 
@@ -307,110 +529,48 @@ const graphData = {
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
-    d3.select(this).attr("filter", null).attr("r", d.radius);
-  }
+    d3.select(this).classed("is-dragging", false);
 
-  // ========== 每帧更新位置 ==========
-  simulation.on("tick", () => {
-    linkElements
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
-
-    nodeElements
-      .attr("cx", d => d.x)
-      .attr("cy", d => d.y);
-
-    labelElements
-      .attr("x", d => d.x)
-      .attr("y", d => d.y);
-  });
-
-  // ========== hover 交互：高亮关联 ==========
-  let hoveredNode = null;
-
-  nodeElements
-    .on("mouseenter", function(event, d) {
-      hoveredNode = d;
-      d3.select(this).attr("r", d.radius * 1.3).attr("filter", "url(#nodeGlow)");
-      labelElements.filter(l => l.id === d.id).attr("opacity", 0.95);
-
-      const connectedLinkData = new Set();
-      links.forEach(l => {
-        if (l.source.id === d.id || l.target.id === d.id) {
-          connectedLinkData.add(l);
-        }
-      });
-      linkElements
-        .attr("stroke", l => connectedLinkData.has(l) ? "oklch(0.72 0.12 var(--hue) / 0.45)" : "oklch(0.75 0.06 var(--hue) / 0.06)")
-        .attr("stroke-width", l => connectedLinkData.has(l) ? Math.max(1.2, Math.min(3.5, l.strength * 0.8)) : Math.max(0.5, Math.min(2, l.strength * 0.4)));
-
-      nodeElements
-        .attr("opacity", n => {
-          if (n.id === d.id) return 1;
-          const isConnected = links.some(l =>
-            (l.source.id === d.id && l.target.id === n.id) ||
-            (l.target.id === d.id && l.source.id === n.id)
-          );
-          return isConnected ? 0.85 : 0.35;
-        });
-
-      labelElements
-        .attr("opacity", n => {
-          if (n.id === d.id) return 0.95;
-          const isConnected = links.some(l =>
-            (l.source.id === d.id && l.target.id === n.id) ||
-            (l.target.id === d.id && l.source.id === n.id)
-          );
-          return isConnected ? 0.7 : 0;
-        });
-
-      showTooltip(event, d);
-    })
-    .on("mouseleave", function(event, d) {
-      hoveredNode = null;
-      d3.select(this).attr("r", d.radius).attr("filter", null);
-      linkElements
-        .attr("stroke", "oklch(0.75 0.06 var(--hue) / 0.15)")
-        .attr("stroke-width", l => Math.max(0.8, Math.min(3, l.strength * 0.6)));
-      nodeElements.attr("opacity", 1);
-      const k = currentZoom.k;
-      labelElements.attr("opacity", n => k >= 1.1 ? 0.85 : 0);
-      hideTooltip();
-    })
-    .on("click", function(event, d) {
-      if (d.url) window.open(d.url, "_blank");
+    // 拖拽结束后运行20帧再停止
+    postDragTicks = 0;
+    simulation.on("tick.postdrag", () => {
+      postDragTicks++;
+      if (postDragTicks >= 20) {
+        simulation.stop();
+        simulation.on("tick.postdrag", null);
+      }
     });
+  }
 
   // ========== Tooltip ==========
   function showTooltip(event, d) {
-    const connectedTags = [];
-    links.forEach(l => {
-      if (l.source.id === d.id) connectedTags.push({ name: l.target.name, strength: l.strength });
-      else if (l.target.id === d.id) connectedTags.push({ name: l.source.name, strength: l.strength });
-    });
-    connectedTags.sort((a, b) => b.strength - a.strength);
-    const topConnected = connectedTags.slice(0, 5);
-
     tooltipName.textContent = d.name;
-    let metaHtml = `<span class="tt-count">${d.count} 篇文章</span>`;
-    if (topConnected.length > 0) {
-      metaHtml += `<span class="tt-divider">·</span><span class="tt-links">关联: ${topConnected.map(t => `${t.name}(${t.strength})`).join(" ")}</span>`;
+    let meta = '';
+    if (d.isPost) {
+      let dateStr = '';
+      if (d.published) {
+        const date = new Date(d.published);
+        dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      }
+      meta = `<span class="tt-count">${d.category || '文章'}</span>`;
+      if (dateStr) meta += `<span class="tt-divider">·</span><span>${dateStr}</span>`;
+      meta += `<div class="tt-hint">点击查看文章</div>`;
+    } else {
+      meta = `<span class="tt-count">${d.count} 篇文章</span>`;
+      if (currentView === 'tags') {
+        meta += `<span class="tt-divider">·</span><span class="tt-hint">点击查看关联文章</span>`;
+      }
     }
-    tooltipMeta.innerHTML = metaHtml;
-
+    tooltipMeta.innerHTML = meta;
     tooltip.classList.remove("hidden");
 
     const rect = wrapper.getBoundingClientRect();
-    let x = event.clientX - rect.left + 14;
-    let y = event.clientY - rect.top - 10;
-
+    let x = event.clientX - rect.left + 12;
+    let y = event.clientY - rect.top - 8;
     const ttRect = tooltip.getBoundingClientRect();
-    if (x + ttRect.width > rect.width) x = event.clientX - rect.left - ttRect.width - 10;
-    if (y + ttRect.height > rect.height) y = event.clientY - rect.top - ttRect.height - 10;
-    if (y < 0) y = 10;
-
+    if (x + ttRect.width > rect.width) x = event.clientX - rect.left - ttRect.width - 12;
+    if (y + ttRect.height > rect.height) y = event.clientY - rect.top - ttRect.height - 8;
+    if (y < 0) y = 8;
     tooltip.style.left = x + "px";
     tooltip.style.top = y + "px";
   }
@@ -426,18 +586,14 @@ const graphData = {
   function doSearch() {
     const kw = searchInput.value.trim().toLowerCase();
     if (!kw) {
-      nodeElements.attr("opacity", 1);
-      linkElements.attr("stroke", "oklch(0.75 0.06 var(--hue) / 0.15)");
-      labelElements.attr("opacity", currentZoom.k >= 1.1 ? 0.85 : 0);
+      d3.selectAll(".graph-node").classed("is-dimmed", false);
+      d3.selectAll(".graph-link").classed("is-dimmed", false);
+      d3.selectAll(".graph-label").classed("is-dimmed", false);
       return;
     }
-    const matched = new Set();
-    nodes.forEach(n => {
-      if (n.name.toLowerCase().includes(kw)) matched.add(n.id);
-    });
-    nodeElements.attr("opacity", d => matched.has(d.id) ? 1 : 0.15);
-    linkElements.attr("stroke", d => matched.has(d.source.id) && matched.has(d.target.id) ? "oklch(0.72 0.12 var(--hue) / 0.35)" : "oklch(0.75 0.06 var(--hue) / 0.03)");
-    labelElements.attr("opacity", d => matched.has(d.id) ? 0.9 : 0);
+    d3.selectAll(".graph-node").classed("is-dimmed", d => !d.name.toLowerCase().includes(kw));
+    d3.selectAll(".graph-label").classed("is-dimmed", d => !d.name.toLowerCase().includes(kw));
+    d3.selectAll(".graph-link").classed("is-dimmed", true);
   }
 
   let searchDebounce;
@@ -448,25 +604,62 @@ const graphData = {
   searchBtn.addEventListener("click", doSearch);
   searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
 
+  // ========== 返回总览 ==========
+  backBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false);
+    switchToTagView();
+  });
+
   // ========== 重置视图 ==========
   document.getElementById("graphReset").addEventListener("click", () => {
     searchInput.value = "";
-    const s = Math.min(width / 900, height / 600, 1) * 0.95;
-    svg.transition().duration(600).call(zoomBehavior.transform, d3.zoomIdentity.translate((width - 900 * s) / 2, (height - 600 * s) / 2).scale(s));
-    nodeElements.attr("opacity", 1);
-    linkElements.attr("stroke", "oklch(0.75 0.06 var(--hue) / 0.15)");
-    labelElements.attr("opacity", 0);
-    simulation.alpha(0.8).restart();
+    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false);
+    if (currentView === 'posts' && activeTag) {
+      const tag = allTagNodes.find(t => t.id === activeTag);
+      if (tag) switchToPostView(tag);
+    } else {
+      switchToTagView();
+    }
   });
 
-  // ========== 清理函数（Swup 导航时调用） ==========
+  // ========== resize 防抖 ==========
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      width = wrapper.clientWidth || 800;
+      height = wrapper.clientHeight || 500;
+      cx = width / 2;
+      cy = height / 2;
+      boundaryR = Math.min(width, height) * 0.44;
+      updateBoundary();
+      if (simulation) {
+        simulation.force("center", d3.forceCenter(cx, cy).strength(0.035));
+        simulation.alpha(0.3).restart();
+      }
+    }, 150);
+  });
+
+  // ========== IntersectionObserver 懒加载 ==========
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting && !hasInitialized) {
+        hasInitialized = true;
+        switchToTagView();
+        observer.disconnect();
+      }
+    });
+  }, { threshold: 0.1 });
+  observer.observe(wrapper);
+
+  // ========== 清理函数 ==========
   window.__obsidianGraphCleanup = function() {
-    simulation.stop();
+    if (simulation) simulation.stop();
     svg.on(".zoom", null);
-    nodeElements.on("mouseenter", null).on("mouseleave", null).on("click", null);
-    searchInput.removeEventListener("input", doSearch);
-    searchBtn.removeEventListener("click", doSearch);
-    document.getElementById("graphReset").removeEventListener("click", doSearch);
+    clearTimeout(idleTimer);
+    clearTimeout(resizeTimer);
+    observer.disconnect();
+    hasInitialized = false;
   };
 })();
 </script>
@@ -508,7 +701,28 @@ const graphData = {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
   }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--line-color);
+    background: var(--card-bg);
+    color: var(--primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .back-btn:hover {
+    background: var(--btn-plain-bg-hover);
+    border-color: var(--primary);
+  }
+  .back-btn.hidden { display: none; }
+
   .search-box {
     display: flex;
     align-items: center;
@@ -517,7 +731,7 @@ const graphData = {
     overflow: hidden;
     background: var(--card-bg);
     transition: border-color 0.2s, box-shadow 0.2s;
-    width: 220px;
+    width: 200px;
   }
   .search-box:focus-within {
     border-color: var(--primary);
@@ -563,18 +777,57 @@ const graphData = {
     height: 100%;
   }
 
-  /* 节点 */
+  /* 边界 */
+  .graph-boundary {
+    pointer-events: none;
+  }
+
+  /* 节点 - 纯色实心 */
   .graph-node {
-    transition: filter 0.15s ease;
+    transition: r 0.15s ease, filter 0.15s ease;
     cursor: pointer;
   }
-  .graph-node:hover {
-    filter: brightness(1.15);
+  .graph-node.is-high {
+    fill: oklch(0.75 0.14 var(--hue));
+    stroke: oklch(0.68 0.12 var(--hue));
+    stroke-width: 1.5;
   }
+  .graph-node.is-low {
+    fill: oklch(0.88 0.04 var(--hue));
+    stroke: oklch(0.82 0.04 var(--hue));
+    stroke-width: 1;
+  }
+  .graph-node.is-post {
+    fill: oklch(0.70 0.10 var(--hue));
+    stroke: oklch(0.62 0.10 var(--hue));
+    stroke-width: 1;
+  }
+  .graph-node.is-hovered,
+  .graph-node.is-dragging {
+    filter: url(#nodeGlow);
+  }
+  .graph-node.is-hovered {
+    r: calc(var(--r, 10px) * 1.3);
+  }
+
+  /* 高亮模式 */
+  .highlight-mode .graph-node { opacity: 0.25; }
+  .highlight-mode .graph-node.is-hovered { opacity: 1; }
+  .highlight-mode .graph-node.is-connected { opacity: 0.7; }
+  .highlight-mode .graph-link { opacity: 0.06; }
+  .highlight-mode .graph-link.is-connected { opacity: 1; }
+  .highlight-mode .graph-label { opacity: 0; }
+  .highlight-mode .graph-label.is-hovered,
+  .highlight-mode .graph-label.is-connected { opacity: 0.9; }
+
+  /* 搜索暗淡 */
+  .graph-node.is-dimmed { opacity: 0.12 !important; }
+  .graph-link.is-dimmed { opacity: 0.02 !important; }
+  .graph-label.is-dimmed { opacity: 0 !important; }
 
   /* 连线 */
   .graph-link {
-    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+    transition: opacity 0.2s ease;
     pointer-events: none;
   }
 
@@ -586,7 +839,12 @@ const graphData = {
       0 0 4px var(--page-bg),
       0 0 8px var(--page-bg),
       0 1px 2px var(--page-bg);
-    transition: opacity 0.25s ease;
+    fill: var(--deep-text);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .graph-label.is-visible {
+    opacity: 0.85;
   }
 
   /* Tooltip */
@@ -594,10 +852,10 @@ const graphData = {
     position: absolute;
     z-index: 100;
     pointer-events: none;
-    max-width: 280px;
+    max-width: 300px;
   }
   .graph-tooltip.hidden { display: none; }
-  .graph-tooltip > div {
+  .tooltip-inner {
     background: var(--float-panel-bg);
     border: 1px solid oklch(0.75 0.05 var(--hue) / 0.18);
     border-radius: 0.625rem;
@@ -610,6 +868,7 @@ const graphData = {
     font-size: 1rem;
     color: var(--deep-text);
     margin-bottom: 0.375rem;
+    line-height: 1.4;
   }
   .tooltip-meta {
     font-size: 0.8125rem;
@@ -618,7 +877,7 @@ const graphData = {
   }
   .tt-count { color: var(--primary); font-weight: 500; }
   .tt-divider { margin: 0 0.375rem; opacity: 0.4; }
-  .tt-links { opacity: 0.75; }
+  .tt-hint { color: var(--primary); font-weight: 500; font-size: 0.75rem; margin-top: 0.25rem; }
 
   /* 缩放指示器 */
   .zoom-badge {
@@ -637,20 +896,23 @@ const graphData = {
 
   /* 移动端适配 */
   @media (max-width: 768px) {
+    .obsidian-graph { padding: 0.5rem; }
     .graph-toolbar {
       flex-direction: column;
       align-items: stretch;
       gap: 0.75rem;
+      padding: 0.875rem 1rem;
     }
     .toolbar-right {
       justify-content: space-between;
     }
     .search-box { width: 100%; max-width: 100%; }
     .graph-canvas-wrapper {
-      min-height: 360px;
+      min-height: 340px;
       height: 55vh;
     }
     .graph-title { font-size: 1.1rem; }
     .graph-stats { font-size: 0.75rem; }
+    .back-btn { font-size: 0.8125rem; padding: 0.375rem 0.625rem; }
   }
 </style>
