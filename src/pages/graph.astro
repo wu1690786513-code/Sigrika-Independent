@@ -96,6 +96,7 @@ const graphData = {
     description: p.description,
     category: p.category,
     tags: p.tags,
+    isPost: true,
   })),
   stats: {
     totalPosts: allPosts.length,
@@ -105,7 +106,7 @@ const graphData = {
 };
 ---
 
-<MainGridLayout title="知识星球" description="探索标签关联，发现知识脉络">
+<MainGridLayout title="关系图谱(青春版)" description="探索标签关联，发现知识脉络">
   <Fragment slot="head">
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" is:inline></script>
   </Fragment>
@@ -153,9 +154,31 @@ const graphData = {
 
       <!-- 悬浮提示 -->
       <div id="graphTooltip" class="graph-tooltip hidden">
-        <div class="tooltip-inner">
-          <div class="tooltip-name" id="tooltipName"></div>
-          <div class="tooltip-meta" id="tooltipMeta"></div>
+        <div class="tooltip-card">
+          <!-- 头部装饰 -->
+          <div class="tooltip-header">
+            <div class="tooltip-name" id="tooltipName"></div>
+            <div class="tooltip-stats" id="tooltipStats"></div>
+          </div>
+          
+          <!-- 内容区域 -->
+          <div class="tooltip-content">
+            <div class="tooltip-section">
+              <div class="section-title tag-only">
+                <span class="section-icon">📄</span>
+                <span>最近几篇</span>
+              </div>
+              <div class="tooltip-posts" id="tooltipPosts"></div>
+            </div>
+            
+            <!-- 标签区域 -->
+            <div class="tooltip-tags" id="tooltipTags"></div>
+          </div>
+          
+          <!-- 底部操作 -->
+          <div class="tooltip-footer">
+            <div class="tooltip-hint" id="tooltipHint"></div>
+          </div>
         </div>
       </div>
 
@@ -182,7 +205,13 @@ const graphData = {
   const viewport = d3.select("#graphViewport");
   const tooltip = document.getElementById("graphTooltip");
   const tooltipName = document.getElementById("tooltipName");
-  const tooltipMeta = document.getElementById("tooltipMeta");
+  const tooltipStats = document.getElementById("tooltipStats");
+  const tooltipPosts = document.getElementById("tooltipPosts");
+  const tooltipTags = document.getElementById("tooltipTags");
+  const tooltipHint = document.getElementById("tooltipHint");
+  let tooltipCurrentNode = null;
+  let tooltipCurrentPage = 1;
+  let isTooltipHovered = false;
   const zoomBadge = document.getElementById("zoomBadge");
   const backBtn = document.getElementById("backBtn");
   const graphTitle = document.getElementById("graphTitle");
@@ -193,7 +222,7 @@ const graphData = {
   let height = wrapper.clientHeight || 500;
   let cx = width / 2;
   let cy = height / 2;
-  let boundaryR = Math.min(width, height) * 0.44;
+  let boundaryR = Math.min(width, height) * 0.72;
 
   const isMobile = window.innerWidth < 768;
 
@@ -215,7 +244,7 @@ const graphData = {
     isMobile ? RAW.tags.filter(t => t.count >= 3).map(t => t.id) : RAW.tags.map(t => t.id)
   );
 
-  const allTagNodes = RAW.tags.map(d => ({ ...d, x: cx + (Math.random() - 0.5) * boundaryR * 0.5, y: cy + (Math.random() - 0.5) * boundaryR * 0.5 }));
+  const allTagNodes = RAW.tags.map(d => ({ ...d, x: cx + (Math.random() - 0.5) * boundaryR * 0.9, y: cy + (Math.random() - 0.5) * boundaryR * 0.9 }));
   const allTagLinks = RAW.tagLinks.filter(l => visibleTagIds.has(l.source) && visibleTagIds.has(l.target));
 
   // 移除闲置检测，让模拟持续运行
@@ -275,7 +304,7 @@ const graphData = {
           const dx = node.x - cx;
           const dy = node.y - cy;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const limit = boundaryR - (node.radius || 6) - 6;
+          const limit = boundaryR - (node.radius || 6) - 12;
           if (dist > limit) {
             const angle = Math.atan2(dy, dx);
             node.x = cx + Math.cos(angle) * limit;
@@ -402,7 +431,8 @@ const graphData = {
     graphTitle.textContent = "知识星球";
     graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalTags} 个标签 · ${RAW.stats.totalLinks} 条关联`;
 
-    const nodes = allTagNodes.filter(n => visibleTagIds.has(n.id));
+    // 显示所有标签节点，不移除任何节点
+    const nodes = allTagNodes.map(n => ({ ...n }));
     const links = allTagLinks.map(l => ({ ...l }));
 
     const els = renderGraph(nodes, links);
@@ -452,8 +482,8 @@ const graphData = {
       url: p.url,
       isPost: true,
       radius: 5,
-      x: cx + (Math.random() - 0.5) * boundaryR * 0.5,
-      y: cy + (Math.random() - 0.5) * boundaryR * 0.5,
+      x: cx + (Math.random() - 0.5) * boundaryR * 0.9,
+      y: cy + (Math.random() - 0.5) * boundaryR * 0.9,
       published: p.published,
       description: p.description,
       category: p.category,
@@ -507,7 +537,7 @@ const graphData = {
     const dx = event.x - cx;
     const dy = event.y - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const limit = boundaryR - (d.radius || 6) - 6;
+    const limit = boundaryR - (d.radius || 6) - 12;
     if (dist > limit) {
       const angle = Math.atan2(dy, dx);
       d.fx = cx + Math.cos(angle) * limit;
@@ -526,24 +556,77 @@ const graphData = {
 
   // ========== Tooltip ==========
   function showTooltip(event, d) {
-    tooltipName.textContent = d.name;
-    let meta = '';
+    tooltipCurrentNode = d;
+    tooltipCurrentPage = 1;
+    tooltipName.textContent = d.title || d.name;  // 文章用title，标签用name
+    
     if (d.isPost) {
-      let dateStr = '';
+      tooltip.classList.add("is-post-tooltip");
+      // 文章详情
+      tooltipStats.innerHTML = d.category ? `<span class="stat-item">${d.category}</span>` : '';
+      
       if (d.published) {
         const date = new Date(d.published);
-        dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        tooltipStats.innerHTML += `<span class="stat-divider">·</span><span class="stat-item">${dateStr}</span>`;
       }
-      meta = `<span class="tt-count">${d.category || '文章'}</span>`;
-      if (dateStr) meta += `<span class="tt-divider">·</span><span>${dateStr}</span>`;
-      meta += `<div class="tt-hint">点击查看文章</div>`;
+      
+      // 文章列表区域显示描述
+      tooltipPosts.innerHTML = `<div class="post-description">${d.description || '暂无描述'}</div>`;
+      
+      // 获取文章的标签
+      const postTags = d.tags || [];
+      if (postTags.length > 0) {
+        tooltipTags.innerHTML = `<div class="tags-label">标签</div><div class="tags-list">` + postTags.slice(0, 6).map(t => `<span class="tag-item">${t}</span>`).join('') + `</div>`;
+      } else {
+        tooltipTags.innerHTML = '';
+      }
+      
+      tooltipHint.innerHTML = '<a href="' + d.url + '" target="_blank" class="hint-link"><span class="hint-icon">→</span>点击查看文章</a>';
     } else {
-      meta = `<span class="tt-count">${d.count} 篇文章</span>`;
-      if (currentView === 'tags') {
-        meta += `<span class="tt-divider">·</span><span class="tt-hint">点击查看关联文章</span>`;
+      tooltip.classList.remove("is-post-tooltip");
+      // 标签详情
+      tooltipStats.innerHTML = `<span class="stat-item">${d.count} 篇文章</span>`;
+      tooltipTags.innerHTML = '';
+      
+      // 获取所有关联文章，按发布时间排序
+      const relatedPosts = RAW.posts
+        .filter(p => p.tags.includes(d.id))
+        .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
+      
+      const pageSize = 5;
+      const totalPages = Math.ceil(relatedPosts.length / pageSize);
+      const displayPosts = relatedPosts.slice((tooltipCurrentPage - 1) * pageSize, tooltipCurrentPage * pageSize);
+      
+      // 渲染文章列表
+      if (relatedPosts.length > 0) {
+        tooltipPosts.innerHTML = '';
+        displayPosts.forEach((post, index) => {
+          tooltipPosts.innerHTML += `
+            <div class="post-item">
+              <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}.</span>
+              <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
+            </div>
+          `;
+        });
+        
+        // 添加翻页按钮
+        if (totalPages > 1) {
+          tooltipPosts.innerHTML += `
+            <div class="tooltip-pagination">
+              <span class="pagination-btn prev" ${tooltipCurrentPage <= 1 ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipPrevPage()">‹</span>
+              <span class="pagination-info">${tooltipCurrentPage}/${totalPages}</span>
+              <span class="pagination-btn next" ${tooltipCurrentPage >= totalPages ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipNextPage()">›</span>
+            </div>
+          `;
+        }
+      } else {
+        tooltipPosts.innerHTML = '<div class="empty-state">暂无关联文章</div>';
       }
+      
+      tooltipHint.innerHTML = '<span class="hint-link" onclick="switchToTagDetailView(\'' + d.id + '\')"><span class="hint-icon">→</span>点击查看所有关联文章</span>';
     }
-    tooltipMeta.innerHTML = meta;
+    
     tooltip.classList.remove("hidden");
 
     const rect = wrapper.getBoundingClientRect();
@@ -557,9 +640,98 @@ const graphData = {
     tooltip.style.top = y + "px";
   }
 
-  function hideTooltip() {
-    tooltip.classList.add("hidden");
+  function tooltipPrevPage() {
+    if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
+    if (tooltipCurrentPage > 1) {
+      tooltipCurrentPage--;
+      updateTooltipPosts();
+    }
   }
+
+  function tooltipNextPage() {
+    if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
+    const relatedPosts = RAW.posts.filter(p => p.tags.includes(tooltipCurrentNode.id));
+    const totalPages = Math.ceil(relatedPosts.length / 5);
+    if (tooltipCurrentPage < totalPages) {
+      tooltipCurrentPage++;
+      updateTooltipPosts();
+    }
+  }
+
+  function updateTooltipPosts() {
+    if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
+    
+    const relatedPosts = RAW.posts
+      .filter(p => p.tags.includes(tooltipCurrentNode.id))
+      .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
+    
+    const pageSize = 5;
+    const totalPages = Math.ceil(relatedPosts.length / pageSize);
+    const displayPosts = relatedPosts.slice((tooltipCurrentPage - 1) * pageSize, tooltipCurrentPage * pageSize);
+    
+    tooltipPosts.style.opacity = '0';
+    setTimeout(() => {
+      tooltipPosts.innerHTML = '';
+      displayPosts.forEach((post, index) => {
+        tooltipPosts.innerHTML += `
+          <div class="post-item">
+            <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}</span>
+            <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
+          </div>
+        `;
+      });
+      
+      // 更新页码
+      if (totalPages > 1) {
+        tooltipPosts.innerHTML += `
+          <div class="tooltip-pagination">
+            <span class="pagination-btn prev" ${tooltipCurrentPage <= 1 ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipPrevPage()">‹</span>
+            <span class="pagination-info">${tooltipCurrentPage}/${totalPages}</span>
+            <span class="pagination-btn next" ${tooltipCurrentPage >= totalPages ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipNextPage()">›</span>
+          </div>
+        `;
+      }
+      
+      tooltipPosts.style.opacity = '1';
+    }, 100);
+  }
+
+  window.tooltipPrevPage = tooltipPrevPage;
+  window.tooltipNextPage = tooltipNextPage;
+
+  // 点击按钮切换到标签详情视图
+  function switchToTagDetailView(tagId) {
+    tooltip.classList.add("hidden");
+    const tagNode = allTagNodes.find(t => t.id === tagId);
+    if (tagNode) {
+      switchToPostView(tagNode);
+    }
+  }
+
+  window.switchToTagDetailView = switchToTagDetailView;
+
+  function hideTooltip() {
+    // 添加延迟，确保tooltip的mouseenter事件先触发
+    setTimeout(() => {
+      if (!isTooltipHovered) {
+        tooltip.classList.add("hidden");
+        tooltipCurrentNode = null;
+      }
+    }, 100);
+  }
+
+  // Tooltip鼠标事件
+  tooltip.addEventListener("mouseenter", () => {
+    isTooltipHovered = true;
+  });
+
+  tooltip.addEventListener("mouseleave", () => {
+    isTooltipHovered = false;
+    // 鼠标离开tooltip后立即关闭
+    tooltip.classList.add("hidden");
+    tooltipCurrentNode = null;
+    tooltipCurrentPage = 1;
+  });
 
   // ========== 搜索 ==========
   const searchInput = document.getElementById("graphSearch");
@@ -613,7 +785,7 @@ const graphData = {
       height = wrapper.clientHeight || 500;
       cx = width / 2;
       cy = height / 2;
-      boundaryR = Math.min(width, height) * 0.44;
+      boundaryR = Math.min(width, height) * 0.72;
       updateBoundary();
       if (simulation) {
         simulation.force("center", d3.forceCenter(cx, cy).strength(0.035));
@@ -766,7 +938,7 @@ const graphData = {
 
   /* 节点 - 统一颜色 rgb(214, 69, 58) */
   .graph-node {
-    transition: r 0.15s ease, filter 0.15s ease;
+    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, stroke-width 0.2s ease;
     cursor: pointer;
     fill: rgb(214, 69, 58);
     stroke: rgb(180, 55, 45);
@@ -787,12 +959,13 @@ const graphData = {
     stroke: rgb(180, 55, 45);
     stroke-width: 1;
   }
-  .graph-node.is-hovered,
-  .graph-node.is-dragging {
-    filter: url(#nodeGlow);
-  }
   .graph-node.is-hovered {
-    r: calc(var(--r, 10px) * 1.3);
+    filter: drop-shadow(0 0 8px rgba(214, 69, 58, 0.6)) drop-shadow(0 0 16px rgba(214, 69, 58, 0.4));
+    stroke-width: 2.5;
+  }
+  .graph-node.is-dragging {
+    filter: drop-shadow(0 0 12px rgba(214, 69, 58, 0.8)) drop-shadow(0 0 20px rgba(214, 69, 58, 0.5));
+    stroke-width: 3;
   }
 
   /* 高亮模式 */
@@ -836,33 +1009,295 @@ const graphData = {
   .graph-tooltip {
     position: absolute;
     z-index: 100;
-    pointer-events: none;
-    max-width: 300px;
+    pointer-events: auto;
   }
   .graph-tooltip.hidden { display: none; }
-  .tooltip-inner {
-    background: var(--float-panel-bg);
-    border: 1px solid rgba(214, 69, 58, 0.3);
-    border-radius: 0.625rem;
-    padding: 0.75rem 1rem;
-    box-shadow: 0 6px 24px rgba(214, 69, 58, 0.15);
+  
+  /* 卡片主体 */
+  .tooltip-card {
+    background: color-mix(in srgb, var(--primary) 8%, var(--page-bg));
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--primary) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
     backdrop-filter: blur(10px);
+    width: 320px;
+    padding: 18px 20px;
+  }
+  
+  /* 头部区域 */
+  .tooltip-header {
+    position: relative;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
   }
   .tooltip-name {
+    position: relative;
     font-weight: 700;
-    font-size: 1rem;
-    color: var(--deep-text);
-    margin-bottom: 0.375rem;
+    font-size: 18px;
+    color: var(--primary-text-color);
+    margin: 0;
     line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
-  .tooltip-meta {
-    font-size: 0.8125rem;
+  .tooltip-name::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tooltip-stats {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 13px;
     color: var(--content-meta);
-    line-height: 1.5;
   }
-  .tt-count { color: rgb(80, 50, 30); font-weight: 500; }
-  .tt-divider { margin: 0 0.375rem; opacity: 0.4; }
-  .tt-hint { color: rgb(214, 69, 58); font-weight: 500; font-size: 0.75rem; margin-top: 0.25rem; }
+  .stat-item {
+    padding: 1px 6px;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  .stat-divider {
+    opacity: 0.5;
+  }
+  
+  /* 内容区域 */
+  .tooltip-content {
+    padding: 0;
+  }
+  .tooltip-section {
+    margin-bottom: 0;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--content-meta);
+    margin-bottom: 12px;
+  }
+  .section-icon {
+    font-size: 14px;
+  }
+  .is-post-tooltip .section-title.tag-only {
+    display: none;
+  }
+  
+  /* 文章列表 */
+  .tooltip-posts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: opacity 0.15s ease;
+  }
+  .post-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 6px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .post-item:hover {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  .post-number {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .post-title {
+    flex: 1;
+    font-size: 15px;
+    color: var(--primary-text-color);
+    line-height: 1.4;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+  .post-title:hover {
+    color: var(--primary);
+    text-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  
+  /* 分页区域 */
+  .tooltip-pagination {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px;
+    padding: 12px 0 0;
+    margin: 14px 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+    width: 100%;
+    min-height: 44px;
+  }
+  .pagination-btn {
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent) !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 18px !important;
+    color: var(--primary) !important;
+    line-height: 1 !important;
+    font-weight: bold !important;
+  }
+  .pagination-btn:hover:not([style*="opacity:0.5"]) {
+    background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent) !important;
+  }
+  .pagination-info {
+    font-size: 13px;
+    color: var(--content-text);
+    flex-shrink: 0;
+    margin: 0 !important;
+  }
+  
+  /* 底部区域 */
+  .post-description {
+    font-size: 0.8125rem;
+    color: var(--content-text);
+    line-height: 1.5;
+    padding: 8px 10px;
+    background: color-mix(in oklch, var(--primary) 5%, transparent);
+    border-radius: 8px;
+    border-left: 3px solid var(--primary);
+  }
+  
+  /* 空状态 */
+  .empty-state {
+    text-align: center;
+    padding: 10px;
+    color: var(--content-meta);
+    font-size: 0.75rem;
+  }
+  
+  /* 标签区域 */
+  .tooltip-tags {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  .tags-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--content-meta);
+    margin-bottom: 8px;
+  }
+  .tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .tag-item {
+    padding: 3px 10px;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+    font-size: 12px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+  
+  /* 底部区域 */
+  .tooltip-footer {
+    margin-top: 14px;
+    padding: 14px 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  .tooltip-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+  .hint-icon {
+    font-size: 14px;
+    transition: transform 0.2s ease;
+  }
+  .hint-link {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--primary) !important;
+    font-weight: 600;
+    text-decoration: none !important;
+    width: 100%;
+    padding: 14px 20px;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--primary) 10%, transparent);
+    box-sizing: border-box;
+    cursor: pointer;
+    user-select: none;
+  }
+  .hint-link:hover {
+    background: color-mix(in srgb, var(--primary) 22%, transparent) !important;
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent) !important;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 18%, transparent) !important;
+    transform: translateY(-2px);
+  }
+  .hint-link:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 6px color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   /* 缩放指示器 */
   .zoom-badge {
