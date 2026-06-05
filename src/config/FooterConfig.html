@@ -28,7 +28,7 @@
   async function loadSitePV() {
   const elements_page_pv = document.querySelectorAll('[data-stat-id="vercount_value_page_pv"]');
   const elements_site_pv = document.querySelectorAll('[data-stat-id="vercount_value_site_pv"]');
-  // 每个子域名独立 KEY（官方原版逻辑）
+  // 每个子域名独立 KEY
   const host = window.location.host;
   const cookieKey = "vercount_uv_" + host;
 
@@ -59,7 +59,7 @@
     elements_site_pv.forEach(el => el.textContent = site_pv.toString());
 
     // 更新 UV（第1145位访客）
-    console.log(data);
+    // console.log(data);
     
     const elements_site_uv = document.getElementById('vercount_value_site_uv');
     if (elements_site_uv) {
