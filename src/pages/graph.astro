@@ -1021,7 +1021,11 @@ const graphData = {
 
   function tooltipNextPage() {
     if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
-    const relatedPosts = RAW.posts.filter(p => p.tags.includes(tooltipCurrentNode.id));
+    
+    // 根据当前视图判断是分类还是标签
+    const isCategory = currentView === 'categories' || currentView === 'category-detail';
+    const relatedPosts = RAW.posts.filter(p => isCategory ? p.category === tooltipCurrentNode.id : p.tags.includes(tooltipCurrentNode.id));
+    
     const totalPages = Math.ceil(relatedPosts.length / 5);
     if (tooltipCurrentPage < totalPages) {
       tooltipCurrentPage++;
@@ -1032,8 +1036,11 @@ const graphData = {
   function updateTooltipPosts() {
     if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
     
+    // 根据当前视图判断是分类还是标签
+    const isCategory = currentView === 'categories' || currentView === 'category-detail';
+    
     const relatedPosts = RAW.posts
-      .filter(p => p.tags.includes(tooltipCurrentNode.id))
+      .filter(p => isCategory ? p.category === tooltipCurrentNode.id : p.tags.includes(tooltipCurrentNode.id))
       .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
     
     const pageSize = 5;
