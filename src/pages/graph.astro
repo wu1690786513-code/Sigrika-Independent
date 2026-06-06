@@ -106,7 +106,7 @@ const graphData = {
 };
 ---
 
-<MainGridLayout title="关系图谱(青春版)" description="探索标签关联，发现知识脉络">
+<MainGridLayout title="关系图谱" description="探索标签关联，邂逅一段缘分">
   <Fragment slot="head">
     <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" is:inline></script>
   </Fragment>
@@ -477,7 +477,7 @@ const graphData = {
     activeTag = null;
     backBtn.classList.add("hidden");
     document.getElementById("tabBar").classList.remove("hidden");
-    graphTitle.textContent = "知识星球";
+    graphTitle.textContent = "全部标签";
     graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalTags} 个标签 · ${RAW.stats.totalLinks} 条关联`;
 
     // 显示所有标签节点，不移除任何节点
@@ -651,7 +651,7 @@ const graphData = {
     backBtn.classList.add("hidden");
     document.getElementById("tabBar").classList.remove("hidden");
     graphTitle.textContent = "随机漫步";
-    graphStats.textContent = "探索未知文章";
+    graphStats.textContent = "会邂逅哪段记忆呢";
 
     // 随机挑选10篇文章
     const shuffled = [...RAW.posts].sort(() => Math.random() - 0.5);
