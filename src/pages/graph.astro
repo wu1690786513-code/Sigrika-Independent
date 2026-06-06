@@ -895,18 +895,39 @@ const graphData = {
     if (isDragging) return;  // 拖拽时不显示tooltip
     tooltipCurrentNode = d;
     tooltipCurrentPage = 1;
-    tooltipName.textContent = d.title || d.name;  // 文章用title，标签用name
+    if (d.isPost && d.url) {
+      tooltipName.innerHTML = `<a href="${d.url}" target="_blank" style="color: inherit; text-decoration: none; cursor: pointer;">${d.title || d.name}</a>`;
+    } else {
+      tooltipName.textContent = d.title || d.name;
+    }
     
     if (d.isPost) {
       tooltip.classList.add("is-post-tooltip");
       // 文章详情
-      tooltipStats.innerHTML = d.category ? `<span class="stat-item">${d.category}</span>` : '';
+      if (d.category) {
+        tooltipStats.innerHTML = `<span class="stat-item category-clickable" data-category="${d.category}" style="cursor: pointer;">${d.category}</span>`;
+      } else {
+        tooltipStats.innerHTML = '';
+      }
       
       if (d.published) {
         const date = new Date(d.published);
         const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         tooltipStats.innerHTML += `<span class="stat-divider">·</span><span class="stat-item">${dateStr}</span>`;
       }
+      
+      // 为分类添加点击事件
+      tooltipStats.querySelectorAll('.category-clickable').forEach(catEl => {
+        catEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const categoryId = catEl.getAttribute('data-category');
+          const categoryNode = RAW.categories.find(c => c.id === categoryId);
+          if (categoryNode) {
+            hideTooltip();
+            switchToCategoryDetailView(categoryNode);
+          }
+        });
+      });
       
       // 文章列表区域显示描述
       tooltipPosts.innerHTML = `<div class="post-description">${d.description || '暂无描述'}</div>`;
@@ -1895,6 +1916,9 @@ const graphData = {
     background: color-mix(in srgb, var(--primary) 25%, transparent);
     transform: scale(1.05);
     transition: all 0.2s ease;
+  }
+  .category-clickable:hover {
+    text-decoration: underline;
   }
   
   /* 底部区域 */
