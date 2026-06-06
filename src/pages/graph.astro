@@ -601,6 +601,7 @@ const graphData = {
     const postNodes = relatedPosts.map((p, i) => ({
       id: p.id,
       name: p.title,
+      title: p.title,
       url: p.url,
       isPost: true,
       radius: 5,
@@ -609,6 +610,7 @@ const graphData = {
       published: p.published,
       description: p.description,
       category: p.category,
+      tags: p.tags,
     }));
 
     // 文章-分类连线
@@ -667,6 +669,7 @@ const graphData = {
     const postNodes = relatedPosts.map((p, i) => ({
       id: p.id,
       name: p.title,
+      title: p.title,
       url: p.url,
       isPost: true,
       radius: 5,
@@ -675,6 +678,7 @@ const graphData = {
       published: p.published,
       description: p.description,
       category: p.category,
+      tags: p.tags,
     }));
 
     // 文章-标签连线
@@ -731,6 +735,7 @@ const graphData = {
       return {
         id: p.id,
         name: p.title,
+        title: p.title,
         url: p.url,
         isPost: true,
         radius: Math.max(4, 7 - i * 0.02), // 越近的文章越大
@@ -739,29 +744,13 @@ const graphData = {
         published: p.published,
         description: p.description,
         category: p.category,
+        tags: p.tags,
       };
     });
 
-    // 文章之间的关联（共享标签的文章相连）
-    const postLinks = [];
-    for (let i = 0; i < postNodes.length; i++) {
-      for (let j = i + 1; j < postNodes.length; j++) {
-        const a = postNodes[i];
-        const b = postNodes[j];
-        // 计算共享标签数量
-        const sharedTags = (a.tags || []).filter(t => (b.tags || []).includes(t)).length;
-        if (sharedTags >= 1) {
-          postLinks.push({
-            source: a.id,
-            target: b.id,
-            strength: sharedTags,
-          });
-        }
-      }
-    }
-
+    // 全部文章视图不显示连线
     const nodes = postNodes;
-    const links = postLinks;
+    const links = [];
 
     const els = renderGraph(nodes, links);
     simulation = createSimulation(nodes, links);
@@ -805,6 +794,7 @@ const graphData = {
       return {
         id: p.id,
         name: p.title,
+        title: p.title,
         url: p.url,
         isPost: true,
         radius: 8 + Math.random() * 4, // 适当放大
@@ -813,6 +803,7 @@ const graphData = {
         published: p.published,
         description: p.description,
         category: p.category,
+        tags: p.tags,
       };
     });
 
@@ -1245,11 +1236,13 @@ const graphData = {
     });
 
     simulation.restart();
-    resetZoom();
     
     // 搜索结果放大到150%
-    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.scale(1.5).translate(width / 2 - width * 1.5 / 2, height / 2 - height * 1.5 / 2));
-    currentZoom = d3.zoomIdentity.scale(1.5);
+    setTimeout(() => {
+      const transform = d3.zoomIdentity.translate(width / 2, height / 2).scale(1.5).translate(-width / 2, -height / 2);
+      svg.transition().duration(500).call(zoom.transform, transform);
+      currentZoom = transform;
+    }, 100);
     
     resetIdleTimer();
   }
