@@ -731,6 +731,14 @@ const graphData = {
       const angle = (i / sortedPosts.length) * Math.PI * 4; // 两圈螺旋
       const radiusFactor = Math.sqrt(i / sortedPosts.length);
       const r = radiusFactor * boundaryR * 0.8;
+      // 目标位置
+      const targetX = cx + Math.cos(angle) * r;
+      const targetY = cy + Math.sin(angle) * r;
+      // 从外围入场：初始位置在边界圆上随机位置
+      const startAngle = Math.random() * Math.PI * 2;
+      const startR = boundaryR * (0.85 + Math.random() * 0.15);
+      const startX = cx + Math.cos(startAngle) * startR;
+      const startY = cy + Math.sin(startAngle) * startR;
       return {
         id: p.id,
         name: p.title,
@@ -738,10 +746,12 @@ const graphData = {
         url: p.url,
         isPost: true,
         radius: Math.max(4, 7 - i * 0.02),
-        x: cx, // 初始位置：中心
-        y: cy,
-        targetX: cx + Math.cos(angle) * r,
-        targetY: cy + Math.sin(angle) * r,
+        x: startX,
+        y: startY,
+        startX: startX,
+        startY: startY,
+        targetX: targetX,
+        targetY: targetY,
         published: p.published,
         description: p.description,
         category: p.category,
@@ -759,7 +769,7 @@ const graphData = {
     els.nodeSel.style("opacity", 0);
     els.labelSel.style("opacity", 0);
 
-    // 螺纹旋转入场动画
+    // 外围入场动画：小球从边界飞向目标位置
     const totalDuration = 3000; // 总动画时长
     const staggerDelay = 20; // 每个节点延迟
     const startTime = performance.now();
@@ -770,25 +780,16 @@ const graphData = {
       const globalProgress = Math.min(1, elapsed / totalDuration);
       
       nodes.forEach((node, index) => {
-        // 计算每个节点的入场时间（从中心向外依次入场）
+        // 计算每个节点的入场时间（外围先入场，越靠中心越晚）
         const nodeProgress = Math.max(0, Math.min(1, (globalProgress * totalDuration - index * staggerDelay) / (totalDuration - totalNodes * staggerDelay)));
         
         if (nodeProgress > 0) {
-          // 使用缓动函数：easeOutCubic
-          const easedProgress = 1 - Math.pow(1 - nodeProgress, 3);
+          // 使用缓动函数：easeOutQuart 让入场更自然
+          const easedProgress = 1 - Math.pow(1 - nodeProgress, 4);
           
-          // 从中心螺旋式展开到目标位置
-          const spinAngle = easedProgress * Math.PI * 2; // 旋转一圈
-          const radiusProgress = easedProgress;
-          const offsetX = (node.targetX - cx) * radiusProgress;
-          const offsetY = (node.targetY - cy) * radiusProgress;
-          
-          // 旋转偏移
-          const rotatedX = offsetX * Math.cos(spinAngle) - offsetY * Math.sin(spinAngle);
-          const rotatedY = offsetX * Math.sin(spinAngle) + offsetY * Math.cos(spinAngle);
-          
-          node.x = cx + rotatedX;
-          node.y = cy + rotatedY;
+          // 从外围位置向目标位置移动
+          node.x = node.startX + (node.targetX - node.startX) * easedProgress;
+          node.y = node.startY + (node.targetY - node.startY) * easedProgress;
           
           // 更新DOM位置和透明度
           els.nodeSel.filter(d => d.id === node.id)
