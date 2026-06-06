@@ -121,15 +121,28 @@ const graphData = {
       <div class="toolbar-center">
         <div class="tab-bar" id="tabBar">
           <button class="tab-item active" id="tabPosts" data-view="posts">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="3" x2="16" y2="21"/><line x1="8" y1="3" x2="8" y2="21"/></svg>
-            <span>全部文章</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M0 0h24v24H0z" fill="none"/>
+            <path d="M5.616 20q-.691 0-1.153-.462T4 18.384V5.616q0-.691.463-1.153T5.616 4h12.769q.69 0 1.153.463T20 5.616v12.769q0 .69-.462 1.153T18.384 20zm0-1h12.769q.23 0 .423-.192t.192-.424V5.616q0-.231-.192-.424T18.384 5H5.616q-.231 0-.424.192T5 5.616v12.769q0 .23.192.423t.423.192M5 5v14zm3 11.5h5q.214 0 .357-.143T13.5 16t-.143-.357T13 15.5H8q-.213 0-.357.143T7.5 16t.143.357T8 16.5m0-4h8q.214 0 .357-.143T16.5 12t-.143-.357T16 11.5H8q-.213 0-.357.143T7.5 12t.143.357T8 12.5m0-4h8q.214 0 .357-.143T16.5 8t-.143-.357T16 7.5H8q-.213 0-.357.143T7.5 8t.143.357T8 8.5"/>
+          </svg>
+          <span>全部文章</span>
           </button>
           <button class="tab-item" id="tabTags" data-view="tags">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L3.41 16"/><path d="m16 3.5 3.5 3.5"/><path d="M4 4h7a4 4 0 0 1 4 4v12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+	<path d="M0 0h24v24H0z" fill="none" />
+	<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2">
+		<path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z" />
+		<path d="M6.5 6.5L7 7" />
+	</g>
+</svg>
+
             <span>全部标签</span>
           </button>
           <button class="tab-item" id="tabRandom" data-view="random">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m6.34 17.66-2.83-2.83"/><path d="m19.07 7.93-2.83-2.83"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+        <path d="M0 0h20v20H0z" fill="none" />
+        <path fill="currentColor" d="M16 0a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4zm0 2H4a2 2 0 0 0-1.995 1.85L2 4v12a2 2 0 0 0 1.85 1.995L4 18h12a2 2 0 0 0 1.995-1.85L18 16V4a2 2 0 0 0-1.85-1.995zm-1 11a2 2 0 1 1 0 4a2 2 0 0 1 0-4m-5-5a2 2 0 1 1 0 4a2 2 0 0 1 0-4M5 3a2 2 0 1 1 0 4a2 2 0 0 1 0-4" />
+      </svg>
             <span>随机漫步</span>
           </button>
         </div>
@@ -1121,10 +1134,9 @@ const graphData = {
   /* 工具栏 */
   .graph-toolbar {
     padding: 1rem 1.25rem;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
     gap: 0.875rem;
   }
   .toolbar-left {
@@ -1174,13 +1186,12 @@ const graphData = {
     background: color-mix(in srgb, var(--primary) 10%, transparent);
     color: var(--primary);
   }
-  .tab-item.active {
-    background: var(--primary);
-    color: white;
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 30%, transparent);
+  .tab-item svg {
+    flex-shrink: 0;
+    vertical-align: middle;
   }
-  .tab-item.active svg {
-    stroke: white;
+  .tab-item span {
+    vertical-align: middle;
   }
   .tab-bar.hidden {
     display: none;
@@ -1189,6 +1200,7 @@ const graphData = {
   .toolbar-right {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
     flex-wrap: wrap;
   }
@@ -1201,14 +1213,14 @@ const graphData = {
     border-radius: 0.5rem;
     border: 1px solid var(--line-color);
     background: var(--card-bg);
-    color: rgb(214, 69, 58);
+    color: var(--primary);
     font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.2s;
   }
   .back-btn:hover {
     background: var(--btn-plain-bg-hover);
-    border-color: rgb(214, 69, 58);
+    border-color: var(--primary);
   }
   .back-btn.hidden { display: none; }
 
@@ -1223,8 +1235,8 @@ const graphData = {
     width: 200px;
   }
   .search-box:focus-within {
-    border-color: rgb(214, 69, 58);
-    box-shadow: 0 0 0 3px rgba(214, 69, 58, 0.25);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
   }
   .search-input {
     flex: 1;
@@ -1715,7 +1727,7 @@ const graphData = {
     position: absolute;
     bottom: 10px;
     right: 10px;
-    background: rgba(214, 69, 58, 0.2);
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
     color: var(--deep-text);
     font-size: 0.6875rem;
     padding: 0.25rem 0.5rem;
@@ -1729,13 +1741,21 @@ const graphData = {
   @media (max-width: 768px) {
     .obsidian-graph { padding: 0.5rem; }
     .graph-toolbar {
+      display: flex;
       flex-direction: column;
       align-items: stretch;
       gap: 0.75rem;
       padding: 0.875rem 1rem;
     }
+    .toolbar-left {
+      text-align: center;
+      align-items: center;
+    }
+    .toolbar-center {
+      order: -1;
+    }
     .toolbar-right {
-      justify-content: space-between;
+      justify-content: center;
     }
     .search-box { width: 100%; max-width: 100%; }
     .graph-canvas-wrapper {
