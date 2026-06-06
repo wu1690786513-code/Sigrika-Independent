@@ -726,10 +726,9 @@ const graphData = {
       new Date(b.published || 0) - new Date(a.published || 0)
     );
 
-    // 文章节点：从中心向外分布，最近的在中心
+    // 文章节点：计算目标位置（螺旋分布）
     const postNodes = sortedPosts.map((p, i) => {
-      // 最近的文章从中心开始，逐渐向外扩散
-      const angle = (i / sortedPosts.length) * Math.PI * 2;
+      const angle = (i / sortedPosts.length) * Math.PI * 4; // 两圈螺旋
       const radiusFactor = Math.sqrt(i / sortedPosts.length);
       const r = radiusFactor * boundaryR * 0.8;
       return {
@@ -738,9 +737,11 @@ const graphData = {
         title: p.title,
         url: p.url,
         isPost: true,
-        radius: Math.max(4, 7 - i * 0.02), // 越近的文章越大
-        x: cx + Math.cos(angle) * r,
-        y: cy + Math.sin(angle) * r,
+        radius: Math.max(4, 7 - i * 0.02),
+        x: cx, // 初始位置：中心
+        y: cy,
+        targetX: cx + Math.cos(angle) * r,
+        targetY: cy + Math.sin(angle) * r,
         published: p.published,
         description: p.description,
         category: p.category,
@@ -753,21 +754,93 @@ const graphData = {
     const links = [];
 
     const els = renderGraph(nodes, links);
-    simulation = createSimulation(nodes, links);
+    
+    // 初始时隐藏所有节点（透明度为0）
+    els.nodeSel.style("opacity", 0);
+    els.labelSel.style("opacity", 0);
 
-    tickCount = 0;
-    simulation.on("tick", () => {
-      tickCount++;
-      els.linkSel
-        .attr("x1", d => d.source.x)
-        .attr("y1", d => d.source.y)
-        .attr("x2", d => d.target.x)
-        .attr("y2", d => d.target.y);
-      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
-      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
-    });
+    // 螺纹旋转入场动画
+    const totalDuration = 3000; // 总动画时长
+    const staggerDelay = 20; // 每个节点延迟
+    const startTime = performance.now();
+    const totalNodes = nodes.length;
 
-    simulation.restart();
+    function animate(currentTime) {
+      const elapsed = currentTime - startTime;
+      const globalProgress = Math.min(1, elapsed / totalDuration);
+      
+      nodes.forEach((node, index) => {
+        // 计算每个节点的入场时间（从中心向外依次入场）
+        const nodeProgress = Math.max(0, Math.min(1, (globalProgress * totalDuration - index * staggerDelay) / (totalDuration - totalNodes * staggerDelay)));
+        
+        if (nodeProgress > 0) {
+          // 使用缓动函数：easeOutCubic
+          const easedProgress = 1 - Math.pow(1 - nodeProgress, 3);
+          
+          // 从中心螺旋式展开到目标位置
+          const spinAngle = easedProgress * Math.PI * 2; // 旋转一圈
+          const radiusProgress = easedProgress;
+          const offsetX = (node.targetX - cx) * radiusProgress;
+          const offsetY = (node.targetY - cy) * radiusProgress;
+          
+          // 旋转偏移
+          const rotatedX = offsetX * Math.cos(spinAngle) - offsetY * Math.sin(spinAngle);
+          const rotatedY = offsetX * Math.sin(spinAngle) + offsetY * Math.cos(spinAngle);
+          
+          node.x = cx + rotatedX;
+          node.y = cy + rotatedY;
+          
+          // 更新DOM位置和透明度
+          els.nodeSel.filter(d => d.id === node.id)
+            .attr("cx", node.x)
+            .attr("cy", node.y)
+            .style("opacity", easedProgress);
+          els.labelSel.filter(d => d.id === node.id)
+            .attr("x", node.x)
+            .attr("y", node.y)
+            .style("opacity", easedProgress);
+        }
+      });
+
+      if (elapsed < totalDuration) {
+        requestAnimationFrame(animate);
+      } else {
+        // 动画完成后设置最终位置并启动物理模拟
+        nodes.forEach(node => {
+          node.x = node.targetX;
+          node.y = node.targetY;
+          node.vx = 0;
+          node.vy = 0;
+        });
+        
+        els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y).style("opacity", 1);
+        els.labelSel.attr("x", d => d.x).attr("y", d => d.y).style("opacity", 1);
+        
+        // 启动物理模拟
+        simulation = createSimulation(nodes, links);
+        simulation
+          .alpha(0.5)
+          .alphaDecay(0.015)
+          .velocityDecay(0.12);
+
+        simulation
+          .force("charge", d3.forceManyBody().strength(-25).distanceMax(120))
+          .force("center", d3.forceCenter(cx, cy).strength(0.01))
+          .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 6).strength(0.3));
+
+        tickCount = 0;
+        simulation.on("tick", () => {
+          tickCount++;
+          els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+          els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+        });
+        
+        simulation.restart();
+      }
+    }
+
+    requestAnimationFrame(animate);
+
     resetZoom();
     resetIdleTimer();
   }
