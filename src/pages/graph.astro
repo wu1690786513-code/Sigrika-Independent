@@ -73,6 +73,24 @@ const postNodes = allPosts.map(post => ({
   tags: post.data.tags || [],
 }));
 
+// ========== 4.5 分类数据（用于全部分类视图） ==========
+const categoryMap = new Map<string, { count: number; postIds: string[] }>();
+for (const post of allPosts) {
+  const category = post.data.category || "未分类";
+  if (!categoryMap.has(category)) categoryMap.set(category, { count: 0, postIds: [] });
+  const c = categoryMap.get(category)!;
+  c.count++;
+  c.postIds.push(post.id);
+}
+
+const categoryNodes = Array.from(categoryMap.entries()).map(([name, info]) => ({
+  id: name,
+  name,
+  count: info.count,
+  postIds: info.postIds,
+  radius: Math.max(8, 6 + info.count * 0.5),
+}));
+
 // ========== 5. 序列化数据 ==========
 const graphData = {
   tags: tagNodes.map(t => ({
@@ -98,10 +116,12 @@ const graphData = {
     tags: p.tags,
     isPost: true,
   })),
+  categories: categoryNodes,
   stats: {
     totalPosts: allPosts.length,
     totalTags: tagNodes.length,
     totalLinks: rawLinks.length,
+    totalCategories: categoryNodes.length,
   },
 };
 ---
@@ -118,35 +138,6 @@ const graphData = {
         <h1 class="graph-title" id="graphTitle">次元星球</h1>
         <span class="graph-stats" id="graphStats">{graphData.stats.totalPosts} 篇文章 · {graphData.stats.totalTags} 个标签 · {graphData.stats.totalLinks} 条关联</span>
       </div>
-      <div class="toolbar-center">
-        <div class="tab-bar" id="tabBar">
-          <button class="tab-item active" id="tabPosts" data-view="posts">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M0 0h24v24H0z" fill="none"/>
-            <path d="M5.616 20q-.691 0-1.153-.462T4 18.384V5.616q0-.691.463-1.153T5.616 4h12.769q.69 0 1.153.463T20 5.616v12.769q0 .69-.462 1.153T18.384 20zm0-1h12.769q.23 0 .423-.192t.192-.424V5.616q0-.231-.192-.424T18.384 5H5.616q-.231 0-.424.192T5 5.616v12.769q0 .23.192.423t.423.192M5 5v14zm3 11.5h5q.214 0 .357-.143T13.5 16t-.143-.357T13 15.5H8q-.213 0-.357.143T7.5 16t.143.357T8 16.5m0-4h8q.214 0 .357-.143T16.5 12t-.143-.357T16 11.5H8q-.213 0-.357.143T7.5 12t.143.357T8 12.5m0-4h8q.214 0 .357-.143T16.5 8t-.143-.357T16 7.5H8q-.213 0-.357.143T7.5 8t.143.357T8 8.5"/>
-          </svg>
-          <span>全部文章</span>
-          </button>
-          <button class="tab-item" id="tabTags" data-view="tags">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-	<path d="M0 0h24v24H0z" fill="none" />
-	<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2">
-		<path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z" />
-		<path d="M6.5 6.5L7 7" />
-	</g>
-</svg>
-
-            <span>全部标签</span>
-          </button>
-          <button class="tab-item" id="tabRandom" data-view="random">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
-        <path d="M0 0h20v20H0z" fill="none" />
-        <path fill="currentColor" d="M16 0a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4zm0 2H4a2 2 0 0 0-1.995 1.85L2 4v12a2 2 0 0 0 1.85 1.995L4 18h12a2 2 0 0 0 1.995-1.85L18 16V4a2 2 0 0 0-1.85-1.995zm-1 11a2 2 0 1 1 0 4a2 2 0 0 1 0-4m-5-5a2 2 0 1 1 0 4a2 2 0 0 1 0-4M5 3a2 2 0 1 1 0 4a2 2 0 0 1 0-4" />
-      </svg>
-            <span>随机漫步</span>
-          </button>
-        </div>
-      </div>
       <div class="toolbar-right">
         <button class="back-btn hidden" id="backBtn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
@@ -160,6 +151,46 @@ const graphData = {
         </div>
         <button class="reset-btn" id="graphReset" title="重置视图">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Tab栏单独一行 -->
+    <div class="toolbar-tabs card-base">
+      <div class="tab-bar" id="tabBar">
+        <button class="tab-item active" id="tabPosts" data-view="posts">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+        <path d="M0 0h24v24H0z" fill="none" />
+        <path fill="currentColor" d="M9.5 6.5a.75.75 0 0 1 .75-.75h6.5a.75.75 0 0 1 0 1.5h-6.5a.75.75 0 0 1-.75-.75m4.638 2.25h2.224c.06 0 .13 0 .193.005a.8.8 0 0 1 .285.077a.75.75 0 0 1 .328.328a.7.7 0 0 1 .077.285c.005.063.005.134.005.193v1.724c0 .06 0 .13-.005.193a.8.8 0 0 1-.077.286a.75.75 0 0 1-.328.327a.8.8 0 0 1-.285.077c-.063.005-.134.005-.193.005h-2.224c-.06 0-.13 0-.193-.005a.8.8 0 0 1-.286-.077a.75.75 0 0 1-.327-.327a.8.8 0 0 1-.077-.286c-.005-.063-.005-.134-.005-.193V9.638c0-.06 0-.13.005-.193a.8.8 0 0 1 .077-.285a.75.75 0 0 1 .327-.328a.8.8 0 0 1 .286-.077c.063-.005.134-.005.193-.005m.112 1v1.5h2v-1.5zm-4.5-.25a.5.5 0 0 1 .5-.5h1.25a.5.5 0 0 1 0 1h-1.25a.5.5 0 0 1-.5-.5m.5 1.75a.5.5 0 0 0 0 1h1.25a.5.5 0 0 0 0-1zm-.5 3.25a.5.5 0 0 1 .5-.5h6.5a.5.5 0 0 1 0 1h-6.5a.5.5 0 0 1-.5-.5" />
+        <path fill="currentColor" d="M16.321 3H10.68c-.542 0-.98 0-1.333.029c-.365.03-.685.093-.981.243a2.5 2.5 0 0 0-1.093 1.093c-.15.296-.213.616-.243.98C7 5.7 7 6.138 7 6.68V17H4.5a.5.5 0 0 0-.5.5c0 1.622.548 2.536 1.2 3.025c.314.236.629.354.866.413c.14.035.283.06.427.062c1.657.012 7.187 0 10.123 0c.689 0 1.385.05 2.019-.273c.813-.414 1.264-1.185 1.336-2.073c.029-.354.029-.79.029-1.332V6.679c0-.542 0-.98-.029-1.333c-.03-.365-.093-.685-.244-.981a2.5 2.5 0 0 0-1.092-1.093c-.296-.15-.616-.213-.98-.243C17.3 3 16.862 3 16.32 3m.479 16.725c-.348-.261-.8-.847-.8-2.225a.5.5 0 0 0-.5-.5H8V6.7c0-.568 0-.964.026-1.273c.024-.302.07-.476.137-.608a1.5 1.5 0 0 1 .656-.656c.132-.067.306-.113.608-.137C9.736 4 10.132 4 10.7 4h5.6c.568 0 .965 0 1.273.026c.302.024.476.07.608.137a1.5 1.5 0 0 1 .656.656c.067.132.113.306.137.608C19 5.736 19 6.132 19 6.7v10.6c0 .568 0 .965-.026 1.273c-.044.546-.286 1.005-.793 1.264c-.45.229-.98.189-1.381-.112M15.68 20H6.506a1.3 1.3 0 0 1-.705-.275c-.303-.227-.684-.7-.778-1.725h9.996c.07.896.323 1.542.663 2" />
+      </svg>
+
+        <span>全部文章</span>
+        </button>
+        <button class="tab-item" id="tabCategories" data-view="categories">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+          <path d="M0 0h24v24H0z" fill="none" />
+          <path fill="currentColor" d="M10 3H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1M9 9H5V5h4zm11-6h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1m-1 6h-4V5h4zm-9 4H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1m-1 6H5v-4h4zm8-6c-2.206 0-4 1.794-4 4s1.794 4 4 4s4-1.794 4-4s-1.794-4-4-4m0 6c-1.103 0-2-.897-2-2s.897-2 2-2s2 .897 2 2s-.897 2-2 2" />
+        </svg>
+          <span>全部分类</span>
+        </button>
+        <button class="tab-item" id="tabTags" data-view="tags">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+	<path d="M0 0h24v24H0z" fill="none" />
+	<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2">
+		<path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z" />
+		<path d="M6.5 6.5L7 7" />
+	</g>
+</svg>
+
+          <span>全部标签</span>
+        </button>
+        <button class="tab-item" id="tabRandom" data-view="random">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+      <path d="M0 0h20v20H0z" fill="none" />
+      <path fill="currentColor" d="M16 0a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4zm0 2H4a2 2 0 0 0-1.995 1.85L2 4v12a2 2 0 0 0 1.85 1.995L4 18h12a2 2 0 0 0 1.995-1.85L18 16V4a2 2 0 0 0-1.85-1.995zm-1 11a2 2 0 1 1 0 4a2 2 0 0 1 0-4m-5-5a2 2 0 1 1 0 4a2 2 0 0 1 0-4M5 3a2 2 0 1 1 0 4a2 2 0 0 1 0-4" />
+    </svg>
+          <span>随机漫步</span>
         </button>
       </div>
     </div>
@@ -269,8 +300,9 @@ const graphData = {
   const isMobile = window.innerWidth < 768;
 
   // ========== 状态 ==========
-  let currentView = 'posts'; // 'posts' | 'tags' | 'random'
+  let currentView = 'posts'; // 'posts' | 'tags' | 'categories' | 'category-detail' | 'random'
   let activeTag = null;
+  let activeCategory = null;
   let currentZoom = d3.zoomIdentity;
   let simulation = null;
   let tickCount = 0;
@@ -459,8 +491,14 @@ const graphData = {
         if (d.isPost && d.url) {
           window.open(d.url, "_blank");
         } else if (!d.isPost) {
-          // 点击标签 → 切换到文章-标签视图
-          switchToPostView(d);
+          // 根据当前视图判断是分类还是标签
+          if (currentView === 'categories') {
+            // 点击分类 → 切换到分类详情视图
+            switchToCategoryDetailView(d);
+          } else {
+            // 点击标签 → 切换到文章-标签视图
+            switchToPostView(d);
+          }
         }
       });
 
@@ -475,6 +513,7 @@ const graphData = {
   function switchToTagView() {
     currentView = 'tags';
     activeTag = null;
+    activeCategory = null;
     backBtn.classList.add("hidden");
     document.getElementById("tabBar").classList.remove("hidden");
     graphTitle.textContent = "全部标签";
@@ -504,10 +543,109 @@ const graphData = {
     resetIdleTimer();
   }
 
+  // ========== 视图切换：全部分类 ==========
+  function switchToCategoryView() {
+    currentView = 'categories';
+    activeTag = null;
+    activeCategory = null;
+    backBtn.classList.add("hidden");
+    document.getElementById("tabBar").classList.remove("hidden");
+    graphTitle.textContent = "全部分类";
+    graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalCategories} 个分类`;
+
+    // 显示所有分类节点
+    const nodes = RAW.categories.map(c => ({ ...c }));
+    const links = [];
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    resetZoom();
+    resetIdleTimer();
+  }
+
+  // ========== 视图切换：分类详情（点击分类后） ==========
+  function switchToCategoryDetailView(categoryNode) {
+    currentView = 'category-detail';
+    activeTag = null;
+    activeCategory = categoryNode.id;
+    backBtn.classList.remove("hidden");
+    document.getElementById("tabBar").classList.add("hidden");
+    graphTitle.textContent = `「${categoryNode.name}」分类`;
+
+    // 找到该分类下的所有文章
+    const relatedPosts = RAW.posts.filter(p => p.category === categoryNode.id);
+    graphStats.textContent = `${relatedPosts.length} 篇文章`;
+
+    // 中心分类节点
+    const centerNode = {
+      ...categoryNode,
+      x: cx,
+      y: cy,
+      radius: 22,
+    };
+
+    // 文章节点：围绕中心分布
+    const postNodes = relatedPosts.map((p, i) => ({
+      id: p.id,
+      name: p.title,
+      url: p.url,
+      isPost: true,
+      radius: 5,
+      x: cx + (Math.random() - 0.5) * boundaryR * 0.9,
+      y: cy + (Math.random() - 0.5) * boundaryR * 0.9,
+      published: p.published,
+      description: p.description,
+      category: p.category,
+    }));
+
+    // 文章-分类连线
+    const postLinks = postNodes.map(p => ({
+      source: p.id,
+      target: categoryNode.id,
+      strength: 1,
+    }));
+
+    const nodes = [centerNode, ...postNodes];
+    const links = postLinks;
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    tickCount = 0;
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    resetZoom();
+    resetIdleTimer();
+  }
+
   // ========== 视图切换：文章-标签详情 ==========
   function switchToPostView(tagNode) {
     currentView = 'posts';
     activeTag = tagNode.id;
+    activeCategory = null;
     backBtn.classList.remove("hidden");
     document.getElementById("tabBar").classList.add("hidden");
     graphTitle.textContent = `「${tagNode.name}」关联图谱`;
@@ -573,6 +711,7 @@ const graphData = {
   function switchToAllPostsView() {
     currentView = 'posts';
     activeTag = null;
+    activeCategory = null;
     backBtn.classList.add("hidden");
     document.getElementById("tabBar").classList.remove("hidden");
     graphTitle.textContent = "次元星球";
@@ -648,6 +787,7 @@ const graphData = {
   function switchToRandomView() {
     currentView = 'random';
     activeTag = null;
+    activeCategory = null;
     backBtn.classList.add("hidden");
     document.getElementById("tabBar").classList.remove("hidden");
     graphTitle.textContent = "随机漫步";
@@ -791,13 +931,16 @@ const graphData = {
       tooltipHint.innerHTML = '<a href="' + d.url + '" target="_blank" class="hint-link"><span class="hint-icon">Tips：点击查看文章</a>';
     } else {
       tooltip.classList.remove("is-post-tooltip");
-      // 标签详情
+      // 标签或分类详情
       tooltipStats.innerHTML = `<span class="stat-item">${d.count} 篇文章</span>`;
       tooltipTags.innerHTML = '';
       
+      // 根据当前视图判断是分类还是标签
+      const isCategory = currentView === 'categories' || currentView === 'category-detail';
+      
       // 获取所有关联文章，按发布时间排序
       const relatedPosts = RAW.posts
-        .filter(p => p.tags.includes(d.id))
+        .filter(p => isCategory ? p.category === d.id : p.tags.includes(d.id))
         .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
       
       const pageSize = 5;
@@ -830,7 +973,12 @@ const graphData = {
         tooltipPosts.innerHTML = '<div class="empty-state">暂无关联文章</div>';
       }
       
-      tooltipHint.innerHTML = '<span style="cursor:pointer !important;" class="hint-link" onclick="switchToTagDetailView(\'' + d.id + '\')"><span class="hint-icon"></span>Tips：点击查看所有关联文章</span>';
+      // 根据当前视图显示不同的提示
+      if (isCategory) {
+        tooltipHint.innerHTML = '<span style="cursor:pointer !important;" class="hint-link" onclick="switchToCategoryDetailView(\'' + d.id + '\')"><span class="hint-icon"></span>Tips：点击查看所有关联文章</span>';
+      } else {
+        tooltipHint.innerHTML = '<span style="cursor:pointer !important;" class="hint-link" onclick="switchToTagDetailView(\'' + d.id + '\')"><span class="hint-icon"></span>Tips：点击查看所有关联文章</span>';
+      }
     }
 
   
@@ -932,6 +1080,7 @@ const graphData = {
   }
 
   window.switchToTagDetailView = switchToTagDetailView;
+  window.switchToCategoryDetailView = switchToCategoryDetailView;
 
   function hideTooltip() {
     // 添加延迟，确保tooltip的mouseenter事件先触发
@@ -1019,8 +1168,12 @@ const graphData = {
   backBtn.addEventListener("click", () => {
     searchInput.value = "";
     d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false).style("display", "");
-    // 返回总览时切换到标签视图
-    switchView('tags');
+    // 返回总览时根据当前活动状态切换到对应视图
+    if (activeCategory) {
+      switchView('categories');
+    } else {
+      switchView('tags');
+    }
   });
 
   // ========== 重置视图 ==========
@@ -1031,6 +1184,9 @@ const graphData = {
     if (currentView === 'posts' && activeTag) {
       const tag = allTagNodes.find(t => t.id === activeTag);
       if (tag) switchToPostView(tag);
+    } else if (currentView === 'category-detail' && activeCategory) {
+      const category = RAW.categories.find(c => c.id === activeCategory);
+      if (category) switchToCategoryDetailView(category);
     } else {
       switchView(currentView);
     }
@@ -1065,6 +1221,9 @@ const graphData = {
     switch(viewType) {
       case "posts":
         switchToAllPostsView();
+        break;
+      case "categories":
+        switchToCategoryView();
         break;
       case "tags":
         switchToTagView();
@@ -1156,9 +1315,14 @@ const graphData = {
     color: var(--content-meta);
   }
   .toolbar-center {
+    display: none;
+  }
+  .toolbar-tabs {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
   }
   .tab-bar {
     display: flex;
@@ -1745,18 +1909,34 @@ const graphData = {
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 0.75rem;
-      padding: 0.875rem 1rem;
+      gap: 0.5rem;
+      padding: 0.75rem 0.875rem;
     }
     .toolbar-left {
       text-align: center;
       align-items: center;
     }
-    .toolbar-center {
-      order: -1;
-    }
     .toolbar-right {
       justify-content: center;
+    }
+    .toolbar-tabs {
+      padding: 0.375rem 0.5rem;
+      margin-top: 0.25rem;
+    }
+    .tab-bar {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.15rem;
+      padding: 0.15rem;
+    }
+    .tab-item {
+      padding: 0.3125rem 0.5rem;
+      font-size: 0.7rem;
+      gap: 0.2rem;
+    }
+    .tab-item svg {
+      width: 15px;
+      height: 15px;
     }
     .search-box { width: 100%; max-width: 100%; }
     .graph-canvas-wrapper {
