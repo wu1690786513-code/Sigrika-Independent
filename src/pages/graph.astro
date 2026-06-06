@@ -156,7 +156,7 @@ const graphData = {
     </div>
     
     <!-- Tab栏单独一行 -->
-    <div class="toolbar-tabs card-base">
+    <div class="toolbar-tabs card-base" id="toolbarTabs">
       <div class="tab-bar" id="tabBar">
         <button class="tab-item active" id="tabPosts" data-view="posts">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
@@ -515,7 +515,7 @@ const graphData = {
     activeTag = null;
     activeCategory = null;
     backBtn.classList.add("hidden");
-    document.getElementById("tabBar").classList.remove("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
     graphTitle.textContent = "全部标签";
     graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalTags} 个标签 · ${RAW.stats.totalLinks} 条关联`;
 
@@ -539,17 +539,17 @@ const graphData = {
     });
 
     simulation.restart();
+    simulation.alpha(0.25);
     resetZoom();
     resetIdleTimer();
   }
-
   // ========== 视图切换：全部分类 ==========
   function switchToCategoryView() {
     currentView = 'categories';
     activeTag = null;
     activeCategory = null;
     backBtn.classList.add("hidden");
-    document.getElementById("tabBar").classList.remove("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
     graphTitle.textContent = "全部分类";
     graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalCategories} 个分类`;
 
@@ -582,7 +582,7 @@ const graphData = {
     activeTag = null;
     activeCategory = categoryNode.id;
     backBtn.classList.remove("hidden");
-    document.getElementById("tabBar").classList.add("hidden");
+    document.getElementById("toolbarTabs").classList.add("hidden");
     graphTitle.textContent = `「${categoryNode.name}」分类`;
 
     // 找到该分类下的所有文章
@@ -649,7 +649,7 @@ const graphData = {
     activeTag = tagNode.id;
     activeCategory = null;
     backBtn.classList.remove("hidden");
-    document.getElementById("tabBar").classList.add("hidden");
+    document.getElementById("toolbarTabs").classList.add("hidden");
     graphTitle.textContent = `「${tagNode.name}」关联图谱`;
 
     // 找到包含该标签的文章
@@ -717,7 +717,7 @@ const graphData = {
     activeTag = null;
     activeCategory = null;
     backBtn.classList.add("hidden");
-    document.getElementById("tabBar").classList.remove("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
     graphTitle.textContent = "次元星球";
     graphStats.textContent = `${RAW.stats.totalPosts} 篇文章`;
 
@@ -851,7 +851,7 @@ const graphData = {
     activeTag = null;
     activeCategory = null;
     backBtn.classList.add("hidden");
-    document.getElementById("tabBar").classList.remove("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
     graphTitle.textContent = "随机漫步";
     graphStats.textContent = "会邂逅哪段记忆呢";
 
@@ -1229,7 +1229,7 @@ const graphData = {
     activeTag = null;
     activeCategory = null;
     backBtn.classList.remove("hidden");
-    document.getElementById("tabBar").classList.add("hidden");
+    document.getElementById("toolbarTabs").classList.add("hidden");
     graphTitle.textContent = `搜索「${keyword}」`;
 
     // 查找匹配的节点（标签和文章）
@@ -1344,11 +1344,30 @@ const graphData = {
 
     simulation.restart();
     
-    // 搜索结果放大到150%
+    // 搜索结果放大并聚焦到结果中心
     setTimeout(() => {
-      const transform = d3.zoomIdentity.translate(width / 2, height / 2).scale(1.5).translate(-width / 2, -height / 2);
-      svg.transition().duration(500).call(zoom.transform, transform);
-      currentZoom = transform;
+      if (nodes.length > 0) {
+        // 计算节点边界
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        nodes.forEach(n => {
+          const r = n.radius || 8;
+          minX = Math.min(minX, n.x - r);
+          maxX = Math.max(maxX, n.x + r);
+          minY = Math.min(minY, n.y - r);
+          maxY = Math.max(maxY, n.y + r);
+        });
+        const padding = 60;
+        const contentW = maxX - minX + padding * 2;
+        const contentH = maxY - minY + padding * 2;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const scale = Math.min(1.8, Math.min(width / contentW, height / contentH) * 0.9);
+        const tx = width / 2 - centerX * scale;
+        const ty = height / 2 - centerY * scale;
+        const transform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+        svg.transition().duration(500).call(zoom.transform, transform);
+        currentZoom = transform;
+      }
     }, 100);
     
     resetIdleTimer();
@@ -1378,6 +1397,7 @@ const graphData = {
   backBtn.addEventListener("click", () => {
     searchInput.value = "";
     d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false).style("display", "");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
     // 返回总览时根据当前活动状态切换到对应视图
     if (activeCategory) {
       switchView('categories');
@@ -1533,6 +1553,9 @@ const graphData = {
     justify-content: center;
     padding: 0.5rem 1rem;
     margin-top: 0.5rem;
+  }
+  .toolbar-tabs.hidden {
+    display: none;
   }
   .tab-bar {
     display: flex;
