@@ -915,7 +915,20 @@ const graphData = {
       const postTags = d.tags || [];
       if (postTags.length > 0) {
         const tagIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M0 0h24v24H0z" fill="none"/><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z"/><path d="M6.5 6.5L7 7"/></g></svg>`;
-        tooltipTags.innerHTML = `<div class="tags-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">` + tagIcon + postTags.slice(0, 6).map(t => `<span class="tag-item">#${t}</span>`).join(' ') + `</div>`;
+        tooltipTags.innerHTML = `<div class="tags-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">${tagIcon}${postTags.slice(0, 6).map(t => `<span class="tag-item tag-clickable" data-tag="${t}" style="cursor: pointer;">#${t}</span>`).join(' ')}</div>`;
+        
+        // 为标签添加点击事件
+        tooltipTags.querySelectorAll('.tag-clickable').forEach(tagEl => {
+          tagEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tagId = tagEl.getAttribute('data-tag');
+            const tagNode = RAW.tags.find(t => t.id === tagId);
+            if (tagNode) {
+              hideTooltip();
+              switchToPostView(tagNode);
+            }
+          });
+        });
       } else {
         tooltipTags.innerHTML = '';
       }
@@ -1877,6 +1890,11 @@ const graphData = {
     font-size: 12px;
     border-radius: 12px;
     font-weight: 500;
+  }
+  .tag-clickable:hover {
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
+    transform: scale(1.05);
+    transition: all 0.2s ease;
   }
   
   /* 底部区域 */
