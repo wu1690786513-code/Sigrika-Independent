@@ -445,7 +445,7 @@ const graphData = {
       .attr("font-size", d => d.isPost ? 9 : Math.max(10, Math.min(13, 9 + (d.radius || 6) * 0.25)))
       .attr("font-weight", d => d.isHighFreq ? "600" : "400")
       .attr("fill", "rgb(80, 50, 30)")
-      .text(d => d.name);
+      .text(d => d.title || d.name);
 
     // 绑定交互
     nodeSel
@@ -923,7 +923,8 @@ const graphData = {
       // 获取文章的标签
       const postTags = d.tags || [];
       if (postTags.length > 0) {
-        tooltipTags.innerHTML = `<div class="tags-label">标签</div><div class="tags-list">` + postTags.slice(0, 6).map(t => `<span class="tag-item">${t}</span>`).join('') + `</div>`;
+        const tagIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M0 0h24v24H0z" fill="none"/><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z"/><path d="M6.5 6.5L7 7"/></g></svg>`;
+        tooltipTags.innerHTML = `<div class="tags-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">` + tagIcon + postTags.slice(0, 6).map(t => `<span class="tag-item">#${t}</span>`).join(' ') + `</div>`;
       } else {
         tooltipTags.innerHTML = '';
       }
@@ -1124,43 +1125,145 @@ const graphData = {
   const searchInput = document.getElementById("graphSearch");
   const searchBtn = document.getElementById("graphSearchBtn");
 
+  // 视图切换：搜索结果
+  function switchToSearchView(keyword) {
+    currentView = 'search';
+    activeTag = null;
+    activeCategory = null;
+    backBtn.classList.remove("hidden");
+    document.getElementById("tabBar").classList.add("hidden");
+    graphTitle.textContent = `搜索「${keyword}」`;
+
+    // 查找匹配的节点（标签和文章）
+    const matchedNodes = [];
+    const matchedIds = new Set();
+
+    // 匹配标签
+    RAW.tags.forEach(tag => {
+      if (tag.name.toLowerCase().includes(keyword.toLowerCase())) {
+        matchedNodes.push({ ...tag, isTag: true });
+        matchedIds.add(tag.id);
+      }
+    });
+
+    // 匹配文章
+    RAW.posts.forEach(post => {
+      if (post.title.toLowerCase().includes(keyword.toLowerCase()) ||
+          post.description.toLowerCase().includes(keyword.toLowerCase()) ||
+          post.tags.some(t => t.toLowerCase().includes(keyword.toLowerCase()))) {
+        matchedNodes.push({ ...post });
+        matchedIds.add(post.id);
+      }
+    });
+
+    // 如果没有匹配结果
+    if (matchedNodes.length === 0) {
+      graphStats.textContent = "未找到匹配内容";
+      // 显示空状态
+      const nodes = [];
+      const links = [];
+      const els = renderGraph(nodes, links);
+      simulation = createSimulation(nodes, links);
+      return;
+    }
+
+    graphStats.textContent = `找到 ${matchedNodes.length} 个相关结果`;
+
+    // 构建节点和连线
+    const nodes = [];
+    const links = [];
+
+    // 添加匹配的节点，按相关性排序后放置在中心附近
+    matchedNodes.sort((a, b) => {
+      // 标题匹配优先于描述匹配
+      const aTitleMatch = a.title?.toLowerCase().includes(keyword.toLowerCase()) ? 1 : 0;
+      const bTitleMatch = b.title?.toLowerCase().includes(keyword.toLowerCase()) ? 1 : 0;
+      return bTitleMatch - aTitleMatch;
+    });
+
+    matchedNodes.forEach((node, i) => {
+      const angle = (i / matchedNodes.length) * Math.PI * 2;
+      const radiusFactor = Math.sqrt(i / matchedNodes.length);
+      const r = radiusFactor * boundaryR * 0.6; // 放在中心附近
+      nodes.push({
+        ...node,
+        radius: node.radius || (node.isPost ? 5 : 10),
+        x: cx + Math.cos(angle) * r,
+        y: cy + Math.sin(angle) * r,
+      });
+    });
+
+    // 添加文章和标签之间的关联
+    nodes.forEach(node => {
+      if (node.isPost && node.tags) {
+        node.tags.forEach(tagId => {
+          const tagNode = nodes.find(n => n.id === tagId);
+          if (tagNode) {
+            links.push({
+              source: node.id,
+              target: tagId,
+              strength: 1,
+            });
+          }
+        });
+      }
+    });
+
+    // 添加标签之间的关联（共享文章的标签）
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        if (!a.isPost && !b.isPost) {
+          // 检查是否有共同的文章
+          const sharedPosts = RAW.posts.filter(p => 
+            p.tags.includes(a.id) && p.tags.includes(b.id)
+          );
+          if (sharedPosts.length > 0) {
+            links.push({
+              source: a.id,
+              target: b.id,
+              strength: sharedPosts.length,
+            });
+          }
+        }
+      }
+    }
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    resetZoom();
+    
+    // 搜索结果放大到150%
+    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.scale(1.5).translate(width / 2 - width * 1.5 / 2, height / 2 - height * 1.5 / 2));
+    currentZoom = d3.zoomIdentity.scale(1.5);
+    
+    resetIdleTimer();
+  }
+
   function doSearch() {
-    const kw = searchInput.value.trim().toLowerCase();
+    const kw = searchInput.value.trim();
     if (!kw) {
-      // 清空搜索时显示所有内容
-      d3.selectAll(".graph-node").classed("is-dimmed", false).style("display", "");
-      d3.selectAll(".graph-link").classed("is-dimmed", false).style("display", "");
-      d3.selectAll(".graph-label").classed("is-dimmed", false).style("display", "");
+      // 清空搜索时返回当前视图
+      switchView(currentView === 'search' ? 'posts' : currentView);
       return;
     }
     
-    // 获取匹配的标签节点ID
-    const matchedTagIds = new Set();
-    d3.selectAll(".graph-node").each(function(d) {
-      if (d && d.name && d.name.toLowerCase().includes(kw)) {
-        matchedTagIds.add(d.id);
-      }
-    });
-    
-    // 获取与匹配标签相关的节点ID（包括关联的文章）
-    const visibleIds = new Set(matchedTagIds);
-    d3.selectAll(".graph-link").each(function(d) {
-      const sid = d.source.id || d.source;
-      const tid = d.target.id || d.target;
-      if (matchedTagIds.has(sid) || matchedTagIds.has(tid)) {
-        visibleIds.add(sid);
-        visibleIds.add(tid);
-      }
-    });
-    
-    // 只显示匹配的节点和相关节点，隐藏其他
-    d3.selectAll(".graph-node").style("display", d => visibleIds.has(d.id) ? "" : "none");
-    d3.selectAll(".graph-label").style("display", d => visibleIds.has(d.id) ? "" : "none");
-    d3.selectAll(".graph-link").style("display", function(d) {
-      const sid = d.source.id || d.source;
-      const tid = d.target.id || d.target;
-      return (visibleIds.has(sid) && visibleIds.has(tid)) ? "" : "none";
-    });
+    // 切换到搜索视图
+    switchToSearchView(kw);
   }
 
   let searchDebounce;
