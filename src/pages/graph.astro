@@ -517,7 +517,7 @@ const graphData = {
     backBtn.classList.add("hidden");
     document.getElementById("toolbarTabs").classList.remove("hidden");
     graphTitle.textContent = "全部标签";
-    graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalTags} 个标签 · ${RAW.stats.totalLinks} 条关联`;
+    graphStats.textContent = `${RAW.stats.totalTags} 个标签 · ${RAW.stats.totalLinks} 条关联`;
 
     // 显示所有标签节点，不移除任何节点
     const nodes = allTagNodes.map(n => ({ ...n }));
@@ -719,7 +719,7 @@ const graphData = {
     backBtn.classList.add("hidden");
     document.getElementById("toolbarTabs").classList.remove("hidden");
     graphTitle.textContent = "次元星球";
-    graphStats.textContent = `${RAW.stats.totalPosts} 篇文章`;
+    graphStats.textContent = `共计${RAW.stats.totalPosts} 篇文章`;
 
     // 按发布时间排序，最近的文章在中心附近
     const sortedPosts = [...RAW.posts].sort((a, b) => 
