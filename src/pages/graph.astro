@@ -726,19 +726,52 @@ const graphData = {
       new Date(b.published || 0) - new Date(a.published || 0)
     );
 
-    // 文章节点：计算目标位置（螺旋分布）
+    // 文章节点：计算目标位置（爱心形状分布，均匀采样）
+    // 爱心曲线参数方程：x = 16 * sin³(t), y = -(13*cos(t) - 5*cos(2t) - 2*cos(3t) - cos(4t))
+    const heartScale = boundaryR * 0.36 / 18; // 缩放使爱心高度约为 boundaryR * 0.72
+    const n = sortedPosts.length;
+    
+    // 数值积分计算爱心曲线总弧长，用于均匀分布
+    const dt = 0.01;
+    let totalArcLength = 0;
+    const arcLengths = [0]; // 累计弧长
+    let px = 16 * Math.pow(Math.sin(0), 3);
+    let py = -(13 * Math.cos(0) - 5 * Math.cos(0) - 2 * Math.cos(0) - Math.cos(0));
+    for (let t = dt; t <= Math.PI * 2 + dt; t += dt) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+      totalArcLength += Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+      arcLengths.push(totalArcLength);
+      px = x; py = y;
+    }
+    
+    // 均匀采样：根据弧长确定每个点的参数 t
+    const getHeartPoint = (arcLen) => {
+      // 找到对应的参数区间
+      for (let i = 0; i < arcLengths.length - 1; i++) {
+        if (arcLengths[i + 1] >= arcLen) {
+          const localT = (arcLen - arcLengths[i]) / (arcLengths[i + 1] - arcLengths[i]);
+          const t = (i + localT) * dt;
+          const hx = 16 * Math.pow(Math.sin(t), 3);
+          const hy = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+          return { x: cx + hx * heartScale, y: cy + hy * heartScale };
+        }
+      }
+      // 最后一个点
+      const t = Math.PI * 2;
+      return {
+        x: cx + 16 * Math.pow(Math.sin(t), 3) * heartScale,
+        y: cy + (-(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))) * heartScale
+      };
+    };
+    
     const postNodes = sortedPosts.map((p, i) => {
-      const angle = (i / sortedPosts.length) * Math.PI * 4; // 两圈螺旋
-      const radiusFactor = Math.sqrt(i / sortedPosts.length);
-      const r = radiusFactor * boundaryR * 0.8;
-      // 目标位置
-      const targetX = cx + Math.cos(angle) * r;
-      const targetY = cy + Math.sin(angle) * r;
+      // 均匀分布：每个点沿弧长间隔相同
+      const targetArcLen = (i / n) * totalArcLength;
+      const target = getHeartPoint(targetArcLen);
       // 从外围入场：初始位置在边界圆上随机位置
       const startAngle = Math.random() * Math.PI * 2;
       const startR = boundaryR * (0.85 + Math.random() * 0.15);
-      const startX = cx + Math.cos(startAngle) * startR;
-      const startY = cy + Math.sin(startAngle) * startR;
       return {
         id: p.id,
         name: p.title,
@@ -746,12 +779,12 @@ const graphData = {
         url: p.url,
         isPost: true,
         radius: Math.max(4, 7 - i * 0.02),
-        x: startX,
-        y: startY,
-        startX: startX,
-        startY: startY,
-        targetX: targetX,
-        targetY: targetY,
+        x: cx + Math.cos(startAngle) * startR,
+        y: cy + Math.sin(startAngle) * startR,
+        startX: cx + Math.cos(startAngle) * startR,
+        startY: cy + Math.sin(startAngle) * startR,
+        targetX: target.x,
+        targetY: target.y,
         published: p.published,
         description: p.description,
         category: p.category,
