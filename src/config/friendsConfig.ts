@@ -123,6 +123,15 @@ export const friendsConfig: FriendLink[] = [
 	"tags": ["Blogs"],
 	"weight": 8,
 	"enabled": true
+	},
+	{
+	"title": "Narcssu Notes",
+	"imgurl": "https://q1.qlogo.cn/g?b=qq&nk=1928325064&s=640",
+	"desc": "这个博客仍在缓慢施工中",
+	"siteurl": "https://www.woodfish.site/",
+	"tags": ["Blogs"],
+	"weight": 8,
+	"enabled": true
 	}
 	// {
 	// 	title: "小曹同学",

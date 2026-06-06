@@ -1234,26 +1234,26 @@ const graphData = {
     text-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 30%, transparent);
   }
   
-  /* 分页区域 */
-  .tooltip-pagination {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 12px;
-    padding: 12px 0 0;
-    margin: 14px 0 0;
-    border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
-    width: 100%;
-    min-height: 44px;
-  }
+/* 分页区域 */
+.tooltip-pagination {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 16px;
+  padding: 14px 0;
+  margin: 14px 0 0 !important;
+  border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  width: 100%;
+  min-height: 48px;
+}
   .pagination-btn {
-    width: 32px !important;
-    height: 32px !important;
+    width: 36px !important;
+    height: 36px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     background: transparent !important;
-    border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent) !important;
+    border: 1px solid var(--primary) !important;
     border-radius: 50% !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
@@ -1262,20 +1262,26 @@ const graphData = {
     margin: 0 !important;
     visibility: visible !important;
     opacity: 1 !important;
-    font-size: 18px !important;
+    font-size: 20px !important;
     color: var(--primary) !important;
     line-height: 1 !important;
     font-weight: bold !important;
+    float: none !important;
+    text-align: center !important;
   }
   .pagination-btn:hover:not([style*="opacity:0.5"]) {
     background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
-    border-color: color-mix(in srgb, var(--primary) 45%, transparent) !important;
+    border-color: color-mix(in srgb, var(--primary) 60%, transparent) !important;
   }
   .pagination-info {
-    font-size: 13px;
+    font-size: 15px;
     color: var(--content-text);
     flex-shrink: 0;
     margin: 0 !important;
+    padding: 0 !important;
+    text-align: center !important;
+    float: none !important;
+    font-weight: 500;
   }
   
   /* 底部区域 */
