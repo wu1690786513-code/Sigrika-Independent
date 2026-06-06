@@ -728,7 +728,7 @@ const graphData = {
 
     // 文章节点：计算目标位置（爱心形状分布，均匀采样）
     // 爱心曲线参数方程：x = 16 * sin³(t), y = -(13*cos(t) - 5*cos(2t) - 2*cos(3t) - cos(4t))
-    const heartScale = boundaryR * 0.36 / 18; // 缩放使爱心高度约为 boundaryR * 0.72
+    const heartScale = boundaryR * 0.8 / 18; // 爱心大小
     const n = sortedPosts.length;
     
     // 数值积分计算爱心曲线总弧长，用于均匀分布
