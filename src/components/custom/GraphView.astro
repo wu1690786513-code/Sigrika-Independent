@@ -323,6 +323,39 @@ document.addEventListener('DOMContentLoaded', tryInit);
   let tooltipCurrentPage = 1;
   let isTooltipHoveredPost = false;
   let isTooltipHoveredTag = false;
+  
+  // 隐藏tooltip的延迟计时器
+  let hideTooltipTimer = null;
+  const HIDE_DELAY = 200; // 延迟200ms隐藏，确保tooltip能捕获mouseenter
+
+  function hideTooltip() {
+    // 清除之前的计时器
+    if (hideTooltipTimer) {
+      clearTimeout(hideTooltipTimer);
+      hideTooltipTimer = null;
+    }
+    
+    // 延迟隐藏，给tooltip足够的时间来判断鼠标是否真的离开了
+    hideTooltipTimer = setTimeout(() => {
+      // 只有当tooltip没有被hover时才隐藏
+      if (!isTooltipHoveredPost && !isTooltipHoveredTag) {
+        tooltipPost.classList.add("hidden");
+        tooltipTag.classList.add("hidden");
+        tooltipCurrentNode = null;
+        tooltipCurrentPage = 1;
+      }
+      hideTooltipTimer = null;
+    }, HIDE_DELAY);
+  }
+
+  // 取消隐藏tooltip
+  function cancelHideTooltip() {
+    if (hideTooltipTimer) {
+      clearTimeout(hideTooltipTimer);
+      hideTooltipTimer = null;
+    }
+  }
+  
   let isDragging = false;  // 拖拽状态标志
   const zoomBadge = document.getElementById("zoomBadge");
   const backBtn = document.getElementById("backBtn");
@@ -489,6 +522,9 @@ document.addEventListener('DOMContentLoaded', tryInit);
     // 绑定交互
     nodeSel
       .on("mouseenter", function(event, d) {
+        // 取消任何待执行的隐藏操作
+        cancelHideTooltip();
+        
         const nid = d.id;
         container.classList.add("highlight-mode");
         d3.select(this).classed("is-hovered", true);
@@ -1042,8 +1078,9 @@ document.addEventListener('DOMContentLoaded', tryInit);
     tooltipCurrentNode = d;
     tooltipCurrentPage = 1;
     
-    // 先隐藏所有tooltip
-    hideTooltip();
+    // 立即隐藏所有tooltip（不用延迟，避免与showTooltip冲突）
+    tooltipPost.classList.add("hidden");
+    tooltipTag.classList.add("hidden");
     
     if (d.isPost) {
       showPostTooltip(event, d);
@@ -1277,52 +1314,22 @@ document.addEventListener('DOMContentLoaded', tryInit);
   window.switchToTagDetailView = switchToTagDetailView;
   window.switchToCategoryDetailView = switchToCategoryDetailView;
 
-  // 隐藏tooltip的延迟计时器
-  let hideTooltipTimer = null;
-  const HIDE_DELAY = 150; // 延迟150ms隐藏，避免抽搐
-
-  function hideTooltip() {
-    // 清除之前的计时器
-    if (hideTooltipTimer) {
-      clearTimeout(hideTooltipTimer);
-      hideTooltipTimer = null;
-    }
-    
-    // 延迟隐藏，给tooltip足够的时间来判断鼠标是否真的离开了
-    hideTooltipTimer = setTimeout(() => {
-      // 只有当tooltip没有被hover时才隐藏
-      if (!isTooltipHoveredPost && !isTooltipHoveredTag) {
-        tooltipPost.classList.add("hidden");
-        tooltipTag.classList.add("hidden");
-        tooltipCurrentNode = null;
-        tooltipCurrentPage = 1;
-      }
-      hideTooltipTimer = null;
-    }, HIDE_DELAY);
-  }
-
-  // 文章卡片鼠标事件
-  tooltipPost.addEventListener("mouseenter", () => {
-    isTooltipHoveredPost = true;
-    // 清除隐藏计时器
-    if (hideTooltipTimer) {
-      clearTimeout(hideTooltipTimer);
-      hideTooltipTimer = null;
+  // 文章卡片鼠标事件 - 使用mouseover/mouseout确保子元素也能触发
+  tooltipPost.addEventListener("mouseover", (e) => {
+    // 确保事件来自tooltip本身或其子元素
+    if (e.target === tooltipPost || tooltipPost.contains(e.target)) {
+      isTooltipHoveredPost = true;
+      cancelHideTooltip();
     }
   });
 
-  tooltipPost.addEventListener("mouseleave", () => {
-    isTooltipHoveredPost = false;
-    // 延迟隐藏，给足够时间
-    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-    hideTooltipTimer = setTimeout(() => {
-      if (!isTooltipHoveredPost && !isTooltipHoveredTag) {
-        tooltipPost.classList.add("hidden");
-        tooltipCurrentNode = null;
-        tooltipCurrentPage = 1;
-      }
-      hideTooltipTimer = null;
-    }, HIDE_DELAY);
+  tooltipPost.addEventListener("mouseout", (e) => {
+    // 检查鼠标是否真的离开了tooltip（而不是移动到子元素）
+    const relatedTarget = e.relatedTarget;
+    if (!tooltipPost.contains(relatedTarget)) {
+      isTooltipHoveredPost = false;
+      hideTooltip();
+    }
   });
 
   tooltipClosePost.addEventListener("click", (e) => {
@@ -1334,27 +1341,19 @@ document.addEventListener('DOMContentLoaded', tryInit);
   });
 
   // 标签卡片鼠标事件
-  tooltipTag.addEventListener("mouseenter", () => {
-    isTooltipHoveredTag = true;
-    // 清除隐藏计时器
-    if (hideTooltipTimer) {
-      clearTimeout(hideTooltipTimer);
-      hideTooltipTimer = null;
+  tooltipTag.addEventListener("mouseover", (e) => {
+    if (e.target === tooltipTag || tooltipTag.contains(e.target)) {
+      isTooltipHoveredTag = true;
+      cancelHideTooltip();
     }
   });
 
-  tooltipTag.addEventListener("mouseleave", () => {
-    isTooltipHoveredTag = false;
-    // 延迟隐藏，给足够时间
-    if (hideTooltipTimer) clearTimeout(hideTooltipTimer);
-    hideTooltipTimer = setTimeout(() => {
-      if (!isTooltipHoveredPost && !isTooltipHoveredTag) {
-        tooltipTag.classList.add("hidden");
-        tooltipCurrentNode = null;
-        tooltipCurrentPage = 1;
-      }
-      hideTooltipTimer = null;
-    }, HIDE_DELAY);
+  tooltipTag.addEventListener("mouseout", (e) => {
+    const relatedTarget = e.relatedTarget;
+    if (!tooltipTag.contains(relatedTarget)) {
+      isTooltipHoveredTag = false;
+      hideTooltip();
+    }
   });
 
   tooltipCloseTag.addEventListener("click", (e) => {
