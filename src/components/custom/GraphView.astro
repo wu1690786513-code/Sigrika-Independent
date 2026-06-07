@@ -1189,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
       displayPosts.forEach((post, index) => {
         tooltipPostsTag.innerHTML += `
           <div class="post-item">
-            <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}.</span>
+            <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}</span>
             <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
           </div>
         `;
@@ -2010,6 +2010,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     display: flex;
     align-items: center;
     gap: 10px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .tooltip-name::before {
     content: '';
@@ -2018,6 +2019,9 @@ document.addEventListener('DOMContentLoaded', tryInit);
     background: var(--primary);
     border-radius: 50%;
     flex-shrink: 0;
+  }
+  .tooltip-name:hover {
+    transform: translateX(4px);
   }
   .tooltip-stats {
     position: relative;
@@ -2100,13 +2104,31 @@ document.addEventListener('DOMContentLoaded', tryInit);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    transition: all 0.25s ease;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     transform: translateX(0);
+    position: relative;
+    padding-left: 8px;
+  }
+  .post-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 60%;
+    background: linear-gradient(90deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 60%, transparent) 100%);
+    border-radius: 2px;
+    transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .post-title:hover {
     color: var(--primary);
     text-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 30%, transparent);
-    transform: translateX(4px);
+    transform: translateX(6px);
+    padding-left: 12px;
+  }
+  .post-title:hover::before {
+    width: 4px;
   }
   
   /* 分页区域 */
@@ -2160,15 +2182,29 @@ document.addEventListener('DOMContentLoaded', tryInit);
   }
   
   /* 文章描述 */
-  .post-description {
-    font-size: 0.8125rem;
-    color: var(--text-primary);
-    line-height: 1.5;
-    padding: 8px 10px;
-    background: color-mix(in oklch, var(--primary) 5%, transparent);
-    border-radius: 8px;
-    border-left: 3px solid var(--primary);
-  }
+.post-description {
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding: 8px 10px 8px 18px; /* 左侧加宽一点点，给竖条留空间 */
+  background: color-mix(in oklch, var(--primary) 5%, transparent);
+  border-radius: 8px;
+  position: relative;
+  border: none; /* 去掉原来的粗边框，换成精致小竖条 */
+}
+
+/* 左侧装饰小竖条 ✅ */
+.post-description::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  background-color: var(--primary);
+  border-radius: 3px;
+}
   
   /* 空状态 */
   .empty-state {
@@ -2351,7 +2387,8 @@ document.addEventListener('DOMContentLoaded', tryInit);
     }
     
     .tooltip-name {
-      font-size: 16px;
+      font-size: 1
+      6px;
       line-height: 1.3;
     }
     
