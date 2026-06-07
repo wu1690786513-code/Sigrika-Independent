@@ -132,6 +132,24 @@ export const friendsConfig: FriendLink[] = [
 	"tags": ["Blogs"],
 	"weight": 8,
 	"enabled": true
+	},
+	{
+	"title": "Hyde Blog",
+	"imgurl": "https://seasir.top/assets/avatar.avif",
+	"desc": "人心中的成见是一座大山",
+	"siteurl": "https://seasir.top/",
+	"tags": ["Blogs"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "拾光の博客",
+	"imgurl": "https://weavatar.com/api/avatar/ff2a232e034fb7677c9f211c5979619f3f4818302ae2cf2a11ea74af530e7758?s=50&t=1780753762637",
+	"desc": "拾取散落的时光碎片",
+	"siteurl": "https://mistfly.xyz",
+	"tags": ["Blogs"],
+	"weight": 8,
+	"enabled": true
 	}
 	// {
 	// 	title: "小曹同学",

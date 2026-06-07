@@ -488,7 +488,6 @@ document.addEventListener('DOMContentLoaded', tryInit);
       .data(links)
       .join("line")
       .attr("class", d => `graph-link l-${escClass(d.source.id || d.source)}-${escClass(d.target.id || d.target)}`)
-      .attr("stroke", "rgba(214, 69, 58, 0.35)")
       .attr("stroke-width", d => Math.max(0.6, Math.min(2.5, (d.strength || 1) * 0.5)))
       .attr("stroke-linecap", "round");
 
@@ -498,9 +497,6 @@ document.addEventListener('DOMContentLoaded', tryInit);
       .join("circle")
       .attr("class", d => `graph-node n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} ${d.isHighFreq ? 'is-high' : 'is-low'}`)
       .attr("r", d => d.radius || 6)
-      .attr("fill", "rgb(214, 69, 58)")
-      .attr("stroke", "rgb(180, 55, 45)")
-      .attr("stroke-width", 1.5)
       .attr("cursor", "pointer")
       .call(d3.drag()
         .on("start", dragstarted)
@@ -516,7 +512,6 @@ document.addEventListener('DOMContentLoaded', tryInit);
       .attr("dy", d => -(d.radius || 6) - 5)
       .attr("font-size", d => d.isPost ? 9 : Math.max(10, Math.min(13, 9 + (d.radius || 6) * 0.25)))
       .attr("font-weight", d => d.isHighFreq ? "600" : "400")
-      .attr("fill", "rgb(80, 50, 30)")
       .text(d => d.title || d.name);
 
     // 绑定交互
@@ -547,8 +542,11 @@ document.addEventListener('DOMContentLoaded', tryInit);
         });
 
         d3.selectAll(".graph-label").each(function(n) {
-          if (n.id === nid) d3.select(this).classed("is-visible", true);
-          else d3.select(this).classed("is-visible", connectedIds.has(n.id));
+          if (n.id === nid) {
+            d3.select(this).classed("is-visible", true).classed("is-hovered", true);
+          } else {
+            d3.select(this).classed("is-visible", connectedIds.has(n.id)).classed("is-hovered", false);
+          }
         });
 
         showTooltip(event, d);
@@ -558,7 +556,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
         d3.select(this).classed("is-hovered", false);
         d3.selectAll(".graph-link").classed("is-connected", false);
         d3.selectAll(".graph-node").classed("is-connected", false);
-        d3.selectAll(".graph-label").classed("is-visible", currentZoom.k >= 1.05);
+        d3.selectAll(".graph-label").classed("is-visible", currentZoom.k >= 1.05).classed("is-hovered", false);
         hideTooltip();
       })
       .on("click", function(event, d) {
@@ -1042,7 +1040,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     }
     d.fx = d.x;
     d.fy = d.y;
-    d3.select(this).classed("is-dragging", true);
+    d3.select(this).classed("is-dragging", true).classed("is-hovered", true);
     postDragTicks = 0;
     simulation.on("tick.postdrag", null);
     isDragging = true;  // 设置拖拽状态
@@ -1066,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
-    d3.select(this).classed("is-dragging", false);
+    d3.select(this).classed("is-dragging", false).classed("is-hovered", false);
     isDragging = false;  // 清除拖拽状态
 
     // 拖拽结束后继续运行，不停止模拟
@@ -1681,7 +1679,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
   .graph-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--deep-text);
+    color: var(--text-primary);
     margin: 0;
     line-height: 1.3;
   }
@@ -1717,7 +1715,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     padding: 0.5rem 0.875rem;
     border: none;
     background: transparent;
-    color: var(--content-text);
+    color: var(--text-primary);
     font-size: 0.875rem;
     font-weight: 500;
     border-radius: 0.5rem;
@@ -1726,11 +1724,12 @@ document.addEventListener('DOMContentLoaded', tryInit);
   }
   .tab-item:hover {
     background: color-mix(in srgb, var(--primary) 10%, transparent);
-    color: var(--primary);
+    color: var(--text-primary);
   }
   .tab-item svg {
     flex-shrink: 0;
     vertical-align: middle;
+    color: var(--primary);
   }
   .tab-item span {
     vertical-align: middle;
@@ -1836,75 +1835,6 @@ document.addEventListener('DOMContentLoaded', tryInit);
   /* 边界 */
   .graph-boundary {
     pointer-events: none;
-  }
-
-  /* 节点 - 统一颜色 rgb(214, 69, 58) */
-  .graph-node {
-    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, stroke-width 0.2s ease;
-    cursor: pointer;
-    fill: rgb(214, 69, 58);
-    stroke: rgb(180, 55, 45);
-    stroke-width: 1.5;
-  }
-  .graph-node.is-high {
-    fill: rgb(214, 69, 58);
-    stroke: rgb(180, 55, 45);
-    stroke-width: 1.5;
-  }
-  .graph-node.is-low {
-    fill: rgb(214, 69, 58);
-    stroke: rgb(180, 55, 45);
-    stroke-width: 1;
-  }
-  .graph-node.is-post {
-    fill: rgb(214, 69, 58);
-    stroke: rgb(180, 55, 45);
-    stroke-width: 1;
-  }
-  .graph-node.is-hovered {
-    filter: drop-shadow(0 0 8px rgba(214, 69, 58, 0.6)) drop-shadow(0 0 16px rgba(214, 69, 58, 0.4));
-    stroke-width: 2.5;
-  }
-  .graph-node.is-dragging {
-    filter: drop-shadow(0 0 12px rgba(214, 69, 58, 0.8)) drop-shadow(0 0 20px rgba(214, 69, 58, 0.5));
-    stroke-width: 3;
-  }
-
-  /* 高亮模式 */
-  .highlight-mode .graph-node { opacity: 0.25; }
-  .highlight-mode .graph-node.is-hovered { opacity: 1; }
-  .highlight-mode .graph-node.is-connected { opacity: 0.7; }
-  .highlight-mode .graph-link { opacity: 0.06; }
-  .highlight-mode .graph-link.is-connected { opacity: 1; }
-  .highlight-mode .graph-label { opacity: 0; }
-  .highlight-mode .graph-label.is-hovered,
-  .highlight-mode .graph-label.is-connected { opacity: 0.9; }
-
-  /* 搜索暗淡 */
-  .graph-node.is-dimmed { opacity: 0.12 !important; }
-  .graph-link.is-dimmed { opacity: 0.02 !important; }
-  .graph-label.is-dimmed { opacity: 0 !important; }
-
-  /* 连线 */
-  .graph-link {
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-  }
-
-  /* 标签 */
-  .graph-label {
-    font-family: 'Roboto', 'LXGW WenKai Screen', sans-serif;
-    pointer-events: none;
-    text-shadow:
-      0 0 4px var(--page-bg),
-      0 0 8px var(--page-bg),
-      0 1px 2px var(--page-bg);
-    fill: rgb(80, 50, 30);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-  .graph-label.is-visible {
-    opacity: 0.85;
   }
 
 
@@ -2064,7 +1994,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     position: relative;
     font-weight: 700;
     font-size: 18px;
-    color: var(--primary-text-color);
+    color: var(--text-primary);
     margin: 0;
     line-height: 1.4;
     display: flex;
@@ -2154,7 +2084,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
   .post-title {
     flex: 1;
     font-size: 15px;
-    color: var(--primary-text-color);
+    color: var(--text-primary);
     line-height: 1.4;
     text-decoration: none;
     overflow: hidden;
@@ -2210,7 +2140,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
   }
   .tooltip-pagination .pagination-info {
     font-size: 15px;
-    color: var(--content-text);
+    color: var(--text-primary);
     flex-shrink: 0;
     margin: 0 !important;
     padding: 0 !important;
@@ -2222,7 +2152,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
   /* 文章描述 */
   .post-description {
     font-size: 0.8125rem;
-    color: var(--content-text);
+    color: var(--text-primary);
     line-height: 1.5;
     padding: 8px 10px;
     background: color-mix(in oklch, var(--primary) 5%, transparent);
@@ -2321,6 +2251,78 @@ document.addEventListener('DOMContentLoaded', tryInit);
     box-shadow: 0 1px 6px color-mix(in srgb, var(--primary) 10%, transparent);
   }
   
+  /* 节点 - 使用主题色 */
+  .graph-node {
+    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, stroke-width 0.2s ease, fill 0.25s ease;
+    cursor: pointer;
+    fill: var(--primary);
+    stroke: black;
+    stroke-width: 1.5;
+  }
+  .graph-node.is-high {
+    stroke-width: 1.5;
+  }
+  .graph-node.is-low {
+    stroke-width: 1;
+  }
+  .graph-node.is-post {
+    stroke-width: 1;
+  }
+  .graph-node.is-hovered {
+    fill: color-mix(in srgb, var(--primary) 85%, black);
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--primary) 70%, transparent)) drop-shadow(0 0 16px color-mix(in srgb, var(--primary) 40%, transparent));
+    stroke: none;
+    stroke-width: 0;
+  }
+  .graph-node.is-dragging {
+    fill: color-mix(in srgb, var(--primary) 85%, black);
+    filter: drop-shadow(0 0 12px color-mix(in srgb, var(--primary) 80%, transparent)) drop-shadow(0 0 20px color-mix(in srgb, var(--primary) 50%, transparent));
+    stroke: none;
+    stroke-width: 0;
+  }
+
+  /* 高亮模式 */
+  .highlight-mode .graph-node { opacity: 0.25; }
+  .highlight-mode .graph-node.is-hovered { opacity: 1; }
+  .highlight-mode .graph-node.is-connected { opacity: 0.7; }
+  .highlight-mode .graph-link { opacity: 0.06; }
+  .highlight-mode .graph-link.is-connected { opacity: 1; }
+  .highlight-mode .graph-label { opacity: 0; }
+  .highlight-mode .graph-label.is-hovered,
+  .highlight-mode .graph-label.is-connected { opacity: 0.9; }
+
+  /* 搜索暗淡 */
+  .graph-node.is-dimmed { opacity: 0.12 !important; }
+  .graph-link.is-dimmed { opacity: 0.02 !important; }
+  .graph-label.is-dimmed { opacity: 0 !important; }
+
+  /* 连线 */
+  .graph-link {
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    stroke: color-mix(in srgb, var(--primary) 35%, transparent);
+  }
+
+  /* 标签 */
+  .graph-label {
+    font-family: 'Roboto', 'LXGW WenKai Screen', sans-serif;
+    pointer-events: none;
+    text-shadow:
+      0 0 4px var(--page-bg),
+      0 0 8px var(--page-bg),
+      0 1px 2px var(--page-bg);
+    fill: var(--text-primary);
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .graph-label.is-visible {
+    opacity: 0.85;
+  }
+  .graph-label.is-hovered {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+
   /* 手机端响应式适配 */
   @media (max-width: 480px) {
     .tooltip-card-post,
