@@ -408,13 +408,11 @@ document.addEventListener('DOMContentLoaded', tryInit);
   // ========== 缩放行为 ==========
   const zoomBehavior = d3.zoom()
     .scaleExtent([0.35, 3])
-    .on("zoom", (event) => {
+    .on("zoom", function(event) {
       currentZoom = event.transform;
       viewport.attr("transform", event.transform);
       zoomBadge.textContent = Math.round(event.transform.k * 100) + "%";
-      // 根据缩放级别显示/隐藏标签
-      const showLabels = event.transform.k >= 1.05;
-      d3.selectAll(".graph-label").classed("is-visible", showLabels);
+      // 标签默认全显示，不再根据缩放级别控制
     });
 
   svg.call(zoomBehavior).on("dblclick.zoom", null);
@@ -438,19 +436,19 @@ document.addEventListener('DOMContentLoaded', tryInit);
     const sim = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id).distance(d => {
         // 关联越强距离越近
-        const base = currentView === 'tags' ? 100 : 80;
+        const base = currentView === 'tags' ? 120 : 80;
         return base / Math.sqrt((d.strength || 1) + 0.3);
       }).strength(d => {
         return currentView === 'tags'
-          ? Math.min(0.5, (d.strength || 1) * 0.12)
+          ? Math.min(0.4, (d.strength || 1) * 0.18)
           : 0.4;
       }))
       .force("charge", d3.forceManyBody().strength(d => {
         // 标签节点斥力大，文章节点斥力小
-        return d.isPost ? -120 : -220;
-      }).distanceMax(280))
-      .force("center", d3.forceCenter(cx, cy).strength(0.035))
-      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(0.6))
+        return d.isPost ? -80 : -150;
+      }).distanceMax(220))
+      .force("center", d3.forceCenter(cx, cy).strength(0.02))
+      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(0.4))
       .force("boundary", () => {
         for (const node of nodes) {
           const dx = node.x - cx;
@@ -464,9 +462,9 @@ document.addEventListener('DOMContentLoaded', tryInit);
           }
         }
       })
-      .alpha(1)
-      .alphaDecay(0.035)
-      .velocityDecay(0.4)
+      .alpha(0.4)
+      .alphaDecay(0.02)
+      .velocityDecay(0.25)
       .stop(); // 先停止，等待渲染后启动
 
     return sim;
@@ -507,7 +505,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     const labelSel = labelG.selectAll("text")
       .data(nodes)
       .join("text")
-      .attr("class", d => `graph-label n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''}`)
+      .attr("class", d => `graph-label n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} is-visible`)
       .attr("text-anchor", "middle")
       .attr("dy", d => -(d.radius || 6) - 5)
       .attr("font-size", d => d.isPost ? 9 : Math.max(10, Math.min(13, 9 + (d.radius || 6) * 0.25)))
@@ -517,12 +515,17 @@ document.addEventListener('DOMContentLoaded', tryInit);
     // 绑定交互
     nodeSel
       .on("mouseenter", function(event, d) {
+        // 如果正在拖动，不触发hover效果
+        if (isDragging) return;
+        
         // 取消任何待执行的隐藏操作
         cancelHideTooltip();
         
         const nid = d.id;
-        container.classList.add("highlight-mode");
+        
+        // 先添加 is-hovered 类，再添加 highlight-mode，避免闪烁
         d3.select(this).classed("is-hovered", true);
+        container.classList.add("highlight-mode");
 
         // 标记关联的连线和节点
         const connectedIds = new Set();
@@ -543,20 +546,27 @@ document.addEventListener('DOMContentLoaded', tryInit);
 
         d3.selectAll(".graph-label").each(function(n) {
           if (n.id === nid) {
-            d3.select(this).classed("is-visible", true).classed("is-hovered", true);
+            d3.select(this).classed("is-hovered", true);
+          } else if (connectedIds.has(n.id)) {
+            d3.select(this).classed("is-connected", true);
           } else {
-            d3.select(this).classed("is-visible", connectedIds.has(n.id)).classed("is-hovered", false);
+            d3.select(this).classed("is-hovered", false).classed("is-connected", false);
           }
         });
 
         showTooltip(event, d);
       })
       .on("mouseleave", function(event, d) {
+        // 如果正在拖动，不触发mouseleave效果
+        if (isDragging) return;
+        
+        // 先移除 highlight-mode，再移除 is-hovered，避免闪烁
         container.classList.remove("highlight-mode");
         d3.select(this).classed("is-hovered", false);
         d3.selectAll(".graph-link").classed("is-connected", false);
         d3.selectAll(".graph-node").classed("is-connected", false);
-        d3.selectAll(".graph-label").classed("is-visible", currentZoom.k >= 1.05).classed("is-hovered", false);
+        d3.selectAll(".graph-label").classed("is-hovered", false).classed("is-connected", false);
+        
         hideTooltip();
       })
       .on("click", function(event, d) {
@@ -2253,11 +2263,12 @@ document.addEventListener('DOMContentLoaded', tryInit);
   
   /* 节点 - 使用主题色 */
   .graph-node {
-    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, stroke-width 0.2s ease, fill 0.25s ease;
+    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, fill 0.25s ease;
     cursor: pointer;
     fill: var(--primary);
     stroke: black;
     stroke-width: 1.5;
+    stroke-opacity: 1;
   }
   .graph-node.is-high {
     stroke-width: 1.5;
@@ -2271,14 +2282,14 @@ document.addEventListener('DOMContentLoaded', tryInit);
   .graph-node.is-hovered {
     fill: color-mix(in srgb, var(--primary) 85%, black);
     filter: drop-shadow(0 0 8px color-mix(in srgb, var(--primary) 70%, transparent)) drop-shadow(0 0 16px color-mix(in srgb, var(--primary) 40%, transparent));
-    stroke: none;
     stroke-width: 0;
+    stroke-opacity: 0;
   }
   .graph-node.is-dragging {
     fill: color-mix(in srgb, var(--primary) 85%, black);
     filter: drop-shadow(0 0 12px color-mix(in srgb, var(--primary) 80%, transparent)) drop-shadow(0 0 20px color-mix(in srgb, var(--primary) 50%, transparent));
-    stroke: none;
     stroke-width: 0;
+    stroke-opacity: 0;
   }
 
   /* 高亮模式 */
@@ -2287,9 +2298,10 @@ document.addEventListener('DOMContentLoaded', tryInit);
   .highlight-mode .graph-node.is-connected { opacity: 0.7; }
   .highlight-mode .graph-link { opacity: 0.06; }
   .highlight-mode .graph-link.is-connected { opacity: 1; }
-  .highlight-mode .graph-label { opacity: 0; }
-  .highlight-mode .graph-label.is-hovered,
-  .highlight-mode .graph-label.is-connected { opacity: 0.9; }
+  /* 高亮模式下标签保持可见，只调整非hover/非connected标签的透明度 */
+  .highlight-mode .graph-label { opacity: 0.4; }
+  .highlight-mode .graph-label.is-hovered { opacity: 1; }
+  .highlight-mode .graph-label.is-connected { opacity: 0.7; }
 
   /* 搜索暗淡 */
   .graph-node.is-dimmed { opacity: 0.12 !important; }
@@ -2312,11 +2324,8 @@ document.addEventListener('DOMContentLoaded', tryInit);
       0 0 8px var(--page-bg),
       0 1px 2px var(--page-bg);
     fill: var(--text-primary);
-    opacity: 0;
-    transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .graph-label.is-visible {
     opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .graph-label.is-hovered {
     opacity: 1;
