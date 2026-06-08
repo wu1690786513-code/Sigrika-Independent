@@ -146,12 +146,20 @@ export const friendsConfig: FriendLink[] = [
 	"title": "拾光の博客",
 	"imgurl": "https://weavatar.com/api/avatar/ff2a232e034fb7677c9f211c5979619f3f4818302ae2cf2a11ea74af530e7758?s=50&t=1780753762637",
 	"desc": "拾取散落的时光碎片",
-	"siteurl": "https://mistfly.xyz",
+	"siteurl": "https://blog.mistfly.xyz",
 	"tags": ["Blogs"],
 	"weight": 8,
 	"enabled": true
-	}
-	// {
+	},
+	{
+	"title": "清羽飞扬",
+	"imgurl": "https://blog.liushen.fun/info/siteshot.jpg",
+	"desc": "拾取散落的时光碎片",
+	"siteurl": "https://blog.liushen.fun/",
+	"tags": ["Blogs"],
+	"weight": 8,
+	"enabled": true
+	},
 	// 	title: "小曹同学",
 	// 	imgurl: "https://pic.caotx.cn/home/friends/avatars_0_myweb.webp",
 	// 	desc: "春祺夏安 秋绥冬禧",
