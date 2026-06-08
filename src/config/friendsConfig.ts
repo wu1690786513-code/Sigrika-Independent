@@ -153,7 +153,7 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 	"title": "清羽飞扬",
-	"imgurl": "https://blog.liushen.fun/info/siteshot.jpg",
+	"imgurl": "https://blog.liushen.fun/favicon.ico",
 	"desc": "拾取散落的时光碎片",
 	"siteurl": "https://blog.liushen.fun/",
 	"tags": ["Blogs"],
