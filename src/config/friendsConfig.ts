@@ -17,7 +17,7 @@ export const friendsPageConfig: FriendsPageConfig = {
 	showComment: true,
 
 	// 是否开启随机排序配置，如果开启，就会忽略权重，构建时进行一次随机排序
-	randomizeSort: false,
+	randomizeSort: true,
 };
 
 // 友链配置
@@ -29,7 +29,7 @@ export const friendsConfig: FriendLink[] = [
 			"https://weavatar.com/avatar/d252655d40d6874417a720bad0a6c5f77f8f6a1fd2f882f8f338402dc37e4190?s=640",
 		desc: "飞萤之火自无梦的长夜亮起，绽放在终竟的明天。",
 		siteurl: "https://blog.cuteleaf.cn",
-		tags: ["Blogs"],
+		tags: ["博客"],
 		weight: 10, // 权重，数字越大排序越靠前
 		enabled: true, // 是否启用
 	},
@@ -56,7 +56,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://avatars.githubusercontent.com/u/172878250",
 		desc: "Nacheckoの小窝",
 		siteurl: "https://tbmiao.dpdns.org/",
-		tags: ["Blogs"],
+		tags: ["博客"],
 		weight: 8,
 		enabled: true,
 	},
@@ -66,7 +66,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://q1.qlogo.cn/g?b=qq&nk=20447289&s=640",
 		desc: "坐而言不如起而行.",
 		siteurl: "https://fqzlr.com/",
-		tags: ["Blogs"],
+		tags: ["博客"],
 		weight: 8,
 		enabled: true,
 	},
@@ -75,7 +75,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://i.stardots.io/784774835/StarDots-2026052116374135506.jpg",
 		desc: "菲比啾比",
 		siteurl: "https://tblog.mmzhiku.xyz/",
-		tags: ["Blogs"],
+		tags: ["博客"],
 		weight: 8,
 		enabled: true,
 	},
@@ -84,7 +84,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://re.tsh520.cn/zl/tx.webp",
 		desc: "如果你喜欢那么欢迎来到我的世界！",
 		siteurl: "https://blog.tsh520.cn/",
-		tags: ["Blogs"],
+		tags: ["博客"],
 		weight: 8,
 		enabled: true,
 	},
@@ -93,7 +93,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://blog.anxko.cn/logo.webp",
 		desc: "欢迎你！来自远方的朋友 ₍˄·͈༝·͈˄*₎◞ ̑̑",
 		siteurl: "https://blog.anxko.cn",
-		tags: ["Blogs"],
+		tags: ["博客"],
 		weight: 8,
 		enabled: false,
 	},
@@ -102,7 +102,7 @@ export const friendsConfig: FriendLink[] = [
 		"imgurl": "https://easyimg.kejk.cn/i/4484873c-c2cc-4b3d-bc35-5c72ed01cfd9.webp",
 		"desc": "阳光正好，慢慢前行。",
 		"siteurl": "https://sunlight.kejk.cn",
-		"tags": ["Blogs"],
+		"tags": ["博客"],
 		"weight": 8,
 		"enabled": true
 	},
@@ -111,7 +111,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://assets.ericterminal.com/logo-transparent.png",
 	"desc": "刃は鞘に、心は花に",
 	"siteurl": "https://blog.ericterminal.com",
-	"tags": ["Blogs"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -120,7 +120,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://pic1.imgdb.cn/item/682f3d1658cb8da5c807b704.jpg",
 	"desc": "是一名 学生 / ACMer / 前端开发 / 电子音乐制作人",
 	"siteurl": "https://www.woodfish.site/",
-	"tags": ["Blogs"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -129,7 +129,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://q1.qlogo.cn/g?b=qq&nk=1928325064&s=640",
 	"desc": "这个博客仍在缓慢施工中",
 	"siteurl": "https://blog.narcssu.top/",
-	"tags": ["Blogs"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -138,7 +138,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://seasir.top/assets/avatar.avif",
 	"desc": "人心中的成见是一座大山",
 	"siteurl": "https://seasir.top/",
-	"tags": ["Blogs"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -147,7 +147,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://weavatar.com/api/avatar/ff2a232e034fb7677c9f211c5979619f3f4818302ae2cf2a11ea74af530e7758?s=50&t=1780753762637",
 	"desc": "拾取散落的时光碎片",
 	"siteurl": "https://blog.mistfly.xyz",
-	"tags": ["Blogs"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -156,7 +156,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://blog.liushen.fun/favicon.ico",
 	"desc": "拾取散落的时光碎片",
 	"siteurl": "https://blog.liushen.fun/",
-	"tags": ["Blogs"],
+	"tags": ["活跃"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -165,7 +165,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://npm.elemecdn.com/anzhiyu-blog-static@1.0.4/img/avatar.jpg",
 	"desc": "拾取散落的时光碎片",
 	"siteurl": "https://blog.anheyu.com/",
-	"tags": ["Blogs"],
+	"tags": ["活跃"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -174,7 +174,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://iamyukino.cn/favicon.ico",
 	"desc": "拾取散落的时光碎片",
 	"siteurl": "https://iamyukino.cn/",
-	"tags": ["Blogs"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -182,7 +182,7 @@ export const friendsConfig: FriendLink[] = [
 	// 	imgurl: "https://pic.caotx.cn/home/friends/avatars_0_myweb.webp",
 	// 	desc: "春祺夏安 秋绥冬禧",
 	// 	siteurl: "https://blog.caotx.cn/",
-	// 	tags: ["Blogs"],
+	// 	tags: ["博客"],
 	// 	weight: 8,
 	// 	enabled: true,
 	// },
