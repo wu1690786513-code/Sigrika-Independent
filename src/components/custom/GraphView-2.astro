@@ -212,53 +212,34 @@ const graphData = {
         </g>
       </svg>
 
-      <!-- 悬浮提示 - 文章卡片 -->
-      <div id="graphTooltipPost" class="graph-tooltip graph-tooltip-post hidden">
-        <div class="tooltip-card tooltip-card-post">
+      <!-- 悬浮提示 -->
+      <div id="graphTooltip" class="graph-tooltip hidden">
+        <div class="tooltip-card">
           <!-- 关闭按钮 -->
-          <button class="tooltip-close" id="tooltipClosePost" aria-label="关闭">✕</button>
+          <button class="tooltip-close" id="tooltipClose" aria-label="关闭">✕</button>
           <!-- 头部装饰 -->
           <div class="tooltip-header">
-            <div class="tooltip-name" id="tooltipNamePost"></div>
-            <div class="tooltip-stats" id="tooltipStatsPost"></div>
-          </div>
-          
-          <!-- 内容区域 -->
-          <div class="tooltip-content">
-            <!-- 文章描述 -->
-            <div class="tooltip-posts" id="tooltipPostsPost"></div>
-            
-            <!-- 标签区域 -->
-            <div class="tooltip-tags" id="tooltipTagsPost"></div>
-          </div>
-          
-          <!-- 底部操作 -->
-          <div class="tooltip-footer">
-            <div class="tooltip-hint" id="tooltipHintPost"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 悬浮提示 - 标签/分类卡片 -->
-      <div id="graphTooltipTag" class="graph-tooltip graph-tooltip-tag hidden">
-        <div class="tooltip-card tooltip-card-tag">
-          <!-- 关闭按钮 -->
-          <button class="tooltip-close" id="tooltipCloseTag" aria-label="关闭">✕</button>
-          <!-- 头部装饰 -->
-          <div class="tooltip-header">
-            <div class="tooltip-name" id="tooltipNameTag"></div>
-            <div class="tooltip-stats" id="tooltipStatsTag"></div>
+            <div class="tooltip-name" id="tooltipName"></div>
+            <div class="tooltip-stats" id="tooltipStats"></div>
           </div>
           
           <!-- 内容区域 -->
           <div class="tooltip-content">
             <div class="tooltip-section">
-              <div class="section-title">
+              <div class="section-title tag-only">
                 <span class="section-icon">📄</span>
                 <span>最近几篇</span>
               </div>
-              <div class="tooltip-posts" id="tooltipPostsTag"></div>
+              <div class="tooltip-posts" id="tooltipPosts"></div>
             </div>
+            
+            <!-- 标签区域 -->
+            <div class="tooltip-tags" id="tooltipTags"></div>
+          </div>
+          
+          <!-- 底部操作 -->
+          <div class="tooltip-footer">
+            <div class="tooltip-hint" id="tooltipHint"></div>
           </div>
         </div>
       </div>
@@ -301,61 +282,16 @@ document.addEventListener('DOMContentLoaded', tryInit);
   const d3 = window.d3;
   const svg = d3.select("#graphSvg");
   const viewport = d3.select("#graphViewport");
-  
-  // 文章卡片元素
-  const tooltipPost = document.getElementById("graphTooltipPost");
-  const tooltipNamePost = document.getElementById("tooltipNamePost");
-  const tooltipStatsPost = document.getElementById("tooltipStatsPost");
-  const tooltipPostsPost = document.getElementById("tooltipPostsPost");
-  const tooltipTagsPost = document.getElementById("tooltipTagsPost");
-  const tooltipHintPost = document.getElementById("tooltipHintPost");
-  const tooltipClosePost = document.getElementById("tooltipClosePost");
-  
-  // 标签/分类卡片元素
-  const tooltipTag = document.getElementById("graphTooltipTag");
-  const tooltipNameTag = document.getElementById("tooltipNameTag");
-  const tooltipStatsTag = document.getElementById("tooltipStatsTag");
-  const tooltipPostsTag = document.getElementById("tooltipPostsTag");
-  const tooltipHintTag = document.getElementById("tooltipHintTag");
-  const tooltipCloseTag = document.getElementById("tooltipCloseTag");
-  
+  const tooltip = document.getElementById("graphTooltip");
+  const tooltipName = document.getElementById("tooltipName");
+  const tooltipStats = document.getElementById("tooltipStats");
+  const tooltipPosts = document.getElementById("tooltipPosts");
+  const tooltipTags = document.getElementById("tooltipTags");
+  const tooltipHint = document.getElementById("tooltipHint");
+  const tooltipClose = document.getElementById("tooltipClose");
   let tooltipCurrentNode = null;
   let tooltipCurrentPage = 1;
-  let isTooltipHoveredPost = false;
-  let isTooltipHoveredTag = false;
-  
-  // 隐藏tooltip的延迟计时器
-  let hideTooltipTimer = null;
-  const HIDE_DELAY = 200; // 延迟200ms隐藏，确保tooltip能捕获mouseenter
-
-  function hideTooltip() {
-    // 清除之前的计时器
-    if (hideTooltipTimer) {
-      clearTimeout(hideTooltipTimer);
-      hideTooltipTimer = null;
-    }
-    
-    // 延迟隐藏，给tooltip足够的时间来判断鼠标是否真的离开了
-    hideTooltipTimer = setTimeout(() => {
-      // 只有当tooltip没有被hover时才隐藏
-      if (!isTooltipHoveredPost && !isTooltipHoveredTag) {
-        tooltipPost.classList.add("hidden");
-        tooltipTag.classList.add("hidden");
-        tooltipCurrentNode = null;
-        tooltipCurrentPage = 1;
-      }
-      hideTooltipTimer = null;
-    }, HIDE_DELAY);
-  }
-
-  // 取消隐藏tooltip
-  function cancelHideTooltip() {
-    if (hideTooltipTimer) {
-      clearTimeout(hideTooltipTimer);
-      hideTooltipTimer = null;
-    }
-  }
-  
+  let isTooltipHovered = false;
   let isDragging = false;  // 拖拽状态标志
   const zoomBadge = document.getElementById("zoomBadge");
   const backBtn = document.getElementById("backBtn");
@@ -408,11 +344,13 @@ document.addEventListener('DOMContentLoaded', tryInit);
   // ========== 缩放行为 ==========
   const zoomBehavior = d3.zoom()
     .scaleExtent([0.35, 3])
-    .on("zoom", function(event) {
+    .on("zoom", (event) => {
       currentZoom = event.transform;
       viewport.attr("transform", event.transform);
       zoomBadge.textContent = Math.round(event.transform.k * 100) + "%";
-      // 标签默认全显示，不再根据缩放级别控制
+      // 根据缩放级别显示/隐藏标签
+      const showLabels = event.transform.k >= 1.05;
+      d3.selectAll(".graph-label").classed("is-visible", showLabels);
     });
 
   svg.call(zoomBehavior).on("dblclick.zoom", null);
@@ -436,19 +374,19 @@ document.addEventListener('DOMContentLoaded', tryInit);
     const sim = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id).distance(d => {
         // 关联越强距离越近
-        const base = currentView === 'tags' ? 120 : 80;
+        const base = currentView === 'tags' ? 100 : 80;
         return base / Math.sqrt((d.strength || 1) + 0.3);
       }).strength(d => {
         return currentView === 'tags'
-          ? Math.min(0.4, (d.strength || 1) * 0.18)
+          ? Math.min(0.5, (d.strength || 1) * 0.12)
           : 0.4;
       }))
       .force("charge", d3.forceManyBody().strength(d => {
         // 标签节点斥力大，文章节点斥力小
-        return d.isPost ? -80 : -150;
-      }).distanceMax(220))
-      .force("center", d3.forceCenter(cx, cy).strength(0.02))
-      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(0.4))
+        return d.isPost ? -120 : -220;
+      }).distanceMax(280))
+      .force("center", d3.forceCenter(cx, cy).strength(0.035))
+      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(0.6))
       .force("boundary", () => {
         for (const node of nodes) {
           const dx = node.x - cx;
@@ -462,9 +400,9 @@ document.addEventListener('DOMContentLoaded', tryInit);
           }
         }
       })
-      .alpha(0.4)
-      .alphaDecay(0.02)
-      .velocityDecay(0.25)
+      .alpha(1)
+      .alphaDecay(0.035)
+      .velocityDecay(0.4)
       .stop(); // 先停止，等待渲染后启动
 
     return sim;
@@ -486,6 +424,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
       .data(links)
       .join("line")
       .attr("class", d => `graph-link l-${escClass(d.source.id || d.source)}-${escClass(d.target.id || d.target)}`)
+      .attr("stroke", "rgba(214, 69, 58, 0.35)")
       .attr("stroke-width", d => Math.max(0.6, Math.min(2.5, (d.strength || 1) * 0.5)))
       .attr("stroke-linecap", "round");
 
@@ -495,6 +434,9 @@ document.addEventListener('DOMContentLoaded', tryInit);
       .join("circle")
       .attr("class", d => `graph-node n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} ${d.isHighFreq ? 'is-high' : 'is-low'}`)
       .attr("r", d => d.radius || 6)
+      .attr("fill", "rgb(214, 69, 58)")
+      .attr("stroke", "rgb(180, 55, 45)")
+      .attr("stroke-width", 1.5)
       .attr("cursor", "pointer")
       .call(d3.drag()
         .on("start", dragstarted)
@@ -505,27 +447,20 @@ document.addEventListener('DOMContentLoaded', tryInit);
     const labelSel = labelG.selectAll("text")
       .data(nodes)
       .join("text")
-      .attr("class", d => `graph-label n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} is-visible`)
+      .attr("class", d => `graph-label n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''}`)
       .attr("text-anchor", "middle")
       .attr("dy", d => -(d.radius || 6) - 5)
       .attr("font-size", d => d.isPost ? 9 : Math.max(10, Math.min(13, 9 + (d.radius || 6) * 0.25)))
       .attr("font-weight", d => d.isHighFreq ? "600" : "400")
+      .attr("fill", "rgb(80, 50, 30)")
       .text(d => d.title || d.name);
 
     // 绑定交互
     nodeSel
       .on("mouseenter", function(event, d) {
-        // 如果正在拖动，不触发hover效果
-        if (isDragging) return;
-        
-        // 取消任何待执行的隐藏操作
-        cancelHideTooltip();
-        
         const nid = d.id;
-        
-        // 先添加 is-hovered 类，再添加 highlight-mode，避免闪烁
-        d3.select(this).classed("is-hovered", true);
         container.classList.add("highlight-mode");
+        d3.select(this).classed("is-hovered", true);
 
         // 标记关联的连线和节点
         const connectedIds = new Set();
@@ -545,28 +480,18 @@ document.addEventListener('DOMContentLoaded', tryInit);
         });
 
         d3.selectAll(".graph-label").each(function(n) {
-          if (n.id === nid) {
-            d3.select(this).classed("is-hovered", true);
-          } else if (connectedIds.has(n.id)) {
-            d3.select(this).classed("is-connected", true);
-          } else {
-            d3.select(this).classed("is-hovered", false).classed("is-connected", false);
-          }
+          if (n.id === nid) d3.select(this).classed("is-visible", true);
+          else d3.select(this).classed("is-visible", connectedIds.has(n.id));
         });
 
         showTooltip(event, d);
       })
       .on("mouseleave", function(event, d) {
-        // 如果正在拖动，不触发mouseleave效果
-        if (isDragging) return;
-        
-        // 先移除 highlight-mode，再移除 is-hovered，避免闪烁
         container.classList.remove("highlight-mode");
         d3.select(this).classed("is-hovered", false);
         d3.selectAll(".graph-link").classed("is-connected", false);
         d3.selectAll(".graph-node").classed("is-connected", false);
-        d3.selectAll(".graph-label").classed("is-hovered", false).classed("is-connected", false);
-        
+        d3.selectAll(".graph-label").classed("is-visible", currentZoom.k >= 1.05);
         hideTooltip();
       })
       .on("click", function(event, d) {
@@ -933,17 +858,17 @@ document.addEventListener('DOMContentLoaded', tryInit);
         els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y).style("opacity", 1);
         els.labelSel.attr("x", d => d.x).attr("y", d => d.y).style("opacity", 1);
         
-        // 启动物理模拟（优化手机端性能，保持散开效果）
+        // 启动物理模拟
         simulation = createSimulation(nodes, links);
         simulation
-          .alpha(0.6)  // 增加初始活跃度，让散开更明显
-          .alphaDecay(0.015)  // 减慢衰减速度
-          .velocityDecay(0.12);  // 减慢速度衰减
+          .alpha(0.5)
+          .alphaDecay(0.015)
+          .velocityDecay(0.12);
 
         simulation
-          .force("charge", d3.forceManyBody().strength(-28).distanceMax(110))  // 增强斥力，让节点散开
-          .force("center", d3.forceCenter(cx, cy).strength(0.01))  // 适当的向心力
-          .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 6).strength(0.4));  // 适当的碰撞检测
+          .force("charge", d3.forceManyBody().strength(-25).distanceMax(120))
+          .force("center", d3.forceCenter(cx, cy).strength(0.01))
+          .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 6).strength(0.3));
 
         tickCount = 0;
         simulation.on("tick", () => {
@@ -1050,7 +975,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     }
     d.fx = d.x;
     d.fy = d.y;
-    d3.select(this).classed("is-dragging", true).classed("is-hovered", true);
+    d3.select(this).classed("is-dragging", true);
     postDragTicks = 0;
     simulation.on("tick.postdrag", null);
     isDragging = true;  // 设置拖拽状态
@@ -1074,7 +999,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     if (!event.active) simulation.alphaTarget(0);
     d.fx = null;
     d.fy = null;
-    d3.select(this).classed("is-dragging", false).classed("is-hovered", false);
+    d3.select(this).classed("is-dragging", false);
     isDragging = false;  // 清除拖拽状态
 
     // 拖拽结束后继续运行，不停止模拟
@@ -1085,143 +1010,126 @@ document.addEventListener('DOMContentLoaded', tryInit);
     if (isDragging) return;  // 拖拽时不显示tooltip
     tooltipCurrentNode = d;
     tooltipCurrentPage = 1;
-    
-    // 立即隐藏所有tooltip（不用延迟，避免与showTooltip冲突）
-    tooltipPost.classList.add("hidden");
-    tooltipTag.classList.add("hidden");
+    if (d.isPost && d.url) {
+      tooltipName.innerHTML = `<a href="${d.url}" target="_blank" style="color: inherit; text-decoration: none; cursor: pointer;">${d.title || d.name}</a>`;
+    } else {
+      tooltipName.textContent = d.title || d.name;
+    }
     
     if (d.isPost) {
-      showPostTooltip(event, d);
-    } else {
-      showTagTooltip(event, d);
-    }
-  }
-  
-  // 显示文章卡片
-  function showPostTooltip(event, d) {
-    if (d.url) {
-      tooltipNamePost.innerHTML = `<a href="${d.url}" target="_blank" style="color: inherit; text-decoration: none; cursor: pointer;">${d.title || d.name}</a>`;
-    } else {
-      tooltipNamePost.textContent = d.title || d.name;
-    }
-    
-    // 文章详情
-    if (d.category) {
-      tooltipStatsPost.innerHTML = `<span class="stat-item category-clickable" data-category="${d.category}" style="cursor: pointer;">${d.category}</span>`;
-    } else {
-      tooltipStatsPost.innerHTML = '';
-    }
-    
-    if (d.published) {
-      const date = new Date(d.published);
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      tooltipStatsPost.innerHTML += `<span class="stat-divider">·</span><span class="stat-item">${dateStr}</span>`;
-    }
-    
-    // 为分类添加点击事件
-    tooltipStatsPost.querySelectorAll('.category-clickable').forEach(catEl => {
-      catEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const categoryId = catEl.getAttribute('data-category');
-        const categoryNode = RAW.categories.find(c => c.id === categoryId);
-        if (categoryNode) {
-          hideTooltip();
-          switchToCategoryDetailView(categoryNode);
-        }
-      });
-    });
-    
-    // 文章列表区域显示描述
-    tooltipPostsPost.innerHTML = `<div class="post-description">${d.description || '暂无描述'}</div>`;
-    
-    // 获取文章的标签
-    const postTags = d.tags || [];
-    if (postTags.length > 0) {
-      const tagIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M0 0h24v24H0z" fill="none"/><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z"/><path d="M6.5 6.5L7 7"/></g></svg>`;
-      tooltipTagsPost.innerHTML = `<div class="tags-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">${tagIcon}${postTags.slice(0, 6).map(t => `<span class="tag-item tag-clickable" data-tag="${t}" style="cursor: pointer;">#${t}</span>`).join(' ')}</div>`;
+      tooltip.classList.add("is-post-tooltip");
+      // 文章详情
+      if (d.category) {
+        tooltipStats.innerHTML = `<span class="stat-item category-clickable" data-category="${d.category}" style="cursor: pointer;">${d.category}</span>`;
+      } else {
+        tooltipStats.innerHTML = '';
+      }
       
-      // 为标签添加点击事件
-      tooltipTagsPost.querySelectorAll('.tag-clickable').forEach(tagEl => {
-        tagEl.addEventListener('click', (e) => {
+      if (d.published) {
+        const date = new Date(d.published);
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        tooltipStats.innerHTML += `<span class="stat-divider">·</span><span class="stat-item">${dateStr}</span>`;
+      }
+      
+      // 为分类添加点击事件
+      tooltipStats.querySelectorAll('.category-clickable').forEach(catEl => {
+        catEl.addEventListener('click', (e) => {
           e.stopPropagation();
-          const tagId = tagEl.getAttribute('data-tag');
-          const tagNode = RAW.tags.find(t => t.id === tagId);
-          if (tagNode) {
+          const categoryId = catEl.getAttribute('data-category');
+          const categoryNode = RAW.categories.find(c => c.id === categoryId);
+          if (categoryNode) {
             hideTooltip();
-            switchToPostView(tagNode);
+            switchToCategoryDetailView(categoryNode);
           }
         });
       });
-    } else {
-      tooltipTagsPost.innerHTML = '';
-    }
-    
-    tooltipHintPost.innerHTML = '<a href="' + d.url + '" target="_blank" class="hint-link"><span class="hint-icon">Tips：点击查看文章</a>';
-    
-    // 显示文章卡片
-    tooltipPost.classList.remove("hidden");
-    
-    positionTooltip(event, tooltipPost);
-  }
-  
-  // 显示标签/分类卡片
-  function showTagTooltip(event, d) {
-    tooltipNameTag.textContent = d.title || d.name;
-    
-    // 标签或分类详情
-    tooltipStatsTag.innerHTML = `<span class="stat-item">${d.count} 篇文章</span>`;
-    
-    // 根据当前视图判断是分类还是标签
-    const isCategory = currentView === 'categories' || currentView === 'category-detail';
-    
-    // 获取所有关联文章，按发布时间排序
-    const relatedPosts = RAW.posts
-      .filter(p => isCategory ? p.category === d.id : p.tags.includes(d.id))
-      .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
-    
-    const pageSize = 5;
-    const totalPages = Math.ceil(relatedPosts.length / pageSize);
-    const displayPosts = relatedPosts.slice((tooltipCurrentPage - 1) * pageSize, tooltipCurrentPage * pageSize);
-    
-    // 渲染文章列表
-    if (relatedPosts.length > 0) {
-      tooltipPostsTag.innerHTML = '';
-      displayPosts.forEach((post, index) => {
-        tooltipPostsTag.innerHTML += `
-          <div class="post-item">
-            <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}</span>
-            <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
-          </div>
-        `;
-      });
       
-      // 添加翻页按钮
-      if (totalPages > 1) {
-        tooltipPostsTag.innerHTML += `
-          <div class="tooltip-pagination">
-            <span class="pagination-btn prev" ${tooltipCurrentPage <= 1 ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipPrevPage()">‹</span>
-            <span class="pagination-info">${tooltipCurrentPage}/${totalPages}</span>
-            <span class="pagination-btn next" ${tooltipCurrentPage >= totalPages ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipNextPage()">›</span>
-          </div>
-        `;
+      // 文章列表区域显示描述
+      tooltipPosts.innerHTML = `<div class="post-description">${d.description || '暂无描述'}</div>`;
+      
+      // 获取文章的标签
+      const postTags = d.tags || [];
+      if (postTags.length > 0) {
+        const tagIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M0 0h24v24H0z" fill="none"/><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z"/><path d="M6.5 6.5L7 7"/></g></svg>`;
+        tooltipTags.innerHTML = `<div class="tags-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">${tagIcon}${postTags.slice(0, 6).map(t => `<span class="tag-item tag-clickable" data-tag="${t}" style="cursor: pointer;">#${t}</span>`).join(' ')}</div>`;
+        
+        // 为标签添加点击事件
+        tooltipTags.querySelectorAll('.tag-clickable').forEach(tagEl => {
+          tagEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tagId = tagEl.getAttribute('data-tag');
+            const tagNode = RAW.tags.find(t => t.id === tagId);
+            if (tagNode) {
+              hideTooltip();
+              switchToPostView(tagNode);
+            }
+          });
+        });
+      } else {
+        tooltipTags.innerHTML = '';
       }
+      
+      tooltipHint.innerHTML = '<a href="' + d.url + '" target="_blank" class="hint-link"><span class="hint-icon">Tips：点击查看文章</a>';
     } else {
-      tooltipPostsTag.innerHTML = '<div class="empty-state">暂无关联文章</div>';
+      tooltip.classList.remove("is-post-tooltip");
+      // 标签或分类详情
+      tooltipStats.innerHTML = `<span class="stat-item">${d.count} 篇文章</span>`;
+      tooltipTags.innerHTML = '';
+      
+      // 根据当前视图判断是分类还是标签
+      const isCategory = currentView === 'categories' || currentView === 'category-detail';
+      
+      // 获取所有关联文章，按发布时间排序
+      const relatedPosts = RAW.posts
+        .filter(p => isCategory ? p.category === d.id : p.tags.includes(d.id))
+        .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
+      
+      const pageSize = 5;
+      const totalPages = Math.ceil(relatedPosts.length / pageSize);
+      const displayPosts = relatedPosts.slice((tooltipCurrentPage - 1) * pageSize, tooltipCurrentPage * pageSize);
+      
+      // 渲染文章列表
+      if (relatedPosts.length > 0) {
+        tooltipPosts.innerHTML = '';
+        displayPosts.forEach((post, index) => {
+          tooltipPosts.innerHTML += `
+            <div class="post-item">
+              <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}.</span>
+              <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
+            </div>
+          `;
+        });
+        
+        // 添加翻页按钮
+        if (totalPages > 1) {
+          tooltipPosts.innerHTML += `
+            <div class="tooltip-pagination">
+              <span class="pagination-btn prev" ${tooltipCurrentPage <= 1 ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipPrevPage()">‹</span>
+              <span class="pagination-info">${tooltipCurrentPage}/${totalPages}</span>
+              <span class="pagination-btn next" ${tooltipCurrentPage >= totalPages ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipNextPage()">›</span>
+            </div>
+          `;
+        }
+      } else {
+        tooltipPosts.innerHTML = '<div class="empty-state">暂无关联文章</div>';
+      }
+      
+      // 根据当前视图显示不同的提示
+      if (isCategory) {
+        tooltipHint.innerHTML = '<span style="cursor:pointer !important;" class="hint-link" onclick="switchToCategoryDetailView(\'' + d.id + '\')"><span class="hint-icon"></span>Tips：点击查看所有关联文章</span>';
+      } else {
+        tooltipHint.innerHTML = '<span style="cursor:pointer !important;" class="hint-link" onclick="switchToTagDetailView(\'' + d.id + '\')"><span class="hint-icon"></span>Tips：点击查看所有关联文章</span>';
+      }
     }
-    
-    // 显示标签卡片
-    tooltipTag.classList.remove("hidden");
-    
-    positionTooltip(event, tooltipTag);
-  }
+
   
-  // 定位tooltip
-  function positionTooltip(event, tooltipEl) {
+    tooltip.classList.remove("hidden");
+
     const rect = wrapper.getBoundingClientRect();
     const padding = 16; // 安全边距
     let x = event.clientX - rect.left + 12;
     let y = event.clientY - rect.top - 8;
-    const ttRect = tooltipEl.getBoundingClientRect();
+    const ttRect = tooltip.getBoundingClientRect();
     
     // 确保卡片不会超出右侧边界
     if (x + ttRect.width > rect.width - padding) {
@@ -1240,8 +1148,8 @@ document.addEventListener('DOMContentLoaded', tryInit);
       y = padding;
     }
     
-    tooltipEl.style.left = x + "px";
-    tooltipEl.style.top = y + "px";
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
   }
 
   function tooltipPrevPage() {
@@ -1280,11 +1188,11 @@ document.addEventListener('DOMContentLoaded', tryInit);
     const totalPages = Math.ceil(relatedPosts.length / pageSize);
     const displayPosts = relatedPosts.slice((tooltipCurrentPage - 1) * pageSize, tooltipCurrentPage * pageSize);
     
-    tooltipPostsTag.style.opacity = '0';
+    tooltipPosts.style.opacity = '0';
     setTimeout(() => {
-      tooltipPostsTag.innerHTML = '';
+      tooltipPosts.innerHTML = '';
       displayPosts.forEach((post, index) => {
-        tooltipPostsTag.innerHTML += `
+        tooltipPosts.innerHTML += `
           <div class="post-item">
             <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}</span>
             <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
@@ -1294,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
       
       // 更新页码
       if (totalPages > 1) {
-        tooltipPostsTag.innerHTML += `
+        tooltipPosts.innerHTML += `
           <div class="tooltip-pagination">
             <span class="pagination-btn prev" ${tooltipCurrentPage <= 1 ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipPrevPage()">‹</span>
             <span class="pagination-info">${tooltipCurrentPage}/${totalPages}</span>
@@ -1303,7 +1211,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
         `;
       }
       
-      tooltipPostsTag.style.opacity = '1';
+      tooltipPosts.style.opacity = '1';
     }, 100);
   }
 
@@ -1312,7 +1220,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
 
   // 点击按钮切换到标签详情视图
   function switchToTagDetailView(tagId) {
-    tooltipTag.classList.add("hidden");
+    tooltip.classList.add("hidden");
     const tagNode = allTagNodes.find(t => t.id === tagId);
     if (tagNode) {
       switchToPostView(tagNode);
@@ -1322,54 +1230,35 @@ document.addEventListener('DOMContentLoaded', tryInit);
   window.switchToTagDetailView = switchToTagDetailView;
   window.switchToCategoryDetailView = switchToCategoryDetailView;
 
-  // 文章卡片鼠标事件 - 使用mouseover/mouseout确保子元素也能触发
-  tooltipPost.addEventListener("mouseover", (e) => {
-    // 确保事件来自tooltip本身或其子元素
-    if (e.target === tooltipPost || tooltipPost.contains(e.target)) {
-      isTooltipHoveredPost = true;
-      cancelHideTooltip();
-    }
+  function hideTooltip() {
+    // 添加延迟，确保tooltip的mouseenter事件先触发
+    setTimeout(() => {
+      if (!isTooltipHovered) {
+        tooltip.classList.add("hidden");
+        tooltipCurrentNode = null;
+      }
+    }, 100);
+  }
+
+  // Tooltip鼠标事件
+  tooltip.addEventListener("mouseenter", () => {
+    isTooltipHovered = true;
   });
 
-  tooltipPost.addEventListener("mouseout", (e) => {
-    // 检查鼠标是否真的离开了tooltip（而不是移动到子元素）
-    const relatedTarget = e.relatedTarget;
-    if (!tooltipPost.contains(relatedTarget)) {
-      isTooltipHoveredPost = false;
-      hideTooltip();
-    }
-  });
-
-  tooltipClosePost.addEventListener("click", (e) => {
-    e.stopPropagation();
-    tooltipPost.classList.add("hidden");
+  tooltip.addEventListener("mouseleave", () => {
+    isTooltipHovered = false;
+    // 鼠标离开tooltip后立即关闭
+    tooltip.classList.add("hidden");
     tooltipCurrentNode = null;
     tooltipCurrentPage = 1;
-    isTooltipHoveredPost = false;
   });
 
-  // 标签卡片鼠标事件
-  tooltipTag.addEventListener("mouseover", (e) => {
-    if (e.target === tooltipTag || tooltipTag.contains(e.target)) {
-      isTooltipHoveredTag = true;
-      cancelHideTooltip();
-    }
-  });
-
-  tooltipTag.addEventListener("mouseout", (e) => {
-    const relatedTarget = e.relatedTarget;
-    if (!tooltipTag.contains(relatedTarget)) {
-      isTooltipHoveredTag = false;
-      hideTooltip();
-    }
-  });
-
-  tooltipCloseTag.addEventListener("click", (e) => {
+  // 关闭按钮点击事件
+  tooltipClose.addEventListener("click", (e) => {
     e.stopPropagation();
-    tooltipTag.classList.add("hidden");
+    tooltip.classList.add("hidden");
     tooltipCurrentNode = null;
     tooltipCurrentPage = 1;
-    isTooltipHoveredTag = false;
   });
 
   // ========== 搜索 ==========
@@ -1666,11 +1555,6 @@ document.addEventListener('DOMContentLoaded', tryInit);
 </script>
 
 <style>
-  /* 小球颜色变量 - 固定为 rgb(232, 122, 105) */
-  :root {
-    --ball-color: rgb(232, 122, 105);
-  }
-  
   .obsidian-graph {
     display: flex;
     flex-direction: column;
@@ -1694,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
   .graph-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--deep-text);
     margin: 0;
     line-height: 1.3;
   }
@@ -1719,9 +1603,9 @@ document.addEventListener('DOMContentLoaded', tryInit);
     display: flex;
     gap: 0.25rem;
     padding: 0.25rem;
-    background: color-mix(in srgb, var(--ball-color) 6%, transparent);
+    background: color-mix(in srgb, var(--primary) 6%, transparent);
     border-radius: 0.75rem;
-    border: 1px solid color-mix(in srgb, var(--ball-color) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 15%, transparent);
   }
   .tab-item {
     display: flex;
@@ -1730,7 +1614,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     padding: 0.5rem 0.875rem;
     border: none;
     background: transparent;
-    color: var(--text-primary);
+    color: var(--content-text);
     font-size: 0.875rem;
     font-weight: 500;
     border-radius: 0.5rem;
@@ -1738,13 +1622,12 @@ document.addEventListener('DOMContentLoaded', tryInit);
     transition: all 0.2s ease;
   }
   .tab-item:hover {
-    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
-    color: var(--text-primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
   }
   .tab-item svg {
     flex-shrink: 0;
     vertical-align: middle;
-    color: var(--ball-color);
   }
   .tab-item span {
     vertical-align: middle;
@@ -1770,14 +1653,14 @@ document.addEventListener('DOMContentLoaded', tryInit);
     border-radius: 0.5rem;
     border: 1px solid var(--line-color);
     background: var(--card-bg);
-    color: var(--ball-color);
+    color: var(--primary);
     font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.2s;
   }
   .back-btn:hover {
     background: var(--btn-plain-bg-hover);
-    border-color: var(--ball-color);
+    border-color: var(--primary);
   }
   .back-btn.hidden { display: none; }
 
@@ -1793,8 +1676,8 @@ document.addEventListener('DOMContentLoaded', tryInit);
     min-width: 280px; /* 设置最小宽度防止过窄 */
 }
   .search-box:focus-within {
-    border-color: var(--ball-color);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ball-color) 25%, transparent);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
   }
   .search-input {
     flex: 1;
@@ -1852,6 +1735,432 @@ document.addEventListener('DOMContentLoaded', tryInit);
     pointer-events: none;
   }
 
+  /* 节点 - 统一颜色 rgb(214, 69, 58) */
+  .graph-node {
+    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, stroke-width 0.2s ease;
+    cursor: pointer;
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
+    stroke-width: 1.5;
+  }
+  .graph-node.is-high {
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
+    stroke-width: 1.5;
+  }
+  .graph-node.is-low {
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
+    stroke-width: 1;
+  }
+  .graph-node.is-post {
+    fill: rgb(214, 69, 58);
+    stroke: rgb(180, 55, 45);
+    stroke-width: 1;
+  }
+  .graph-node.is-hovered {
+    filter: drop-shadow(0 0 8px rgba(214, 69, 58, 0.6)) drop-shadow(0 0 16px rgba(214, 69, 58, 0.4));
+    stroke-width: 2.5;
+  }
+  .graph-node.is-dragging {
+    filter: drop-shadow(0 0 12px rgba(214, 69, 58, 0.8)) drop-shadow(0 0 20px rgba(214, 69, 58, 0.5));
+    stroke-width: 3;
+  }
+
+  /* 高亮模式 */
+  .highlight-mode .graph-node { opacity: 0.25; }
+  .highlight-mode .graph-node.is-hovered { opacity: 1; }
+  .highlight-mode .graph-node.is-connected { opacity: 0.7; }
+  .highlight-mode .graph-link { opacity: 0.06; }
+  .highlight-mode .graph-link.is-connected { opacity: 1; }
+  .highlight-mode .graph-label { opacity: 0; }
+  .highlight-mode .graph-label.is-hovered,
+  .highlight-mode .graph-label.is-connected { opacity: 0.9; }
+
+  /* 搜索暗淡 */
+  .graph-node.is-dimmed { opacity: 0.12 !important; }
+  .graph-link.is-dimmed { opacity: 0.02 !important; }
+  .graph-label.is-dimmed { opacity: 0 !important; }
+
+  /* 连线 */
+  .graph-link {
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  /* 标签 */
+  .graph-label {
+    font-family: 'Roboto', 'LXGW WenKai Screen', sans-serif;
+    pointer-events: none;
+    text-shadow:
+      0 0 4px var(--page-bg),
+      0 0 8px var(--page-bg),
+      0 1px 2px var(--page-bg);
+    fill: rgb(80, 50, 30);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .graph-label.is-visible {
+    opacity: 0.85;
+  }
+
+  /* Tooltip */
+  .graph-tooltip {
+    position: absolute;
+    z-index: 100;
+    pointer-events: auto;
+  }
+  .graph-tooltip.hidden { display: none; }
+  
+  /* 卡片主体 */
+  .tooltip-card {
+    background: color-mix(in srgb, var(--primary) 8%, var(--page-bg));
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--primary) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+    backdrop-filter: blur(10px);
+    width: 320px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  
+  /* 关闭按钮 */
+  .tooltip-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+    border-radius: 50%;
+    color: var(--primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+    padding: 0;
+    line-height: 1;
+  }
+  .tooltip-close:hover {
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    transform: scale(1.1);
+  }
+  
+  /* 头部区域 */
+  .tooltip-header {
+    position: relative;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  .tooltip-name {
+    position: relative;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--primary-text-color);
+    margin: 0;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tooltip-name::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--primary);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tooltip-stats {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--content-meta);
+  }
+  .stat-item {
+    padding: 1px 6px;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  .stat-divider {
+    opacity: 0.5;
+  }
+  
+  /* 内容区域 */
+  .tooltip-content {
+    padding: 0;
+  }
+  .tooltip-section {
+    margin-bottom: 0;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--content-meta);
+    margin-bottom: 12px;
+  }
+  .section-icon {
+    font-size: 14px;
+  }
+  .is-post-tooltip .section-title.tag-only {
+    display: none;
+  }
+  
+  /* 文章列表 */
+  .tooltip-posts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: opacity 0.15s ease;
+  }
+  .post-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 6px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .post-item:hover {
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  .post-number {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .post-title {
+    flex: 1;
+    font-size: 15px;
+    color: var(--primary-text-color);
+    line-height: 1.4;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+  .post-title:hover {
+    color: var(--primary);
+    text-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  
+/* 分页区域 */
+.tooltip-pagination {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 16px;
+  padding: 14px 0;
+  margin: 14px 0 0 !important;
+  border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  width: 100%;
+  min-height: 48px;
+}
+  .pagination-btn {
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: 1px solid var(--primary) !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 20px !important;
+    color: var(--primary) !important;
+    line-height: 1 !important;
+    font-weight: bold !important;
+    float: none !important;
+    text-align: center !important;
+  }
+  .pagination-btn:hover:not([style*="opacity:0.5"]) {
+    background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+    border-color: color-mix(in srgb, var(--primary) 60%, transparent) !important;
+  }
+  .pagination-info {
+    font-size: 15px;
+    color: var(--content-text);
+    flex-shrink: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: center !important;
+    float: none !important;
+    font-weight: 500;
+  }
+  
+  /* 底部区域 */
+  .post-description {
+    font-size: 0.8125rem;
+    color: var(--content-text);
+    line-height: 1.5;
+    padding: 8px 10px;
+    background: color-mix(in oklch, var(--primary) 5%, transparent);
+    border-radius: 8px;
+    border-left: 3px solid var(--primary);
+  }
+  
+  /* 空状态 */
+  .empty-state {
+    text-align: center;
+    padding: 10px;
+    color: var(--content-meta);
+    font-size: 0.75rem;
+  }
+  
+  /* 标签区域 */
+  .tooltip-tags {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .tags-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--content-meta);
+    margin-bottom: 8px;
+  }
+  .tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .tag-item {
+    padding: 3px 10px;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+    font-size: 12px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+  .tag-clickable:hover {
+    background: color-mix(in srgb, var(--primary) 25%, transparent);
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+  }
+  .category-clickable:hover {
+    text-decoration: underline;
+  }
+  
+  /* 底部区域 */
+  .tooltip-footer {
+    margin-top: 14px;
+    padding: 14px 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  .tooltip-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+  .hint-icon {
+    font-size: 14px;
+    transition: transform 0.2s ease;
+  }
+  .hint-link {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--primary) !important;
+    font-weight: 600;
+    text-decoration: none !important;
+    width: 100%;
+    padding: 14px 20px;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--primary) 10%, transparent);
+    box-sizing: border-box;
+    cursor: pointer !important;
+    user-select: none;
+  }
+  .hint-link:hover {
+    background: color-mix(in srgb, var(--primary) 22%, transparent) !important;
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent) !important;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--primary) 18%, transparent) !important;
+    transform: translateY(-2px);
+    cursor: pointer !important;
+  }
+  .hint-link:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 6px color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  
+  /* 手机端响应式适配 */
+  @media (max-width: 480px) {
+    .tooltip-card {
+      width: calc(100vw - 32px) !important;
+      max-width: 280px;
+      padding: 14px 16px;
+      box-sizing: border-box;
+    }
+    
+    .tooltip-close {
+      top: 8px;
+      right: 10px;
+      width: 22px;
+      height: 22px;
+      font-size: 12px;
+    }
+    
+    .tooltip-name {
+      font-size: 16px;
+      line-height: 1.3;
+    }
+    
+    .tooltip-stats {
+      font-size: 12px;
+    }
+    
+    .post-description {
+      font-size: 0.75rem;
+      padding: 6px 8px;
+    }
+    
+    .post-item {
+      padding: 5px 6px;
+      font-size: 13px;
+    }
+    
+    .hint-link {
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+  }
+  
 
 
 
@@ -1878,7 +2187,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     position: absolute;
     bottom: 10px;
     right: 10px;
-    background: color-mix(in srgb, var(--ball-color) 20%, transparent);
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
     color: var(--deep-text);
     font-size: 0.6875rem;
     padding: 0.25rem 0.5rem;
@@ -1934,486 +2243,3 @@ document.addEventListener('DOMContentLoaded', tryInit);
     .back-btn { font-size: 0.8125rem; padding: 0.375rem 0.625rem; }
   }
 </style>
-
-<!-- Tooltip 全局样式 -->
-<!-- <style is:global>
-  /* Tooltip */
-  .graph-tooltip {
-    position: absolute;
-    z-index: 100;
-    pointer-events: auto;
-  }
-  .graph-tooltip.hidden { display: none; }
-  
-  /* 卡片主体 - 文章卡片 */
-  .tooltip-card-post {
-    background: color-mix(in srgb, var(--ball-color) 8%, var(--page-bg));
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 18px color-mix(in srgb, var(--ball-color) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--ball-color) 22%, transparent);
-    backdrop-filter: blur(10px);
-    width: 320px;
-    padding: 18px 20px;
-    position: relative;
-  }
-  
-  /* 卡片主体 - 标签/分类卡片 */
-  .tooltip-card-tag {
-    background: color-mix(in srgb, var(--ball-color) 8%, var(--page-bg));
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 4px 18px color-mix(in srgb, var(--ball-color) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--ball-color) 22%, transparent);
-    backdrop-filter: blur(10px);
-    width: 320px;
-    padding: 18px 20px;
-    position: relative;
-  }
-  
-  /* 关闭按钮 */
-  .tooltip-close {
-    position: absolute;
-    top: 10px;
-    right: 12px;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
-    border: 1px solid color-mix(in srgb, var(--ball-color) 20%, transparent);
-    border-radius: 50%;
-    color: var(--ball-color);
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    z-index: 10;
-    padding: 0;
-    line-height: 1;
-  }
-  .tooltip-close:hover {
-    background: color-mix(in srgb, var(--ball-color) 20%, transparent);
-    border-color: color-mix(in srgb, var(--ball-color) 40%, transparent);
-    transform: scale(1.1);
-  }
-  
-  /* 头部区域 */
-  .tooltip-header {
-    position: relative;
-    padding-bottom: 14px;
-    margin-bottom: 14px;
-    border-bottom: 1px solid color-mix(in srgb, var(--ball-color) 18%, transparent);
-  }
-  .tooltip-name {
-    position: relative;
-    font-weight: 700;
-    font-size: 18px;
-    color: var(--text-primary);
-    margin: 0;
-    line-height: 1.4;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .tooltip-name::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: var(--ball-color);
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .tooltip-name:hover {
-    transform: translateX(4px);
-  }
-  .tooltip-stats {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 6px;
-    font-size: 13px;
-    color: var(--content-meta);
-  }
-  .stat-item {
-    padding: 1px 6px;
-    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
-    color: var(--ball-color);
-    border-radius: 8px;
-    font-weight: 500;
-  }
-  .stat-divider {
-    opacity: 0.5;
-  }
-  
-  /* 内容区域 */
-  .tooltip-content {
-    padding: 0;
-  }
-  .tooltip-section {
-    margin-bottom: 0;
-  }
-  .section-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--content-meta);
-    margin-bottom: 12px;
-  }
-  .section-icon {
-    font-size: 14px;
-  }
-  
-  /* 文章列表 */
-  .tooltip-posts {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    transition: opacity 0.15s ease;
-  }
-  .post-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 6px;
-    border-radius: 8px;
-    transition: background 0.15s ease;
-    cursor: pointer;
-    text-decoration: none;
-  }
-  .post-item:hover {
-    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
-  }
-  .post-number {
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: color-mix(in srgb, var(--ball-color) 15%, transparent);
-    color: var(--ball-color);
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .post-title {
-    flex: 1;
-    font-size: 15px;
-    color: var(--text-primary);
-    line-height: 1.4;
-    text-decoration: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transform: translateX(0);
-    position: relative;
-    padding-left: 8px;
-  }
-  .post-title::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 0;
-    height: 60%;
-    background: linear-gradient(90deg, var(--ball-color) 0%, color-mix(in srgb, var(--ball-color) 60%, transparent) 100%);
-    border-radius: 2px;
-    transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .post-title:hover {
-    color: var(--ball-color);
-    text-shadow: 0 2px 8px color-mix(in srgb, var(--ball-color) 30%, transparent);
-    transform: translateX(6px);
-    padding-left: 12px;
-  }
-  .post-title:hover::before {
-    width: 4px;
-  }
-  
-  /* 分页区域 */
-  .tooltip-pagination {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 16px;
-    padding: 14px 0;
-    margin: 14px 0 0 !important;
-    border-top: 1px solid color-mix(in srgb, var(--ball-color) 18%, transparent);
-    width: 100%;
-    min-height: 48px;
-  }
-  .pagination-btn {
-    width: 36px !important;
-    height: 36px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: transparent !important;
-    border: 1px solid var(--ball-color) !important;
-    border-radius: 50% !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    flex-shrink: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    font-size: 20px !important;
-    color: var(--ball-color) !important;
-    line-height: 1 !important;
-    font-weight: bold !important;
-    float: none !important;
-    text-align: center !important;
-  }
-  .pagination-btn:hover:not([style*="opacity:0.5"]) {
-    background: color-mix(in srgb, var(--ball-color) 12%, transparent) !important;
-    border-color: color-mix(in srgb, var(--ball-color) 60%, transparent) !important;
-  }
-  .tooltip-pagination .pagination-info {
-    font-size: 15px;
-    color: var(--text-primary);
-    flex-shrink: 0;
-    margin: 0 !important;
-    padding: 0 !important;
-    text-align: center !important;
-    float: none !important;
-    font-weight: 500;
-  }
-  
-  /* 文章描述 */
-.post-description {
-  font-size: 0.8125rem;
-  color: var(--text-primary);
-  line-height: 1.5;
-  padding: 8px 10px 8px 18px; /* 左侧加宽一点点，给竖条留空间 */
-  background: color-mix(in oklch, var(--ball-color) 5%, transparent);
-  border-radius: 8px;
-  position: relative;
-  border: none; /* 去掉原来的粗边框，换成精致小竖条 */
-}
-
-/* 左侧装饰小竖条 ✅ */
-.post-description::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  background-color: var(--ball-color);
-  border-radius: 3px;
-}
-  
-  /* 空状态 */
-  .empty-state {
-    text-align: center;
-    padding: 10px;
-    color: var(--content-meta);
-    font-size: 0.75rem;
-  }
-  
-  /* 标签区域 */
-  .tooltip-tags {
-    margin-top: 8px;
-    padding-top: 8px;
-  }
-  .tags-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--content-meta);
-    margin-bottom: 8px;
-  }
-  .tags-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .tag-item {
-    padding: 3px 10px;
-    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
-    color: var(--ball-color);
-    font-size: 12px;
-    border-radius: 12px;
-    font-weight: 500;
-  }
-  .tag-clickable:hover {
-    background: color-mix(in srgb, var(--ball-color) 25%, transparent);
-    transform: scale(1.05);
-    transition: all 0.2s ease;
-  }
-  .category-clickable:hover {
-    background: color-mix(in srgb, var(--ball-color) 25%, transparent);
-    transform: scale(1.05);
-    transition: all 0.2s ease;
-  }
-  
-  /* 底部区域 */
-  .tooltip-footer {
-    margin-top: 14px;
-    padding: 14px 0 0;
-    border-top: 1px solid color-mix(in srgb, var(--ball-color) 18%, transparent);
-  }
-  .tooltip-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-  }
-  .hint-icon {
-    font-size: 14px;
-    transition: transform 0.2s ease;
-  }
-  .hint-link {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--ball-color) !important;
-    font-weight: 600;
-    text-decoration: none !important;
-    width: 100%;
-    padding: 14px 20px;
-    background: color-mix(in srgb, var(--ball-color) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--ball-color) 30%, transparent);
-    border-radius: 12px;
-    transition: all 0.25s ease;
-    box-shadow: 0 2px 10px color-mix(in srgb, var(--ball-color) 10%, transparent);
-    box-sizing: border-box;
-    cursor: pointer !important;
-    user-select: none;
-  }
-  .hint-link:hover {
-    background: color-mix(in srgb, var(--ball-color) 22%, transparent) !important;
-    border-color: color-mix(in srgb, var(--ball-color) 40%, transparent) !important;
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--ball-color) 18%, transparent) !important;
-    transform: translateY(-2px);
-    cursor: pointer !important;
-  }
-  .hint-link:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 6px color-mix(in srgb, var(--ball-color) 10%, transparent);
-  }
-  
-  /* 节点 - 使用小球颜色 */
-  .graph-node {
-    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, fill 0.25s ease;
-    cursor: pointer;
-    fill: var(--ball-color);
-    stroke: black;
-    stroke-width: 1.5;
-    stroke-opacity: 1;
-  }
-  .graph-node.is-high {
-    stroke-width: 1.5;
-  }
-  .graph-node.is-low {
-    stroke-width: 1;
-  }
-  .graph-node.is-post {
-    stroke-width: 1;
-  }
-  .graph-node.is-hovered {
-    fill: color-mix(in srgb, var(--ball-color) 85%, black);
-    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ball-color) 70%, transparent)) drop-shadow(0 0 16px color-mix(in srgb, var(--ball-color) 40%, transparent));
-    stroke-width: 0;
-    stroke-opacity: 0;
-  }
-  .graph-node.is-dragging {
-    fill: color-mix(in srgb, var(--ball-color) 85%, black);
-    filter: drop-shadow(0 0 12px color-mix(in srgb, var(--ball-color) 80%, transparent)) drop-shadow(0 0 20px color-mix(in srgb, var(--ball-color) 50%, transparent));
-    stroke-width: 0;
-    stroke-opacity: 0;
-  }
-
-  /* 高亮模式 */
-  .highlight-mode .graph-node { opacity: 0.25; }
-  .highlight-mode .graph-node.is-hovered { opacity: 1; }
-  .highlight-mode .graph-node.is-connected { opacity: 0.7; }
-  .highlight-mode .graph-link { opacity: 0.06; }
-  .highlight-mode .graph-link.is-connected { opacity: 1; }
-  /* 高亮模式下标签保持可见，只调整非hover/非connected标签的透明度 */
-  .highlight-mode .graph-label { opacity: 0.4; }
-  .highlight-mode .graph-label.is-hovered { opacity: 1; }
-  .highlight-mode .graph-label.is-connected { opacity: 0.7; }
-
-  /* 搜索暗淡 */
-  .graph-node.is-dimmed { opacity: 0.12 !important; }
-  .graph-link.is-dimmed { opacity: 0.02 !important; }
-  .graph-label.is-dimmed { opacity: 0 !important; }
-
-  /* 连线 */
-  .graph-link {
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-    stroke: color-mix(in srgb, var(--ball-color) 35%, transparent);
-  }
-
-  /* 标签 */
-  .graph-label {
-    font-family: 'Roboto', 'LXGW WenKai Screen', sans-serif;
-    pointer-events: none;
-    text-shadow:
-      0 0 4px var(--page-bg),
-      0 0 8px var(--page-bg),
-      0 1px 2px var(--page-bg);
-    fill: var(--text-primary);
-    opacity: 0.85;
-    transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .graph-label.is-hovered {
-    opacity: 1;
-    transform: translateY(-5px);
-  }
-
-  /* 手机端响应式适配 */
-  @media (max-width: 480px) {
-    .tooltip-card-post,
-    .tooltip-card-tag {
-      width: calc(100vw - 32px) !important;
-      max-width: 280px;
-      padding: 14px 16px;
-      box-sizing: border-box;
-    }
-    
-    .tooltip-close {
-      top: 8px;
-      right: 10px;
-      width: 22px;
-      height: 22px;
-      font-size: 12px;
-    }
-    
-    .tooltip-name {
-      font-size: 1
-      6px;
-      line-height: 1.3;
-    }
-    
-    .tooltip-stats {
-      font-size: 12px;
-    }
-    
-    .post-description {
-      font-size: 0.75rem;
-      padding: 6px 8px;
-    }
-    
-    .post-item {
-      padding: 5px 6px;
-      font-size: 13px;
-    }
-    
-    .hint-link {
-      padding: 12px 16px;
-      font-size: 13px;
-    }
-  }
-</style> -->
