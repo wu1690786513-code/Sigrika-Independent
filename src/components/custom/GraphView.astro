@@ -2301,6 +2301,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
 <style is:global>
      /* 节点 - 使用小球颜色 */
   .graph-node {
+    will-change: cx, cy, r, filter;
     transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, fill 0.25s ease;
     cursor: pointer;
     fill: var(--ball-color);
@@ -2348,6 +2349,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
 
   /* 连线 */
   .graph-link {
+    will-change: x1, y1, x2, y2;
     transition: opacity 0.2s ease;
     pointer-events: none;
     stroke: color-mix(in srgb, var(--ball-color) 35%, transparent);
@@ -2355,6 +2357,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
 
   /* 标签 */
   .graph-label {
+    will-change: x, y, opacity;
     font-family: 'Roboto', 'LXGW WenKai Screen', sans-serif;
     pointer-events: none;
     text-shadow:
