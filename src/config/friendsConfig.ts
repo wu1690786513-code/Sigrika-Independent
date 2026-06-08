@@ -84,7 +84,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://re.tsh520.cn/zl/tx.webp",
 		desc: "如果你喜欢那么欢迎来到我的世界！",
 		siteurl: "https://blog.tsh520.cn/",
-		tags: ["博客"],
+		tags: ["活跃"],
 		weight: 8,
 		enabled: true,
 	},
@@ -138,7 +138,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://seasir.top/assets/avatar.avif",
 	"desc": "人心中的成见是一座大山",
 	"siteurl": "https://seasir.top/",
-	"tags": ["博客"],
+	"tags": ["活跃"],
 	"weight": 8,
 	"enabled": true
 	},
