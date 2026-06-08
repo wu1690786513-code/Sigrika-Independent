@@ -154,7 +154,7 @@ export const friendsConfig: FriendLink[] = [
 	{
 	"title": "清羽飞扬",
 	"imgurl": "https://blog.liushen.fun/favicon.ico",
-	"desc": "拾取散落的时光碎片",
+	"desc": "柳影曳曳，清酒孤灯，扬笔撒墨，心境如霜",
 	"siteurl": "https://blog.liushen.fun/",
 	"tags": ["活跃"],
 	"weight": 8,
@@ -163,7 +163,7 @@ export const friendsConfig: FriendLink[] = [
 	{
 	"title": "安知鱼",
 	"imgurl": "https://npm.elemecdn.com/anzhiyu-blog-static@1.0.4/img/avatar.jpg",
-	"desc": "拾取散落的时光碎片",
+	"desc": "生活明朗，万物可爱",
 	"siteurl": "https://blog.anheyu.com/",
 	"tags": ["活跃"],
 	"weight": 8,
@@ -172,7 +172,7 @@ export const friendsConfig: FriendLink[] = [
 	{
 	"title": "雨雪冰屋",
 	"imgurl": "https://iamyukino.cn/favicon.ico",
-	"desc": "拾取散落的时光碎片",
+	"desc": "一隅雨雪一炉窝，可能会融化持久堆？",
 	"siteurl": "https://iamyukino.cn/",
 	"tags": ["博客"],
 	"weight": 8,
