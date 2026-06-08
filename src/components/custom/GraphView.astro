@@ -452,25 +452,28 @@ document.addEventListener('DOMContentLoaded', tryInit);
         const baseCharge = d.isPost ? -80 : -150;
         return baseCharge * mobileFactor;
       }).distanceMax(isMobile ? 150 : 220)) // 移动端减少作用距离
-      .force("center", d3.forceCenter(cx, cy).strength(isMobile ? 0.01 : 0.02))
-      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(isMobile ? 0.2 : 0.4))
+      .force("center", d3.forceCenter(cx, cy).strength(isMobile ? 0.08 : 0.02)) // 移动端增强向心力
+      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(isMobile ? 0.3 : 0.4))
       .force("boundary", () => {
-        if (isMobile) return; // 移动端禁用边界检测
+        const limit = boundaryR - 18; // 简化计算，不每次计算节点半径
         for (const node of nodes) {
           const dx = node.x - cx;
           const dy = node.y - cy;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const limit = boundaryR - (node.radius || 6) - 12;
-          if (dist > limit) {
-            const angle = Math.atan2(dy, dx);
-            node.x = cx + Math.cos(angle) * limit;
-            node.y = cy + Math.sin(angle) * limit;
+          // 使用平方比较避免开方运算，提高性能
+          const distSq = dx * dx + dy * dy;
+          const limitSq = limit * limit;
+          if (distSq > limitSq) {
+            // 使用近似方法计算角度，避免Math.atan2
+            const dist = Math.sqrt(distSq);
+            const factor = limit / dist;
+            node.x = cx + dx * factor;
+            node.y = cy + dy * factor;
           }
         }
       })
-      .alpha(isMobile ? 0.3 : 0.4)
-      .alphaDecay(isMobile ? 0.03 : 0.02) // 移动端更快衰减
-      .velocityDecay(isMobile ? 0.35 : 0.25) // 移动端更快减速
+      .alpha(isMobile ? 0.25 : 0.4)
+      .alphaDecay(isMobile ? 0.035 : 0.02) // 移动端更快衰减，更快稳定
+      .velocityDecay(isMobile ? 0.4 : 0.25) // 移动端更快减速
       .stop(); // 先停止，等待渲染后启动
 
     return sim;
