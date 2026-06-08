@@ -1933,11 +1933,8 @@ document.addEventListener('DOMContentLoaded', tryInit);
     .graph-stats { font-size: 0.75rem; }
     .back-btn { font-size: 0.8125rem; padding: 0.375rem 0.625rem; }
   }
-</style>
 
-<!-- Tooltip 全局样式 -->
-<!-- <style is:global>
-  /* Tooltip */
+   /* Tooltip */
   .graph-tooltip {
     position: absolute;
     z-index: 100;
@@ -2067,14 +2064,16 @@ document.addEventListener('DOMContentLoaded', tryInit);
     font-size: 14px;
   }
   
-  /* 文章列表 */
+  /* 文章列表容器 */
   .tooltip-posts {
     display: flex;
     flex-direction: column;
     gap: 8px;
     transition: opacity 0.15s ease;
   }
-  .post-item {
+  
+  /* 动态生成的内容需要 :global() */
+  :global(.post-item) {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -2084,10 +2083,10 @@ document.addEventListener('DOMContentLoaded', tryInit);
     cursor: pointer;
     text-decoration: none;
   }
-  .post-item:hover {
+  :global(.post-item:hover) {
     background: color-mix(in srgb, var(--ball-color) 10%, transparent);
   }
-  .post-number {
+  :global(.post-number) {
     width: 20px;
     height: 20px;
     display: flex;
@@ -2100,7 +2099,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .post-title {
+  :global(.post-title) {
     flex: 1;
     font-size: 15px;
     color: var(--text-primary);
@@ -2114,7 +2113,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     position: relative;
     padding-left: 8px;
   }
-  .post-title::before {
+  :global(.post-title)::before {
     content: '';
     position: absolute;
     left: 0;
@@ -2126,18 +2125,18 @@ document.addEventListener('DOMContentLoaded', tryInit);
     border-radius: 2px;
     transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
-  .post-title:hover {
+  :global(.post-title:hover) {
     color: var(--ball-color);
     text-shadow: 0 2px 8px color-mix(in srgb, var(--ball-color) 30%, transparent);
     transform: translateX(6px);
     padding-left: 12px;
   }
-  .post-title:hover::before {
+  :global(.post-title:hover::before) {
     width: 4px;
   }
   
-  /* 分页区域 */
-  .tooltip-pagination {
+  /* 分页区域 - 动态生成 */
+  :global(.tooltip-pagination) {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -2148,7 +2147,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     width: 100%;
     min-height: 48px;
   }
-  .pagination-btn {
+  :global(.pagination-btn) {
     width: 36px !important;
     height: 36px !important;
     display: flex !important;
@@ -2171,11 +2170,11 @@ document.addEventListener('DOMContentLoaded', tryInit);
     float: none !important;
     text-align: center !important;
   }
-  .pagination-btn:hover:not([style*="opacity:0.5"]) {
+  :global(.pagination-btn:hover:not([style*="opacity:0.5"])) {
     background: color-mix(in srgb, var(--ball-color) 12%, transparent) !important;
     border-color: color-mix(in srgb, var(--ball-color) 60%, transparent) !important;
   }
-  .tooltip-pagination .pagination-info {
+  :global(.tooltip-pagination .pagination-info) {
     font-size: 15px;
     color: var(--text-primary);
     flex-shrink: 0;
@@ -2186,40 +2185,38 @@ document.addEventListener('DOMContentLoaded', tryInit);
     font-weight: 500;
   }
   
-  /* 文章描述 */
-.post-description {
-  font-size: 0.8125rem;
-  color: var(--text-primary);
-  line-height: 1.5;
-  padding: 8px 10px 8px 18px; /* 左侧加宽一点点，给竖条留空间 */
-  background: color-mix(in oklch, var(--ball-color) 5%, transparent);
-  border-radius: 8px;
-  position: relative;
-  border: none; /* 去掉原来的粗边框，换成精致小竖条 */
-}
-
-/* 左侧装饰小竖条 ✅ */
-.post-description::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 18px;
-  background-color: var(--ball-color);
-  border-radius: 3px;
-}
+  /* 文章描述 - 动态生成 */
+  :global(.post-description) {
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+    padding: 8px 10px 8px 18px;
+    background: color-mix(in oklch, var(--ball-color) 5%, transparent);
+    border-radius: 8px;
+    position: relative;
+    border: none;
+  }
+  :global(.post-description)::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 18px;
+    background-color: var(--ball-color);
+    border-radius: 3px;
+  }
   
-  /* 空状态 */
-  .empty-state {
+  /* 空状态 - 动态生成 */
+  :global(.empty-state) {
     text-align: center;
     padding: 10px;
     color: var(--content-meta);
     font-size: 0.75rem;
   }
   
-  /* 标签区域 */
+  /* 标签区域容器 */
   .tooltip-tags {
     margin-top: 8px;
     padding-top: 8px;
@@ -2230,12 +2227,14 @@ document.addEventListener('DOMContentLoaded', tryInit);
     color: var(--content-meta);
     margin-bottom: 8px;
   }
-  .tags-list {
+  
+  /* 标签内容 - 动态生成 */
+  :global(.tags-list) {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
   }
-  .tag-item {
+  :global(.tag-item) {
     padding: 3px 10px;
     background: color-mix(in srgb, var(--ball-color) 10%, transparent);
     color: var(--ball-color);
@@ -2243,12 +2242,12 @@ document.addEventListener('DOMContentLoaded', tryInit);
     border-radius: 12px;
     font-weight: 500;
   }
-  .tag-clickable:hover {
+  :global(.tag-clickable:hover) {
     background: color-mix(in srgb, var(--ball-color) 25%, transparent);
     transform: scale(1.05);
     transition: all 0.2s ease;
   }
-  .category-clickable:hover {
+  :global(.category-clickable:hover) {
     background: color-mix(in srgb, var(--ball-color) 25%, transparent);
     transform: scale(1.05);
     transition: all 0.2s ease;
@@ -2302,7 +2301,13 @@ document.addEventListener('DOMContentLoaded', tryInit);
     box-shadow: 0 1px 6px color-mix(in srgb, var(--ball-color) 10%, transparent);
   }
   
-  /* 节点 - 使用小球颜色 */
+
+
+</style>
+
+<!-- Tooltip 全局样式 -->
+<style is:global>
+     /* 节点 - 使用小球颜色 */
   .graph-node {
     transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, fill 0.25s ease;
     cursor: pointer;
@@ -2416,4 +2421,5 @@ document.addEventListener('DOMContentLoaded', tryInit);
       font-size: 13px;
     }
   }
-</style> -->
+
+</style>
