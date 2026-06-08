@@ -1665,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
 <style>
   /* 小球颜色变量 - 固定为 rgb(232, 122, 105) */
   :root {
-    --ball-color: rgb(232, 122, 105);
+    --ball-color:  var(--primary);
   }
   
   .obsidian-graph {
@@ -2261,7 +2261,7 @@ document.addEventListener('DOMContentLoaded', tryInit);
     font-size: 14px;
     transition: transform 0.2s ease;
   }
-  .hint-link {
+  :global(.hint-link) {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
@@ -2281,14 +2281,14 @@ document.addEventListener('DOMContentLoaded', tryInit);
     cursor: pointer !important;
     user-select: none;
   }
-  .hint-link:hover {
+  .global(.hint-link:hover) {
     background: color-mix(in srgb, var(--ball-color) 22%, transparent) !important;
     border-color: color-mix(in srgb, var(--ball-color) 40%, transparent) !important;
     box-shadow: 0 4px 16px color-mix(in srgb, var(--ball-color) 18%, transparent) !important;
     transform: translateY(-2px);
     cursor: pointer !important;
   }
-  .hint-link:active {
+  .global(.hint-link:active) {
     transform: translateY(0);
     box-shadow: 0 1px 6px color-mix(in srgb, var(--ball-color) 10%, transparent);
   }
