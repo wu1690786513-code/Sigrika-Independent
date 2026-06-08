@@ -153,7 +153,7 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 	"title": "清羽飞扬",
-	"imgurl": "https://p.liiiu.cn/i/2025/03/13/67d2fc82d329c.webp",
+	"imgurl": "https://blog.liushen.fun/favicon.ico",
 	"desc": "拾取散落的时光碎片",
 	"siteurl": "https://blog.liushen.fun/",
 	"tags": ["Blogs"],
@@ -165,6 +165,15 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://npm.elemecdn.com/anzhiyu-blog-static@1.0.4/img/avatar.jpg",
 	"desc": "拾取散落的时光碎片",
 	"siteurl": "https://blog.anheyu.com/",
+	"tags": ["Blogs"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "雨雪冰屋",
+	"imgurl": "https://iamyukino.cn/favicon.ico",
+	"desc": "拾取散落的时光碎片",
+	"siteurl": "https://iamyukino.cn/",
 	"tags": ["Blogs"],
 	"weight": 8,
 	"enabled": true
