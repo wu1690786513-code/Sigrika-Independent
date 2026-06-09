@@ -9,7 +9,8 @@ const postsCollection = defineCollection({
 			"**/*.{md,mdx}",
 			"!**/Template/**",
 			"!**/00_私密日记/**",
-			"!**/00_Attachments/**"
+			"!**/00_Attachments/**",
+			"!**/.obsidian/**"
 		]
 		}),
 	schema: z.object({
