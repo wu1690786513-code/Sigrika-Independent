@@ -17,11 +17,28 @@ function getPostUrlBySlug(slug) {
 	return `/posts/${slugWithoutExt}/`;
 }
 
+// 缓存映射表和上次扫描时间
+let cachedTitleToSlugMap = null;
+let cachedContentDir = null;
+let lastScanTime = 0;
+const CACHE_TTL = 30000; // 缓存有效期 30 秒
+
 /**
- * 构建标题到 slug 的映射表
+ * 构建标题到 slug 的映射表（带缓存）
  */
 function buildTitleToSlugMap(contentDir) {
+	// 检查缓存是否有效
+	const now = Date.now();
+	if (
+		cachedTitleToSlugMap &&
+		cachedContentDir === contentDir &&
+		now - lastScanTime < CACHE_TTL
+	) {
+		return cachedTitleToSlugMap;
+	}
+
 	const titleToSlugMap = new Map();
+	let fileCount = 0;
 
 	function scanDirectory(dir) {
 		try {
@@ -50,6 +67,8 @@ function buildTitleToSlugMap(contentDir) {
 				}
 
 				try {
+					fileCount++;
+					
 					// 优先使用 UTF-8 编码读取
 					let content = fs.readFileSync(fullPath, "utf-8");
 					let titleMatch = content.match(/^title:\s*([^\n]+)$/m);
@@ -68,7 +87,6 @@ function buildTitleToSlugMap(contentDir) {
 
 					if (titleMatch && titleMatch[1]) {
 						const title = titleMatch[1].trim();
-						// 跳过无效的标题（如空标题或仅包含分隔符）
 						if (!title || title === "---" || title.trim().length === 0) {
 							continue;
 						}
@@ -76,19 +94,16 @@ function buildTitleToSlugMap(contentDir) {
 						let slug = null;
 						if (slugMatch && slugMatch[1]) {
 							slug = slugMatch[1].trim();
-							// 如果 slug 为空或为无效值，则使用文件路径
 							if (!slug || slug === "---" || slug.trim().length === 0) {
 								slug = null;
 							}
 						}
 						
 						if (!slug) {
-							// 如果没有 slug，使用文件在 posts 目录下的相对路径（转换为小写）
 							const relativePath = path.relative(contentDir, fullPath);
 							slug = removeFileExtension(relativePath).replace(/\\/g, "/").toLowerCase();
 						}
 						
-						// 确保 slug 不为空且不为无效值
 						if (slug && slug !== "---" && slug.trim().length > 0) {
 							titleToSlugMap.set(title.toLowerCase(), slug);
 						}
@@ -104,7 +119,13 @@ function buildTitleToSlugMap(contentDir) {
 
 	scanDirectory(contentDir);
 	
-	// 调试日志：打印映射表中的所有条目
+	// 更新缓存
+	cachedTitleToSlugMap = titleToSlugMap;
+	cachedContentDir = contentDir;
+	lastScanTime = now;
+	
+	console.log(`[remark-wikilinks] 扫描完成: ${fileCount} 个文件, 构建了 ${titleToSlugMap.size} 个映射`);
+	
 	if (process.env.DEBUG_WIKILINKS) {
 		console.log("[remark-wikilinks] 调试: 标题到 slug 映射表:");
 		for (const [title, slug] of titleToSlugMap.entries()) {
