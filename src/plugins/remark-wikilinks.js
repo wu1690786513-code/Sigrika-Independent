@@ -117,16 +117,22 @@ function buildTitleToSlugMap(contentDir) {
 
 /**
  * 解析 wikilink 语法
+ * 支持格式：
+ * - [[文章标题]]
+ * - [[文章标题|显示文本]]
+ * - [[文章标题#锚点]]
+ * - [[文章标题#锚点|显示文本]]
  */
 function parseWikilinks(text) {
-	const wikilinkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+	const wikilinkRegex = /\[\[([^\]|#]+)(?:#([^\]|]+))?(?:\|([^\]]+))?\]\]/g;
 	const matches = [];
 
 	let match;
 	while ((match = wikilinkRegex.exec(text)) !== null) {
 		matches.push({
-			title: match[1].trim(),
-			displayText: match[2]?.trim(),
+			title: match[1].trim(),           // 文章标题
+			anchor: match[2]?.trim(),        // 锚点（可选）
+			displayText: match[3]?.trim(),   // 显示文本（可选）
 			fullMatch: match[0],
 			index: match.index,
 		});
@@ -159,7 +165,7 @@ export function remarkWikilinks(options = {}) {
 			let lastIndex = 0;
 
 			for (const match of matches) {
-				const { title, displayText, fullMatch, index: matchStart } = match;
+				const { title, anchor, displayText, fullMatch, index: matchStart } = match;
 				const matchEnd = matchStart + fullMatch.length;
 
 				if (matchStart > lastIndex) {
@@ -173,7 +179,12 @@ export function remarkWikilinks(options = {}) {
 
 				if (slug) {
 					const linkText = displayText ? displayText : title;
-					const url = getPostUrlBySlug(slug);
+					let url = getPostUrlBySlug(slug);
+					
+					// 如果有锚点，添加到 URL 后面（需要编码）
+					if (anchor) {
+						url += "#" + encodeURIComponent(anchor);
+					}
 
 					newNodes.push({
 						type: "link",
