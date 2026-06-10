@@ -13,6 +13,14 @@ export const fontConfig = {
 	// 也可以使用本地字体文件，需自行进行字体子集化处理，否则会因为字体文件庞大增加带宽负担导致页面加载缓慢甚至无法加载
 	// 如果进行字体子集化处理，会导致动态内容（如评论，Bangumi等）无法正确显示字体，因此不推荐使用本地字体文件
 	fonts: {
+		"lxgw-wenkai-screen": {
+		id: "lxgw-wenkai-screen",
+		name: "霞鹜文楷 屏幕版",
+		src: "https://cdn.bootcdn.net/ajax/libs/lxgw-wenkai-screen-webfont/1.7.0/style.min.css",
+		family: "LXGW WenKai Screen",
+		weight: 400,
+		display: "swap" as const,
+		},
 		// 系统字体
 		system: {
 			id: "system",
@@ -68,14 +76,6 @@ export const fontConfig = {
 			family: "MiSans",
 			weight: 600,
 			display: "swap" as const,
-		},
-		"lxgw-wenkai-screen": {
-		id: "lxgw-wenkai-screen",
-		name: "霞鹜文楷 屏幕版",
-		src: "https://cdn.bootcdn.net/ajax/libs/lxgw-wenkai-screen-webfont/1.7.0/style.min.css",
-		family: "LXGW WenKai Screen",
-		weight: 400,
-		display: "swap" as const,
 		},
 	},
 

@@ -6,12 +6,10 @@ const postsCollection = defineCollection({
 		loader: glob({
 		base: "./src/content/posts",
 		pattern: [
-			"**/*.{md,mdx}",
-			"!**/Template/**",
-			"!**/00_私密日记/**",
-			"!**/00_Attachments/**",
-			"!**/.obsidian/**"
-		]
+		"**/*.{md,mdx}",
+		"!**/{Template,00_私密日记,00_Attachments,.obsidian}/**",
+		"!**/*.json",
+		],
 		}),
 	schema: z.object({
 		title: z.string(),
