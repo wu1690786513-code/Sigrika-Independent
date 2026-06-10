@@ -178,6 +178,15 @@ export const friendsConfig: FriendLink[] = [
 	"weight": 8,
 	"enabled": true
 	},
+	{
+	"title": "桃之夭夭",
+	"imgurl": "https://tzyy-1330068502.cos.ap-beijing.myqcloud.com/1.png",
+	"desc": "桃之夭夭的小屋？",
+	"siteurl": "https://taozhiyy.top",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
 	// 	title: "小曹同学",
 	// 	imgurl: "https://pic.caotx.cn/home/friends/avatars_0_myweb.webp",
 	// 	desc: "春祺夏安 秋绥冬禧",

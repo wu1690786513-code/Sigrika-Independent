@@ -124,7 +124,7 @@ function buildTitleToSlugMap(contentDir) {
 	cachedContentDir = contentDir;
 	lastScanTime = now;
 	
-	console.log(`[remark-wikilinks] 扫描完成: ${fileCount} 个文件, 构建了 ${titleToSlugMap.size} 个映射`);
+	console.log(`[remark-wikilinks] 扫描完成: ${fileCount} 篇文章, 构建了 ${titleToSlugMap.size} 个映射`);
 	
 	if (process.env.DEBUG_WIKILINKS) {
 		console.log("[remark-wikilinks] 调试: 标题到 slug 映射表:");
