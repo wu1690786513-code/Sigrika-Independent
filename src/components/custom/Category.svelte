@@ -19,18 +19,32 @@
         count: number;
     }
 
-    let posts: PostEntry[] = [];
-    let tags: TagInfo[] = [];
-    let isLoading = true;
-    let displayTitle = "";
-
     const masonryEnabled = false;
     const columnWidth = 280;
     const defaultLayout = "list";
     const mobileDefaultLayout = "grid";
-    const initialLayoutClass = defaultLayout === "grid" 
-        ? "post-grid-auto grid-mode" 
-        : "flex flex-col gap-4 md:gap-4 list-mode";
+
+    function getInitialLayoutClass() {
+        const effectiveDefault = typeof window !== 'undefined' && window.innerWidth < 780 
+            ? mobileDefaultLayout 
+            : defaultLayout;
+        const savedLayout = typeof window !== 'undefined' ? localStorage.getItem("postListLayout") : null;
+        const effectiveLayout = savedLayout || effectiveDefault;
+        
+        if (typeof window !== 'undefined' && window.innerWidth < 380) {
+            return "post-grid-auto grid-mode";
+        }
+        
+        return effectiveLayout === "grid" 
+            ? "post-grid-auto grid-mode" 
+            : "flex flex-col gap-4 md:gap-4 list-mode";
+    }
+
+    let posts: PostEntry[] = [];
+    let tags: TagInfo[] = [];
+    let isLoading = true;
+    let displayTitle = "";
+    let currentLayoutClass = typeof window !== 'undefined' ? getInitialLayoutClass() : "flex flex-col gap-4 md:gap-4 list-mode";
 
     function getPostUrlBySlug(slug: string) {
         return `/posts/${slug}/`;
@@ -61,10 +75,10 @@
             currentLayout = "grid";
         }
 
-        updatePostListLayout(currentLayout);
+        updatePostListLayout(currentLayout, true);
     }
 
-    function updatePostListLayout(layout: string) {
+    function updatePostListLayout(layout: string, force = false) {
         const postListContainer = document.getElementById("post-list-container");
         if (!postListContainer) return;
 
@@ -89,12 +103,13 @@
             }
         };
 
-        if (!currentLayout) {
+        if (!currentLayout || force) {
             applyClasses();
             return;
         }
 
         if (currentLayout === layout) {
+            applyClasses();
             return;
         }
 
@@ -109,8 +124,9 @@
         }, 200);
     }
 
-    async function init() {
+    async function init(resetLayout = true) {
         try {
+            isLoading = true;
             const response = await fetch("/api/allPostMeta.json");
             const allPosts = await response.json();
             
@@ -132,6 +148,8 @@
                 const decodedTag = decodeURIComponent(tagName);
                 filteredPosts = allPosts.filter((p: PostEntry) => p.tags && p.tags.includes(decodedTag));
                 displayTitle = `#${decodedTag}`;
+            } else {
+                displayTitle = "";
             }
 
             if (categoryName && tagName) {
@@ -157,7 +175,12 @@
             posts = filteredPosts;
             isLoading = false;
             
-            setTimeout(initLayout, 50);
+            if (resetLayout) {
+                setTimeout(() => {
+                    currentLayoutClass = getInitialLayoutClass();
+                    setTimeout(initLayout, 50);
+                }, 10);
+            }
         } catch (error) {
             console.error("Error loading posts:", error);
             isLoading = false;
@@ -183,6 +206,40 @@
                 setTimeout(initLayout, 100);
             }
         });
+
+        let previousUrl = window.location.href;
+        const checkUrlChange = () => {
+            const newUrl = window.location.href;
+            if (newUrl !== previousUrl) {
+                const prevParams = new URLSearchParams(previousUrl.split('?')[1]);
+                const newParams = new URLSearchParams(newUrl.split('?')[1]);
+                const prevCategory = prevParams.get('category');
+                const newCategory = newParams.get('category');
+                const prevTag = prevParams.get('tag');
+                const newTag = newParams.get('tag');
+                
+                if (prevCategory !== newCategory || prevTag !== newTag) {
+                    previousUrl = newUrl;
+                    init();
+                } else {
+                    previousUrl = newUrl;
+                }
+            }
+        };
+
+        window.addEventListener("popstate", checkUrlChange);
+        
+        let pushStateOriginal = window.history.pushState;
+        window.history.pushState = function(state: any, title: string, url?: string) {
+            pushStateOriginal.call(this, state, title, url);
+            setTimeout(checkUrlChange, 50);
+        };
+        
+        let replaceStateOriginal = window.history.replaceState;
+        window.history.replaceState = function(state: any, title: string, url?: string) {
+            replaceStateOriginal.call(this, state, title, url);
+            setTimeout(checkUrlChange, 50);
+        };
     });
 </script>
 
@@ -196,13 +253,14 @@
         <div class="card-base px-8 py-6 mb-6">
             <div class="flex items-center gap-4">
                 <div class="w-14 h-14 rounded-full bg-[var(--primary)]/10 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-[var(--primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-[var(--primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
                         <polyline points="14 2 14 8 20 8"/>
                         <line x1="16" x2="8" y1="13" y2="13"/>
                         <line x1="16" x2="8" y1="17" y2="17"/>
                         <line x1="10" x2="8" y1="9" y2="9"/>
-                    </svg>
+                    </svg> -->
+                   <svg width="1em" height="1em" class="text-3xl text-(--primary)" data-astro-cid-2pzlju63="true" data-icon="material-symbols:folder-open">  <symbol id="ai:material-symbols:folder-open" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8H4v10l2.4-8h17.1l-2.575 8.575q-.2.65-.737 1.038T19 20z"></path></symbol><use href="#ai:material-symbols:folder-open"></use>  </svg>
                 </div>
                 <div>
                     <h1 class="text-2xl font-bold text-90">{displayTitle}</h1>
@@ -217,10 +275,7 @@
     {#if tags.length > 0}
         <div class="card-base px-6 py-5 mb-6">
             <div class="flex items-center gap-3 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-[var(--primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/>
-                    <path d="M7 7h.01"/>
-                </svg>
+                <svg width="1em" height="1em" class="text-lg text-(--primary)" data-astro-cid-2pzlju63="true" data-icon="material-symbols:label">   <symbol id="ai:material-symbols:label" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h11q.475 0 .9.213t.7.587L22 12l-5.4 7.2q-.275.375-.7.588T15 20z"></path></symbol><use href="#ai:material-symbols:label"></use>  </svg>
                 <span class="text-sm font-medium text-90">标签</span>
                 <span class="text-xs text-30">({tags.length})</span>
             </div>
@@ -244,7 +299,7 @@
     <!-- 文章列表 - 完全按照 1.txt 的结构 -->
     <div
         id="post-list-container"
-        class={`transition-all duration-500 ease-in-out mb-4 ${initialLayoutClass}`}
+        class={`transition-all duration-500 ease-in-out mb-4 ${currentLayoutClass}`}
         data-default-layout={defaultLayout}
         data-mobile-default-layout={mobileDefaultLayout}
         data-masonry-enabled={masonryEnabled}
@@ -289,7 +344,7 @@
                                     <svg width="1em" height="1em" class="text-xl text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
                                         <path d="m6.5 22l-1-1v-4H2v-2l1.5-2.65V10H2V8h9v2H9.5v2.35L11 15v2H7.5v4zm5.5-2v-2h8V6H2q0-.825.588-1.412T4 4h16q.825 0 1.413.588T22 6v12q0 .825-.587 1.413T20 20z"/>
                                     </svg>
-                                    <span class="text-sm text-yellow-600 dark:text-yellow-400">置顶</span>
+                                    <span class="text-sm text-[var(--primary)]">置顶</span>
                                 </div>
                             {/if}
                             <!-- publish date -->
