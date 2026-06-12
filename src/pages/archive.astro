@@ -1,6 +1,6 @@
 ---
 import ArchivePanel from "@components/controls/ArchivePanel.svelte";
-import Category from "@components/custom/Category.astro";
+import Category from "@components/custom/Category.svelte";
 import I18nKey from "@i18n/i18nKey";
 import { i18n } from "@i18n/translation";
 import MainGridLayout from "@layouts/MainGridLayout.astro";
@@ -8,43 +8,22 @@ import { getSortedPostsList } from "@/utils/content-utils";
 
 const sortedPostsList = await getSortedPostsList();
 
-// 获取 URL 参数
 const urlParams = new URL(Astro.request.url).searchParams;
 const categoryName = urlParams.get("category") || undefined;
 const tagName = urlParams.get("tag") || undefined;
 const uncategorized = urlParams.has("uncategorized");
 
-// 判断是否显示分类内容
-const showCategory = categoryName || uncategorized;
+const showCategory = categoryName || tagName || uncategorized;
 ---
 
 <MainGridLayout title={i18n(I18nKey.archive)}>
-  <script is:inline>
-    (function() {
-      var p = new URLSearchParams(location.search);
-      var cat = p.get("category") || "";
-      var tag = p.get("tag") || "";
-      var unc = p.get("uncategorized");
-      var t = cat || (unc ? "未分类" : "") || (tag ? "#" + tag : "");
-      if (t) {
-        requestAnimationFrame(function() {
-          var el = document.querySelector(".banner-page-title-text");
-          if (el) el.textContent = t;
-        });
-      }
-    })();
-  </script>
-  
   {showCategory ? (
-    <Category 
-      categoryName={categoryName} 
-      uncategorized={uncategorized} 
-    />
+    <Category client:only="svelte" />
   ) : (
     <>
       <ArchivePanel sortedPosts={sortedPostsList} client:only="svelte" />
       <div class="mt-6">
-        <Category />
+        <Category client:only="svelte" />
       </div>
     </>
   )}

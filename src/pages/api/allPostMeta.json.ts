@@ -9,10 +9,14 @@ export async function GET() {
 			title: post.data.title,
 			description: post.data.description,
 			published: post.data.published.getTime(),
-			category: post.data.category || "",
+			updated: post.data.updated?.getTime() || null,
+			category: post.data.category || null,
+			tags: post.data.tags || [],
+			image: post.data.image || null,
+			draft: post.data.draft || false,
+			pinned: post.data.pinned || false,
 			password: !!post.data.password,
 		}))
-		// 日历按纯日期排序，忽略置顶
 		.sort((a, b) => b.published - a.published);
 
 	return new Response(JSON.stringify(allPostsData));
