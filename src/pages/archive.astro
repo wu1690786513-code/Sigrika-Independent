@@ -43,7 +43,9 @@ const showCategory = categoryName || uncategorized;
   ) : (
     <>
       <ArchivePanel sortedPosts={sortedPostsList} client:only="svelte" />
-      <Category />
+      <div class="mt-6">
+        <Category />
+      </div>
     </>
   )}
 </MainGridLayout>

@@ -22,21 +22,24 @@ const allPosts = await getCollection("posts", ({ data }) => {
   return import.meta.env.PROD ? data.draft !== true : true;
 }) as PostEntry[];
 
-// 过滤该分类下的文章
+// 过滤该分类下的文章（与 ArchivePanel 保持一致的逻辑）
 const filteredPosts = allPosts.filter((post) => {
-  const postCategory = post.data.category?.trim() || "";
-  const uncategorizedKey = i18n(I18nKey.uncategorized).toLowerCase();
+  const postCategory = post.data.category;
 
   if (uncategorized) {
-    // 未分类：没有分类或分类为空/未分类
-    return !postCategory || postCategory.toLowerCase() === uncategorizedKey;
+    // 未分类：没有分类
+    return !postCategory;
   }
 
   if (!categoryName) {
     return true;
   }
 
-  return postCategory === categoryName;
+  // 使用解码后的分类名称进行比较（支持 URL 编码）
+  const decodedCategoryName = decodeURIComponent(categoryName).trim();
+  
+  // 与 ArchivePanel 一致：检查文章分类是否匹配
+  return postCategory && postCategory === decodedCategoryName;
 });
 
 // 按日期排序

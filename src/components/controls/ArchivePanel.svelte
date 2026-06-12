@@ -9,10 +9,7 @@ export let tags: string[] = [];
 export let categories: string[] = [];
 export let sortedPosts: Post[] = [];
 
-const params = new URLSearchParams(window.location.search);
-tags = params.has("tag") ? params.getAll("tag") : [];
-categories = params.has("category") ? params.getAll("category") : [];
-const uncategorized = params.get("uncategorized");
+let uncategorized: string | null = null;
 
 interface Post {
 	id: string;
@@ -97,6 +94,12 @@ function formatFilterSummary(filters: ActiveFilter[]) {
 }
 
 onMount(async () => {
+	// 从 URL 参数获取筛选条件
+	const params = new URLSearchParams(window.location.search);
+	tags = params.has("tag") ? params.getAll("tag") : [];
+	categories = params.has("category") ? params.getAll("category") : [];
+	uncategorized = params.get("uncategorized");
+
 	let filteredPosts: Post[] = sortedPosts;
 	const currentFilters: ActiveFilter[] = [];
 
