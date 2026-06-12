@@ -23,6 +23,9 @@
     const columnWidth = 280;
     const defaultLayout = "list";
     const mobileDefaultLayout = "grid";
+    const coverWidth = "30%";
+    const descriptionClampLines = 2;
+    const showTags = true;
 
     function getInitialLayoutClass() {
         const effectiveDefault = typeof window !== 'undefined' && window.innerWidth < 780 
@@ -44,7 +47,20 @@
     let tags: TagInfo[] = [];
     let isLoading = true;
     let displayTitle = "";
-    let currentLayoutClass = typeof window !== 'undefined' ? getInitialLayoutClass() : "flex flex-col gap-4 md:gap-4 list-mode";
+    let currentLayoutClass = "flex flex-col gap-4 md:gap-4 list-mode";
+    
+    // 客户端初始化时更新布局类
+    function updateLayoutClass() {
+        if (typeof window === 'undefined') return;
+        
+        const savedLayout = localStorage.getItem("postListLayout");
+        const effectiveDefault = window.innerWidth < 780 ? mobileDefaultLayout : defaultLayout;
+        const effectiveLayout = window.innerWidth < 380 ? 'grid' : (savedLayout || effectiveDefault);
+        
+        currentLayoutClass = effectiveLayout === "grid" 
+            ? "post-grid-auto grid-mode" 
+            : "flex flex-col gap-4 md:gap-4 list-mode";
+    }
 
     function getPostUrlBySlug(slug: string) {
         return `/posts/${slug}/`;
@@ -87,20 +103,19 @@
         const currentLayout = isCurrentGrid ? "grid" : (isCurrentList ? "list" : null);
 
         const applyClasses = () => {
-            postListContainer.classList.remove("list-mode", "grid-mode", "post-grid-auto");
+            postListContainer.classList.remove("list-mode", "grid-mode", "post-grid-auto", "flex", "flex-col", "gap-4", "md:gap-4");
             if (layout === "grid") {
                 postListContainer.classList.add("grid-mode");
-                postListContainer.classList.remove("flex", "flex-col");
-                if (masonryEnabled) {
-                    postListContainer.classList.remove("post-grid-auto");
-                } else {
+                if (!masonryEnabled) {
                     postListContainer.classList.add("post-grid-auto");
                 }
             } else {
-                postListContainer.classList.add("list-mode");
-                postListContainer.classList.add("flex", "flex-col", "gap-4", "md:gap-4");
-                postListContainer.classList.remove("post-grid-auto");
+                postListContainer.classList.add("list-mode", "flex", "flex-col", "gap-4", "md:gap-4");
             }
+            // 同步更新响应式变量
+            currentLayoutClass = layout === "grid" 
+                ? "post-grid-auto grid-mode" 
+                : "flex flex-col gap-4 md:gap-4 list-mode";
         };
 
         if (!currentLayout || force) {
@@ -125,8 +140,11 @@
     }
 
     async function init(resetLayout = true) {
+        isLoading = true;
+        posts = [];
+        tags = [];
+        
         try {
-            isLoading = true;
             const response = await fetch("/api/allPostMeta.json");
             const allPosts = await response.json();
             
@@ -173,14 +191,22 @@
                 .map(([name, count]) => ({ name, count }));
 
             posts = filteredPosts;
-            isLoading = false;
             
             if (resetLayout) {
+                const savedLayout = localStorage.getItem("postListLayout");
+                const effectiveDefault = window.innerWidth < 780 ? mobileDefaultLayout : defaultLayout;
+                const effectiveLayout = (window.innerWidth < 380 ? "grid" : savedLayout) || effectiveDefault;
+                
+                currentLayoutClass = effectiveLayout === "grid" 
+                    ? "post-grid-auto grid-mode" 
+                    : "flex flex-col gap-4 md:gap-4 list-mode";
+                
                 setTimeout(() => {
-                    currentLayoutClass = getInitialLayoutClass();
-                    setTimeout(initLayout, 50);
-                }, 10);
+                    initLayout();
+                }, 0);
             }
+            
+            isLoading = false;
         } catch (error) {
             console.error("Error loading posts:", error);
             isLoading = false;
@@ -188,6 +214,15 @@
     }
 
     onMount(() => {
+        // 先更新布局类（解决 SSR 与客户端 hydration 时序问题）
+        updateLayoutClass();
+        
+        // 确保布局容器有正确的初始类
+        const postListContainer = document.getElementById("post-list-container");
+        if (postListContainer && currentLayoutClass) {
+            postListContainer.className = `transition-all duration-500 ease-in-out mb-4 ${currentLayoutClass}`;
+        }
+        
         init();
 
         let resizeTimeout;
@@ -198,7 +233,7 @@
 
         window.addEventListener("layoutChange", (event: any) => {
             const newLayout = event.detail.layout;
-            updatePostListLayout(newLayout);
+            updatePostListLayout(newLayout, true);  // 强制重新应用布局
         });
 
         document.addEventListener("visibilitychange", () => {
@@ -211,14 +246,16 @@
         const checkUrlChange = () => {
             const newUrl = window.location.href;
             if (newUrl !== previousUrl) {
-                const prevParams = new URLSearchParams(previousUrl.split('?')[1]);
-                const newParams = new URLSearchParams(newUrl.split('?')[1]);
+                const prevParams = new URLSearchParams(previousUrl.includes('?') ? previousUrl.split('?')[1] : '');
+                const newParams = new URLSearchParams(newUrl.includes('?') ? newUrl.split('?')[1] : '');
                 const prevCategory = prevParams.get('category');
                 const newCategory = newParams.get('category');
                 const prevTag = prevParams.get('tag');
                 const newTag = newParams.get('tag');
+                const prevUncategorized = prevParams.has('uncategorized');
+                const newUncategorized = newParams.has('uncategorized');
                 
-                if (prevCategory !== newCategory || prevTag !== newTag) {
+                if (prevCategory !== newCategory || prevTag !== newTag || prevUncategorized !== newUncategorized) {
                     previousUrl = newUrl;
                     init();
                 } else {
@@ -229,16 +266,31 @@
 
         window.addEventListener("popstate", checkUrlChange);
         
+        const observeUrlChange = () => {
+            let lastUrl = window.location.href;
+            const observer = new MutationObserver(() => {
+                if (window.location.href !== lastUrl) {
+                    lastUrl = window.location.href;
+                    checkUrlChange();
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        };
+        
+        observeUrlChange();
+        
         let pushStateOriginal = window.history.pushState;
         window.history.pushState = function(state: any, title: string, url?: string) {
-            pushStateOriginal.call(this, state, title, url);
-            setTimeout(checkUrlChange, 50);
+            const result = pushStateOriginal.call(this, state, title, url);
+            setTimeout(checkUrlChange, 0);
+            return result;
         };
         
         let replaceStateOriginal = window.history.replaceState;
         window.history.replaceState = function(state: any, title: string, url?: string) {
-            replaceStateOriginal.call(this, state, title, url);
-            setTimeout(checkUrlChange, 50);
+            const result = replaceStateOriginal.call(this, state, title, url);
+            setTimeout(checkUrlChange, 0);
+            return result;
         };
     });
 </script>
@@ -296,7 +348,39 @@
         </div>
     {/if}
 
-    <!-- 文章列表 - 完全按照 1.txt 的结构 -->
+    <!-- 立即执行脚本：防止 SSR 与客户端 hydration 时序问题导致的布局闪烁 -->
+    <script>
+        (function() {
+            const defaultLayout = "list";
+            const mobileDefaultLayout = "grid";
+            
+            const savedLayout = localStorage.getItem('postListLayout');
+            const effectiveDefault = window.innerWidth < 780 ? mobileDefaultLayout : defaultLayout;
+            const effectiveLayout = window.innerWidth < 380 ? 'grid' : (savedLayout || effectiveDefault);
+
+            const container = document.getElementById('post-list-container');
+            
+            if (container) {
+                // 禁用过渡动画
+                container.style.transition = 'none';
+
+                // 移除所有布局类
+                container.classList.remove('list-mode', 'grid-mode', 'post-grid-auto', 'flex', 'flex-col', 'gap-4', 'md:gap-4');
+
+                if (effectiveLayout === 'grid') {
+                    container.classList.add('grid-mode', 'post-grid-auto');
+                } else {
+                    container.classList.add('list-mode', 'flex', 'flex-col', 'gap-4', 'md:gap-4');
+                }
+
+                // 强制重排后恢复过渡动画
+                container.offsetHeight;
+                container.style.transition = '';
+            }
+        })();
+    </script>
+
+    <!-- 文章列表 - 完全按照 PostCard.astro 的结构 -->
     <div
         id="post-list-container"
         class={`transition-all duration-500 ease-in-out mb-4 ${currentLayoutClass}`}
@@ -304,28 +388,26 @@
         data-mobile-default-layout={mobileDefaultLayout}
         data-masonry-enabled={masonryEnabled}
         data-column-width={columnWidth}
-        style={`--post-card-min-width: ${columnWidth}px;`}
+        style={`--post-card-min-width: ${columnWidth}px; --coverWidth: ${coverWidth}; --descriptionClampLines: ${descriptionClampLines};`}
     >
         {#if posts.length > 0}
             {#each posts as entry, index}
-                <!-- 使用与 PostCard.astro 完全相同的结构 -->
                 <div
-                    class="post-card-wrapper
+                    class="post-card-wrapper card-base flex flex-col-reverse w-full rounded-(--radius-large) overflow-hidden relative post-card-item
                            {entry.image ? 'has-cover' : 'no-cover'}
-                           {entry.pinned ? 'pinned' : ''}
-                           card-base flex flex-col-reverse w-full rounded-[var(--radius-large)] overflow-hidden relative post-card-item"
+                           {entry.pinned ? 'pinned' : ''}"
                     style={`animation-delay: calc(var(--content-delay) + ${index * 50}ms);`}
                 >
                     <div
-                        class="post-card-content
-                               pl-4 md:pl-9 pr-4 md:pr-2 pt-4 md:pt-7 pb-4 md:pb-7 relative flex flex-col h-full
-                               ${entry.image ? '' : 'w-full md:w-[calc(100%-52px-12px)]'}"
+                        class="post-card-content pl-4 md:pl-9 pr-4 md:pr-2 pt-4 md:pt-7 pb-4 md:pb-7 relative flex flex-col h-full
+                               {!entry.image ? 'w-full md:w-[calc(100%-52px-12px)]' : ''}"
                     >
                         <a
                             href={getPostUrlBySlug(entry.id)}
                             class="post-card-title transition group w-full block font-bold mb-3 text-3xl text-90
-                                hover:text-[var(--primary)]
-                                before:w-1 before:h-5 before:rounded-md before:bg-[var(--primary)]
+                                hover:text-(--primary) dark:hover:text-(--primary)
+                                active:text-(--title-active) dark:active:text-(--title-active)
+                                before:w-1 before:h-5 before:rounded-md before:bg-(--primary)
                                 before:absolute before:top-[35px] before:left-[18px] before:hidden md:before:block"
                         >
                             {entry.title}
@@ -337,7 +419,7 @@
                             {/if}
                         </a>
 
-                        <!-- PostMetadata 替代 -->
+                        <!-- PostMetadata -->
                         <div class="post-meta-root flex flex-wrap text-neutral-500 dark:text-neutral-400 items-center gap-4 gap-x-4 gap-y-2 mb-4 post-meta">
                             {#if entry.pinned}
                                 <div class="pinned-btn flex items-center gap-1 bg-[var(--btn-regular-bg)] rounded-md px-2 py-1.5 font-bold">
@@ -354,7 +436,7 @@
                                         <path d="M5 22q-.825 0-1.412-.587T3 20V6q0-.825.588-1.412T5 4h1V3q0-.425.288-.712T7 2t.713.288T8 3v1h8V3q0-.425.288-.712T17 2t.713.288T18 3v1h1q.825 0 1.413.588T21 6v14q0 .825-.587 1.413T19 22zm0-2h14V10H5zM5 8h14V6H5zm0 0V6z"/>
                                     </svg>
                                 </div>
-                                <span class="text-50 text-sm font-medium">
+                                <span class="text-(--content-meta) text-sm font-medium">
                                     {formatDate(entry.published)}
                                 </span>
                             </div>
@@ -366,7 +448,7 @@
                                             <path d="M6 15.325q.35-.175.725-.25T7.5 15H8V4h-.5q-.625 0-1.062.438T6 5.5zM10 15h8V4h-8zm-4 .325V4zM7.5 22q-1.45 0-2.475-1.025T4 18.5v-13q0-1.45 1.025-2.475T7.5 2H18q.825 0 1.413.587T20 4v12.525q0 .2-.162.363t-.588.362q-.35.175-.55.5t-.2.75t.2.763t.55.487t.55.413t.2.562v.25q0 .425-.288.725T19 22zm0-2h9.325q-.15-.35-.237-.712T16.5 18.5q0-.4.075-.775t.25-.725H7.5q-.65 0-1.075.438T6 18.5q0 .65.425 1.075T7.5 20"/>
                                         </svg>
                                     </div>
-                                    <a href={`/archive/?category=${encodeURIComponent(entry.category)}`} class="category-link text-sm font-medium text-50 hover:text-[var(--primary)] dark:hover:text-[var(--primary)] whitespace-nowrap relative">
+                                    <a href={`/archive/?category=${encodeURIComponent(entry.category)}`} class="category-link text-sm font-medium text-(--content-meta) hover:text-(--primary) dark:hover:text-(--primary) whitespace-nowrap relative">
                                         {entry.category}
                                     </a>
                                 </div>
@@ -374,39 +456,44 @@
                         </div>
 
                         <!-- description -->
-                        <div class="transition text-75 md:pr-4 description grow" title={entry.description}>
+                        <div
+                            class="transition text-(--content) md:pr-4 description grow description-clamped"
+                            title={entry.description}
+                        >
                             {entry.description}
                         </div>
 
                         <!-- tags -->
-                        <div class="text-sm text-black/30 dark:text-white/30 flex flex-wrap gap-2 transition stats pt-3">
-                            {#if entry.tags && entry.tags.length > 0}
-                                {#each entry.tags.slice(0, 4) as tag}
-                                    <a
-                                        href={getTagUrl(tag)}
-                                        class="btn-regular h-6 text-xs px-2 py-1 rounded-md
-                                               transition-all duration-200 hover:scale-105 active:scale-95"
-                                    >
-                                        #{tag.trim()}
-                                    </a>
-                                {/each}
-                            {:else}
-                                <span class="text-xs text-30">无标签</span>
-                            {/if}
-                        </div>
+                        {#if showTags}
+                            <div class="text-sm text-black/30 dark:text-white/30 flex flex-wrap gap-2 transition stats pt-3">
+                                {#if entry.tags && entry.tags.length > 0}
+                                    {#each entry.tags.slice(0, 4) as tag}
+                                        <a
+                                            href={getTagUrl(tag)}
+                                            class="btn-regular h-6 text-xs px-2 py-1 rounded-md
+                                                   transition-all duration-200 hover:scale-105 active:scale-95"
+                                        >
+                                            #{tag.trim()}
+                                        </a>
+                                    {/each}
+                                {:else}
+                                    <span class="text-xs text-(--content-meta)">无标签</span>
+                                {/if}
+                            </div>
+                        {/if}
                     </div>
 
                     {#if entry.image}
                         <a
                             href={getPostUrlBySlug(entry.id)}
-                            class="post-card-image group w-full md:w-[30%] aspect-2/1 md:aspect-auto
+                            class="post-card-image group w-full md:w-(--coverWidth) aspect-2/1 md:aspect-auto
                                    relative md:absolute md:top-4 md:bottom-4 md:right-4
-                                   rounded-[var(--radius-large)] md:rounded-xl overflow-hidden"
+                                   rounded-(--radius-large) md:rounded-xl overflow-hidden"
                         >
                             <div class="absolute pointer-events-none z-10 w-full h-full group-hover:bg-black/30 group-active:bg-black/50 transition" />
                             <div class="absolute pointer-events-none z-20 w-full h-full flex items-center justify-center">
                                 <div class="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="transition opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 text-white text-2xl md:text-3xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="transition opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 text-white text-2xl md:text-5xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="m9 18 6-6-6-6"/>
                                     </svg>
                                 </div>
@@ -422,10 +509,10 @@
                         <a
                             href={getPostUrlBySlug(entry.id)}
                             class="post-card-enter-btn flex btn-regular w-13
-                                   absolute right-3 top-3 bottom-3 rounded-xl bg-[var(--enter-btn-bg)]
-                                   hover:bg-[var(--enter-btn-bg-hover)] active:bg-[var(--enter-btn-bg-active)] active:scale-95"
+                                   absolute right-3 top-3 bottom-3 rounded-xl bg-(--enter-btn-bg)
+                                   hover:bg-(--enter-btn-bg-hover) active:bg-(--enter-btn-bg-active) active:scale-95"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="transition text-[var(--primary)] text-4xl mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="transition text-(--primary) text-4xl mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="m9 18 6-6-6-6"/>
                             </svg>
                         </a>
@@ -447,7 +534,7 @@
     </div>
 {/if}
 
-<style>
+<style define:vars={{ coverWidth, descriptionClampLines }}>
     :global(.post-grid-auto) {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(var(--post-card-min-width, 320px), 1fr));
@@ -455,6 +542,12 @@
     }
 
     @media (max-width: 767px) {
+        :global(.list-mode .post-meta-root) {
+            transform: scale(0.72) !important;
+            transform-origin: top left !important;
+            margin-bottom: 0.25rem !important;
+            width: 139% !important;
+        }
         :global(.list-mode :global(.post-meta)) {
             margin-bottom: 0.25rem !important;
             gap: 0.25rem !important;
@@ -470,224 +563,209 @@
         transform: translateY(10px);
     }
 
-    .description {
+    .description-clamped {
         display: -webkit-box;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
+        -webkit-line-clamp: var(--descriptionClampLines);
+        line-clamp: var(--descriptionClampLines);
     }
 
-    /* === 分类链接 hover 渐变色块效果 === */
+    /* === 分类链接 hover 色块效果 === */
     .category-link {
         padding: 0.25rem 0.5rem;
         border-radius: 4px;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         z-index: 1;
-    }
-
-    .category-link::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 50%, var(--primary-light) 100%);
-        border-radius: 4px;
-        opacity: 0;
-        transform: scale(0.8);
-        transition: opacity 0.3s ease, transform 0.3s ease;
-        z-index: -1;
+        background-color: transparent;
     }
 
     .category-link:hover {
-        color: white !important;
+        background-color: var(--btn-regular-bg);
+        color: var(--primary) !important;
     }
 
-    .category-link:hover::before {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    /* === 网格模式样式 === */
-    #post-list-container.grid-mode :global(.post-card-wrapper) {
-        flex-direction: column-reverse !important;
-        height: 100% !important;
-        justify-content: flex-end !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-card-image) {
-        width: 100% !important;
-        position: relative !important;
-        top: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-        border-radius: var(--radius-large) var(--radius-large) 0 0 !important;
-        max-height: none !important;
-        aspect-ratio: 2/1 !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-card-content) {
-        width: 100% !important;
-        padding: 1rem !important;
-        height: auto !important;
-        flex-grow: 1 !important;
-    }
-
-    #post-list-container.grid-mode :global(.has-cover .post-card-content) {
-        padding-top: 0.8rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.no-cover .post-card-content) {
-        padding-right: 4.5rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-card-title) {
-        font-size: 1.35rem !important;
-        line-height: 1.75rem !important;
-        margin-bottom: 0.5rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-card-title::before) {
-        display: none !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-meta) {
-        margin-bottom: 0.5rem !important;
-        gap: 0.5rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-meta .text-xl) {
-        font-size: 1rem !important;
-        line-height: 1.25rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.meta-icon) {
-        width: 1.5rem !important;
-        height: 1.5rem !important;
-        margin-right: 0.25rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-meta .text-sm) {
-        font-size: 0.75rem !important;
-        line-height: 1rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-meta .pinned-btn) {
-        padding: 0.25rem 0.375rem !important;
-    }
-
-    #post-list-container.grid-mode :global(.description) {
-        flex-grow: 0 !important;
-    }
-
-    #post-list-container.grid-mode :global(.stats) {
-        margin-top: auto !important;
-    }
-
-    #post-list-container.grid-mode :global(.post-card-enter-btn) {
-        display: flex !important;
-    }
-
-    /* === 列表模式样式 === */
-    /* 默认移动端样式 */
-    #post-list-container.list-mode :global(.post-card-wrapper) {
+    /* === 列表模式移动端样式 === */
+    :global(.list-mode) .post-card-wrapper {
         flex-direction: row !important;
-        align-items: stretch !important;
     }
 
-    #post-list-container.list-mode :global(.has-cover .post-card-content) {
+    :global(.list-mode) .has-cover .post-card-content {
         width: calc(100% - 9rem - 0.75rem) !important;
         padding: 0.75rem 0.5rem 0.75rem 0.75rem !important;
-        position: relative !important;
-        flex-grow: 1 !important;
     }
 
-    #post-list-container.list-mode :global(.has-cover .post-card-image) {
+    :global(.list-mode) .has-cover .post-card-image {
         position: absolute !important;
         top: 0.5rem !important;
         bottom: 0.5rem !important;
         right: 0.5rem !important;
         width: 9rem !important;
-        border-radius: 0.75rem !important;
         aspect-ratio: auto !important;
-        max-height: calc(100% - 1rem) !important;
-        object-fit: cover !important;
+        border-radius: 0.75rem !important;
     }
 
-    #post-list-container.list-mode :global(.post-card-title) {
+    :global(.list-mode) .post-card-title {
         font-size: 1.125rem !important;
         line-height: 1.75rem !important;
         margin-bottom: 0.5rem !important;
     }
 
-    #post-list-container.list-mode :global(.post-card-title::before) {
+    :global(.list-mode) .post-card-title::before {
         display: none !important;
     }
 
-    #post-list-container.list-mode :global(.no-cover .post-card-content) {
+    :global(.list-mode) .stats {
+        gap: 0.25rem !important;
+    }
+
+    :global(.list-mode) .no-cover .post-card-content {
         width: calc(100% - 52px - 12px) !important;
     }
 
-    #post-list-container.list-mode :global(.post-card-enter-btn) {
+    :global(.list-mode) .post-card-enter-btn {
         display: flex !important;
     }
 
-    #post-list-container.list-mode :global(.stats a) {
+    :global(.list-mode) .stats a {
         font-size: 0.65rem !important;
         padding: 0.125rem 0.375rem !important;
         height: 1.25rem !important;
     }
 
-    /* === 桌面端列表模式样式 === */
+    /* === 列表模式桌面端样式 === */
     @media (min-width: 768px) {
-        #post-list-container.list-mode :global(.post-card-wrapper) {
+        :global(.list-mode) .post-card-wrapper {
             flex-direction: row !important;
-            align-items: stretch !important;
         }
 
-        #post-list-container.list-mode :global(.has-cover .post-card-content) {
-            width: calc(100% - 30% - 1.5rem) !important;
+        :global(.list-mode) .has-cover .post-card-content {
+            width: calc(100% - var(--coverWidth) - 1.5rem) !important;
             padding: 1.75rem 0.5rem 1.75rem 2.25rem !important;
-            position: relative !important;
-            flex-grow: 1 !important;
         }
 
-        #post-list-container.list-mode :global(.has-cover .post-card-image) {
-            position: absolute !important;
+        :global(.list-mode) .has-cover .post-card-image {
             top: 1rem !important;
             bottom: 1rem !important;
             right: 1rem !important;
-            width: 30% !important;
+            width: var(--coverWidth) !important;
             border-radius: 0.75rem !important;
-            aspect-ratio: auto !important;
-            max-height: calc(100% - 2rem) !important;
-            object-fit: cover !important;
         }
 
-        #post-list-container.list-mode :global(.post-card-title) {
+        :global(.list-mode) .post-card-title {
             font-size: 1.5rem !important;
             line-height: 2rem !important;
             margin-bottom: 0.75rem !important;
         }
 
-        #post-list-container.list-mode :global(.post-card-title::before) {
+        :global(.list-mode) .post-card-title::before {
             display: block !important;
             top: 2.25rem !important;
             height: 1rem !important;
-            left: 0 !important;
         }
 
-        #post-list-container.list-mode :global(.no-cover .post-card-content) {
-            width: calc(100% - 52px - 12px) !important;
+        :global(.list-mode) .description {
+            font-size: inherit !important;
         }
 
-        #post-list-container.list-mode :global(.post-card-enter-btn) {
-            display: flex !important;
-        }
-
-        #post-list-container.list-mode :global(.stats a) {
+        :global(.list-mode) .stats a {
             font-size: 0.75rem !important;
             padding: 0.25rem 0.5rem !important;
             height: 1.5rem !important;
         }
+
+        :global(.list-mode) .no-cover .post-card-content {
+            width: calc(100% - 52px - 12px) !important;
+        }
+
+        :global(.list-mode) .post-card-enter-btn {
+            display: flex !important;
+        }
+    }
+
+    /* === 网格模式样式 === */
+    :global(.grid-mode) .post-card-wrapper {
+        flex-direction: column-reverse !important;
+        height: 100% !important;
+        justify-content: flex-end !important;
+    }
+
+    :global(.grid-mode) .post-card-content {
+        width: 100% !important;
+        height: auto !important;
+        flex-grow: 1 !important;
+        padding: 1rem !important;
+    }
+
+    :global(.grid-mode) .post-card-image {
+        position: relative !important;
+        top: auto !important;
+        bottom: auto !important;
+        right: auto !important;
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: var(--radius-large) var(--radius-large) 0 0 !important;
+        max-height: none !important;
+        aspect-ratio: 2/1 !important;
+    }
+
+    :global(.grid-mode) .description {
+        flex-grow: 0 !important;
+    }
+
+    :global(.grid-mode) .stats {
+        margin-top: auto !important;
+    }
+
+    :global(.grid-mode) .has-cover .post-card-content {
+        padding-top: 0.8rem !important;
+    }
+
+    :global(.grid-mode) .has-cover .post-card-title::before {
+        top: 1.3rem !important;
+    }
+
+    :global(.grid-mode) .no-cover .post-card-content {
+        width: calc(100% - 52px - 12px) !important;
+        padding-right: 4.5rem !important;
+    }
+
+    :global(.grid-mode) .post-card-enter-btn {
+        display: flex !important;
+    }
+
+    :global(.grid-mode) .post-card-title {
+        font-size: 1.35rem !important;
+        line-height: 1.75rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    :global(.grid-mode) .post-card-title::before {
+        display: none !important;
+    }
+
+    :global(.grid-mode) .post-meta {
+        margin-bottom: 0.5rem !important;
+        gap: 0.5rem !important;
+    }
+
+    :global(.grid-mode) .post-meta .text-xl {
+        font-size: 1rem !important;
+        line-height: 1.25rem !important;
+    }
+
+    :global(.grid-mode) .meta-icon {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        margin-right: 0.25rem !important;
+    }
+
+    :global(.grid-mode) .post-meta .text-sm {
+        font-size: 0.75rem !important;
+        line-height: 1rem !important;
+    }
+
+    :global(.grid-mode) .post-meta .pinned-btn {
+        padding: 0.25rem 0.375rem !important;
     }
 </style>
