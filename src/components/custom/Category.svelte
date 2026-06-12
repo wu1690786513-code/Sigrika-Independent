@@ -283,18 +283,39 @@
                         </a>
 
                         <!-- PostMetadata 替代 -->
-                        <div class="post-meta mb-4 flex items-center flex-wrap gap-2 text-sm text-40">
+                        <div class="post-meta-root flex flex-wrap text-neutral-500 dark:text-neutral-400 items-center gap-4 gap-x-4 gap-y-2 mb-4 post-meta">
                             {#if entry.pinned}
-                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded pinned-btn">置顶</span>
+                                <div class="pinned-btn flex items-center gap-1 bg-[var(--btn-regular-bg)] rounded-md px-2 py-1.5 font-bold">
+                                    <svg width="1em" height="1em" class="text-xl text-[var(--primary)]" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="m6.5 22l-1-1v-4H2v-2l1.5-2.65V10H2V8h9v2H9.5v2.35L11 15v2H7.5v4zm5.5-2v-2h8V6H2q0-.825.588-1.412T4 4h16q.825 0 1.413.588T22 6v12q0 .825-.587 1.413T20 20z"/>
+                                    </svg>
+                                    <span class="text-sm text-yellow-600 dark:text-yellow-400">置顶</span>
+                                </div>
                             {/if}
+                            <!-- publish date -->
+                            <div class="flex items-center">
+                                <div class="meta-icon">
+                                    <svg width="1em" height="1em" class="text-xl" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M5 22q-.825 0-1.412-.587T3 20V6q0-.825.588-1.412T5 4h1V3q0-.425.288-.712T7 2t.713.288T8 3v1h8V3q0-.425.288-.712T17 2t.713.288T18 3v1h1q.825 0 1.413.588T21 6v14q0 .825-.587 1.413T19 22zm0-2h14V10H5zM5 8h14V6H5zm0 0V6z"/>
+                                    </svg>
+                                </div>
+                                <span class="text-50 text-sm font-medium">
+                                    {formatDate(entry.published)}
+                                </span>
+                            </div>
+                            <!-- categories -->
                             {#if entry.category}
-                                <a href={`/archive/?category=${encodeURIComponent(entry.category)}`} class="text-xs text-[var(--primary)] hover:underline">
-                                    {entry.category}
-                                </a>
+                                <div class="flex items-center">
+                                    <div class="meta-icon">
+                                        <svg width="1em" height="1em" class="text-xl" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M6 15.325q.35-.175.725-.25T7.5 15H8V4h-.5q-.625 0-1.062.438T6 5.5zM10 15h8V4h-8zm-4 .325V4zM7.5 22q-1.45 0-2.475-1.025T4 18.5v-13q0-1.45 1.025-2.475T7.5 2H18q.825 0 1.413.587T20 4v12.525q0 .2-.162.363t-.588.362q-.35.175-.55.5t-.2.75t.2.763t.55.487t.55.413t.2.562v.25q0 .425-.288.725T19 22zm0-2h9.325q-.15-.35-.237-.712T16.5 18.5q0-.4.075-.775t.25-.725H7.5q-.65 0-1.075.438T6 18.5q0 .65.425 1.075T7.5 20"/>
+                                        </svg>
+                                    </div>
+                                    <a href={`/archive/?category=${encodeURIComponent(entry.category)}`} class="category-link text-sm font-medium text-50 hover:text-[var(--primary)] dark:hover:text-[var(--primary)] whitespace-nowrap relative">
+                                        {entry.category}
+                                    </a>
+                                </div>
                             {/if}
-                            <span class="text-xs text-30">
-                                {formatDate(entry.published)}
-                            </span>
                         </div>
 
                         <!-- description -->
@@ -328,10 +349,12 @@
                                    rounded-[var(--radius-large)] md:rounded-xl overflow-hidden"
                         >
                             <div class="absolute pointer-events-none z-10 w-full h-full group-hover:bg-black/30 group-active:bg-black/50 transition" />
-                            <div class="absolute pointer-events-none z-20 w-full h-full flex items-center justify-center ">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="transition opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 text-white text-5xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="m9 18 6-6-6-6"/>
-                                </svg>
+                            <div class="absolute pointer-events-none z-20 w-full h-full flex items-center justify-center">
+                                <div class="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="transition opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 text-white text-2xl md:text-3xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="m9 18 6-6-6-6"/>
+                                    </svg>
+                                </div>
                             </div>
                             <img 
                                 src={entry.image.trim()} 
@@ -400,8 +423,40 @@
         line-clamp: 2;
     }
 
+    /* === 分类链接 hover 渐变色块效果 === */
+    .category-link {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        z-index: 1;
+    }
+
+    .category-link::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 50%, var(--primary-light) 100%);
+        border-radius: 4px;
+        opacity: 0;
+        transform: scale(0.8);
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        z-index: -1;
+    }
+
+    .category-link:hover {
+        color: white !important;
+    }
+
+    .category-link:hover::before {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    /* === 网格模式样式 === */
     #post-list-container.grid-mode :global(.post-card-wrapper) {
         flex-direction: column-reverse !important;
+        height: 100% !important;
+        justify-content: flex-end !important;
     }
 
     #post-list-container.grid-mode :global(.post-card-image) {
@@ -411,11 +466,19 @@
         right: auto !important;
         bottom: auto !important;
         border-radius: var(--radius-large) var(--radius-large) 0 0 !important;
+        max-height: none !important;
+        aspect-ratio: 2/1 !important;
     }
 
     #post-list-container.grid-mode :global(.post-card-content) {
         width: 100% !important;
         padding: 1rem !important;
+        height: auto !important;
+        flex-grow: 1 !important;
+    }
+
+    #post-list-container.grid-mode :global(.has-cover .post-card-content) {
+        padding-top: 0.8rem !important;
     }
 
     #post-list-container.grid-mode :global(.no-cover .post-card-content) {
@@ -437,7 +500,139 @@
         gap: 0.5rem !important;
     }
 
+    #post-list-container.grid-mode :global(.post-meta .text-xl) {
+        font-size: 1rem !important;
+        line-height: 1.25rem !important;
+    }
+
+    #post-list-container.grid-mode :global(.meta-icon) {
+        width: 1.5rem !important;
+        height: 1.5rem !important;
+        margin-right: 0.25rem !important;
+    }
+
+    #post-list-container.grid-mode :global(.post-meta .text-sm) {
+        font-size: 0.75rem !important;
+        line-height: 1rem !important;
+    }
+
     #post-list-container.grid-mode :global(.post-meta .pinned-btn) {
         padding: 0.25rem 0.375rem !important;
+    }
+
+    #post-list-container.grid-mode :global(.description) {
+        flex-grow: 0 !important;
+    }
+
+    #post-list-container.grid-mode :global(.stats) {
+        margin-top: auto !important;
+    }
+
+    #post-list-container.grid-mode :global(.post-card-enter-btn) {
+        display: flex !important;
+    }
+
+    /* === 列表模式样式 === */
+    /* 默认移动端样式 */
+    #post-list-container.list-mode :global(.post-card-wrapper) {
+        flex-direction: row !important;
+        align-items: stretch !important;
+    }
+
+    #post-list-container.list-mode :global(.has-cover .post-card-content) {
+        width: calc(100% - 9rem - 0.75rem) !important;
+        padding: 0.75rem 0.5rem 0.75rem 0.75rem !important;
+        position: relative !important;
+        flex-grow: 1 !important;
+    }
+
+    #post-list-container.list-mode :global(.has-cover .post-card-image) {
+        position: absolute !important;
+        top: 0.5rem !important;
+        bottom: 0.5rem !important;
+        right: 0.5rem !important;
+        width: 9rem !important;
+        border-radius: 0.75rem !important;
+        aspect-ratio: auto !important;
+        max-height: calc(100% - 1rem) !important;
+        object-fit: cover !important;
+    }
+
+    #post-list-container.list-mode :global(.post-card-title) {
+        font-size: 1.125rem !important;
+        line-height: 1.75rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    #post-list-container.list-mode :global(.post-card-title::before) {
+        display: none !important;
+    }
+
+    #post-list-container.list-mode :global(.no-cover .post-card-content) {
+        width: calc(100% - 52px - 12px) !important;
+    }
+
+    #post-list-container.list-mode :global(.post-card-enter-btn) {
+        display: flex !important;
+    }
+
+    #post-list-container.list-mode :global(.stats a) {
+        font-size: 0.65rem !important;
+        padding: 0.125rem 0.375rem !important;
+        height: 1.25rem !important;
+    }
+
+    /* === 桌面端列表模式样式 === */
+    @media (min-width: 768px) {
+        #post-list-container.list-mode :global(.post-card-wrapper) {
+            flex-direction: row !important;
+            align-items: stretch !important;
+        }
+
+        #post-list-container.list-mode :global(.has-cover .post-card-content) {
+            width: calc(100% - 30% - 1.5rem) !important;
+            padding: 1.75rem 0.5rem 1.75rem 2.25rem !important;
+            position: relative !important;
+            flex-grow: 1 !important;
+        }
+
+        #post-list-container.list-mode :global(.has-cover .post-card-image) {
+            position: absolute !important;
+            top: 1rem !important;
+            bottom: 1rem !important;
+            right: 1rem !important;
+            width: 30% !important;
+            border-radius: 0.75rem !important;
+            aspect-ratio: auto !important;
+            max-height: calc(100% - 2rem) !important;
+            object-fit: cover !important;
+        }
+
+        #post-list-container.list-mode :global(.post-card-title) {
+            font-size: 1.5rem !important;
+            line-height: 2rem !important;
+            margin-bottom: 0.75rem !important;
+        }
+
+        #post-list-container.list-mode :global(.post-card-title::before) {
+            display: block !important;
+            top: 2.25rem !important;
+            height: 1rem !important;
+            left: 0 !important;
+        }
+
+        #post-list-container.list-mode :global(.no-cover .post-card-content) {
+            width: calc(100% - 52px - 12px) !important;
+        }
+
+        #post-list-container.list-mode :global(.post-card-enter-btn) {
+            display: flex !important;
+        }
+
+        #post-list-container.list-mode :global(.stats a) {
+            font-size: 0.75rem !important;
+            padding: 0.25rem 0.5rem !important;
+            height: 1.5rem !important;
+        }
     }
 </style>
