@@ -84,7 +84,7 @@ export const friendsConfig: FriendLink[] = [
 		imgurl: "https://re.tsh520.cn/zl/tx.webp",
 		desc: "如果你喜欢那么欢迎来到我的世界！",
 		siteurl: "https://blog.tsh520.cn/",
-		tags: ["活跃"],
+		tags: ["博客"],
 		weight: 8,
 		enabled: true,
 	},
@@ -138,7 +138,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://seasir.top/assets/avatar.avif",
 	"desc": "人心中的成见是一座大山",
 	"siteurl": "https://seasir.top/",
-	"tags": ["活跃"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -156,7 +156,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://blog.liushen.fun/favicon.ico",
 	"desc": "柳影曳曳，清酒孤灯，扬笔撒墨，心境如霜",
 	"siteurl": "https://blog.liushen.fun/",
-	"tags": ["活跃"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
@@ -165,7 +165,7 @@ export const friendsConfig: FriendLink[] = [
 	"imgurl": "https://npm.elemecdn.com/anzhiyu-blog-static@1.0.4/img/avatar.jpg",
 	"desc": "生活明朗，万物可爱",
 	"siteurl": "https://blog.anheyu.com/",
-	"tags": ["活跃"],
+	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
