@@ -31,6 +31,11 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	});
 
 	// 根据配置决定是否添加友链，在siteConfig关闭pages.friends时导航栏不显示友链
+	links.push({
+		name: "友链",
+		url: "/friends/",
+		icon: "material-symbols:group",
+	});
 
 	
 
