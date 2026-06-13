@@ -182,8 +182,17 @@ export const friendsConfig: FriendLink[] = [
 	{
 	"title": "桃之夭夭",
 	"imgurl": "https://tzyy-1330068502.cos.ap-beijing.myqcloud.com/1.png",
-	"desc": "桃之夭夭的小屋？",
+	"desc": "桃之夭夭的小屋",
 	"siteurl": "https://taozhiyy.top",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "mccsjs",
+	"imgurl": "https://blog.seln.cn/img/ico.jpg",
+	"desc": "点一盏灯，等待一个迷路的夜🍁",
+	"siteurl": "https://blog.seln.cn",
 	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
