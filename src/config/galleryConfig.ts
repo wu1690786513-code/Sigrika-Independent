@@ -36,15 +36,23 @@ export const galleryConfig: GalleryConfig = {
 		// },
 		{
 			id: "mw-allin",
-			name: "博爱党狂喜",
-			description: "但是钱包👛不嘻嘻了",
+			name: "宝宝们",
+			description: "博爱党狂喜,但是钱包👛不嘻嘻了",
 			location: "杭州市 上城区",
 			date: "2026-05-05",
 			tags: ["鸣潮"],
 		},
 		{
+			id: "mc-fll-mhww",
+			name: "弗糯糯",
+			description: "弗糯糯你看你脸圆的",
+			location: "杭州市 上城区",
+			date: "2026-06-13",
+			tags: ["鸣潮","弗洛洛"],
+		},
+		{
 			id: "mc-kfc-chun",
-			name: "鸣潮X肯德",
+			name: "鸣潮-KFC",
 			description: "二次元的钱真好赚😭",
 			location: "杭州市 滨江区",
 			date: "2026-01-23",
@@ -58,7 +66,7 @@ export const galleryConfig: GalleryConfig = {
 			date: "2026-04-06",
 			tags: ["鸣潮","西格莉卡"],
 		},
-			{
+		{
 			id: "sigrika-pass",
 			name: "小太阳西西",
 			description: "萌萌的耙耙柑🍊",
@@ -83,6 +91,23 @@ export const galleryConfig: GalleryConfig = {
 			date: "2025-08-16",
 			tags: ["轻音少女"],
 		},
+		// 弗洛洛
+		{
+			id: "mc-fll-lsg",
+			name: "弗洛洛(老鼠干版)",
+			description: "即使变成老鼠干还是那么忧郁",
+			location: "杭州市 上城区",
+			date: "2026-05-30",
+			tags: ["鸣潮","弗洛洛"],
+		},
+			{
+			id: "mc-fll-sys",
+			name: "弗洛洛X三月兽",
+			description: "索拉里斯最忧郁之人",
+			location: "杭州市 上城区 三月兽(in77C2区B1)",
+			date: "2026-05-30",
+			tags: ["鸣潮","弗洛洛"],
+		},
 		// 多元IP
 		{
 			id: "yzk-www",
@@ -99,6 +124,16 @@ export const galleryConfig: GalleryConfig = {
 			location: "杭州市 滨江区",
 			date: "2026-01-30",
 			tags: ["多元IP"],
+		},
+		{
+			id: "dog",
+			name: "变脸",
+			description: "我等过很久，我不会再等了",
+			location: "杭州市 滨江区",
+			date: "2026-06-02",
+			password: "dog",
+			passwordHint: "我是什么？",
+			tags: ["鸣潮"],
 		},
 	],
 

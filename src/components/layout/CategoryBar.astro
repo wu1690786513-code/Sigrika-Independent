@@ -43,6 +43,15 @@ const archiveUrl = url("/archive/");
       {i18n(I18nKey.archive)}
       <span class="pill-count">{totalPosts}</span>
     </a>
+    <a
+      href=/categories/
+      class="category-pill text-sm px-3 py-1 rounded-lg whitespace-nowrap flex-shrink-0
+             transition-colors duration-200 flex items-center justify-center"
+      data-category-name="__categories__"
+    >
+      {i18n(I18nKey.categories)}
+      <span class="text-xs opacity-60 ml-1">{categories.length}</span>
+</a>
     <div class="category-divider shrink-0"></div>
     <div class="scroll-area relative">
       <div class="scroll-fade scroll-fade-left" aria-hidden="true"></div>

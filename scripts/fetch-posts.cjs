@@ -27,7 +27,8 @@ function copyDir(src, dest) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
     
-    if (entry.name.startsWith('.') || entry.name === 'scripts') continue;
+    // 跳过隐藏文件、scripts、00_其他 文件夹
+    if (entry.name.startsWith('.') || entry.name === 'scripts' || entry.name === '00_其他') continue;
     
     if (entry.isDirectory()) {
       fs.mkdirSync(destPath, { recursive: true });
@@ -40,4 +41,4 @@ function copyDir(src, dest) {
 
 copyDir(TEMP_DIR, TARGET_DIR);
 fs.rmSync(TEMP_DIR, { recursive: true, force: true });
-console.log('✅ Posts synced to src/content/posts/同步文章/');
+console.log('✅ Posts synced to src/content/posts/同步文章/（已跳过 00_其他 目录）');
