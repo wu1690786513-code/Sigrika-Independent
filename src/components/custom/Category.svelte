@@ -9,6 +9,7 @@
         category: string | null;
         tags: string[];
         image: string | null;
+        apiUrls: string[] | null;
         pinned: boolean;
         password?: boolean;
         updated?: number;
@@ -205,12 +206,57 @@
                     initLayout();
                 }, 0);
             }
+
+            // Svelte的DOM更新是异步的，需要setTimeout确保DOM已更新
+            setTimeout(() => {
+                initCoverImageFallback();
+            }, 0);
             
             isLoading = false;
         } catch (error) {
             console.error("Error loading posts:", error);
             isLoading = false;
         }
+    }
+
+    // 初始化随机封面图API的客户端Fallback处理
+    function initCoverImageFallback() {
+        const containers = document.querySelectorAll('.post-card-image[data-api-urls]');
+        containers.forEach((container) => {
+            const img = container.querySelector('img[data-cover-img]') as HTMLImageElement | null;
+            if (!img) return;
+
+            let apiUrls: string[] = [];
+            const apiUrlsAttr = container.getAttribute('data-api-urls');
+            if (apiUrlsAttr) {
+                try {
+                    apiUrls = JSON.parse(apiUrlsAttr);
+                } catch (_e) {
+                    // ignore parse error
+                }
+            }
+
+            // 第一个URL已经在src里了，所以从索引1开始
+            let currentApiIndex = 1;
+
+            const onError = () => {
+                if (currentApiIndex < apiUrls.length) {
+                    img.addEventListener('load', () => {
+                        img.style.opacity = '1';
+                    }, { once: true });
+                    img.src = apiUrls[currentApiIndex];
+                    currentApiIndex++;
+                }
+                // 如果所有API都失败了，保持src不变（会显示broken image）
+            };
+
+            img.addEventListener('error', onError, { once: true });
+
+            // 如果图片已经加载完成且有效，清除error监听
+            if (img.complete && img.naturalWidth > 0) {
+                img.removeEventListener('error', onError);
+            }
+        });
     }
 
     onMount(() => {
@@ -488,6 +534,7 @@
                             class="post-card-image group w-full md:w-(--coverWidth) aspect-2/1 md:aspect-auto
                                    relative md:absolute md:top-4 md:bottom-4 md:right-4
                                    rounded-(--radius-large) md:rounded-xl overflow-hidden"
+                            data-api-urls={entry.apiUrls ? JSON.stringify(entry.apiUrls) : undefined}
                         >
                             <div class="absolute pointer-events-none z-10 w-full h-full group-hover:bg-black/30 group-active:bg-black/50 transition" />
                             <div class="absolute pointer-events-none z-20 w-full h-full flex items-center justify-center">
@@ -502,6 +549,7 @@
                                 alt={entry.title}
                                 class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 group-active:scale-115"
                                 loading="lazy"
+                                data-cover-img
                             />
                         </a>
                     {:else}

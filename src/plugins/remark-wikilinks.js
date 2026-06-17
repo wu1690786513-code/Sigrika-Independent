@@ -69,15 +69,34 @@ function buildTitleToSlugMap(contentDir) {
 				try {
 					fileCount++;
 					
-					// 优先使用 UTF-8 编码读取
+					// 优先使用 UTF-8 编码读取（带有 BOM 支持）
 					let content = fs.readFileSync(fullPath, "utf-8");
-					let titleMatch = content.match(/^title:\s*([^\n]+)$/m);
+					
+					// 移除 BOM（如果存在）
+					if (content.charCodeAt(0) === 0xFEFF) {
+						content = content.slice(1);
+					}
+					
+					// 匹配标题，支持中英文冒号
+					let titleMatch = content.match(/^title\s*[：:]\s*([^\n]+)$/m);
+					
+					// 如果没有找到，尝试更宽松的匹配（可能有缩进或空格）
+					if (!titleMatch) {
+						titleMatch = content.match(/title\s*[：:]\s*([^\n]+)/i);
+					}
 					
 					// 如果 UTF-8 读取不到 title（可能是 GBK 编码），尝试 GBK 编码
 					if (!titleMatch) {
 						try {
 							content = fs.readFileSync(fullPath, "gbk");
-							titleMatch = content.match(/^title:\s*([^\n]+)$/m);
+							// 移除 BOM（如果存在）
+							if (content.charCodeAt(0) === 0xFEFF) {
+								content = content.slice(1);
+							}
+							titleMatch = content.match(/^title\s*[：:]\s*([^\n]+)$/m);
+							if (!titleMatch) {
+								titleMatch = content.match(/title\s*[：:]\s*([^\n]+)/i);
+							}
 						} catch {
 							// GBK 也失败，保持使用 UTF-8 内容
 						}
