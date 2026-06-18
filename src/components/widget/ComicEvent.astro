@@ -69,6 +69,12 @@ const getPriceText = (event) => {
   }
   return null;
 };
+
+// 提取日期部分（去掉时间）
+const getDatePart = (dateStr) => {
+  if (!dateStr) return '';
+  return dateStr.split(' ')[0];
+};
 ---
 
 <WidgetLayout id="comic-event-widget" name="最近漫展" class={className} style={style}>
@@ -107,7 +113,7 @@ const getPriceText = (event) => {
         <!-- 倒计时/状态区域 -->
         <div class="countdown-section text-center mb-3">
           <p class="countdown-prefix text-sm text-neutral-500 dark:text-neutral-400 mb-2">距离开展：</p>
-          <div class="countdown-display flex justify-center gap-2" data-widget-id={widgetId} data-target-date={targetDate} data-on-going-text={nearestEvent.onGoingText || '主包正在逛展位'} data-passed-text={nearestEvent.passedText || '已经过去了'}>
+          <div class="countdown-wrap" data-widget-id={widgetId} data-target-date={targetDate} data-on-going-text={nearestEvent.onGoingText || '主包正在逛展位'} data-passed-text={nearestEvent.passedText ?? ''}>
             <div class="countdown-item">
               <span class="countdown-number">--</span>
               <span class="countdown-label">天</span>
@@ -137,21 +143,24 @@ const getPriceText = (event) => {
             <span class="truncate">{nearestEvent.location}</span>
           </div>
           <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-            <Icon name="material-symbols:calendar-today" class="info-icon" />
+            <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon" />
             <span class="truncate">
-              开展：{nearestEvent.startDate}{nearestEvent.endDate ? ` ~ ${nearestEvent.endDate}` : ''}
+              开展：{getDatePart(nearestEvent.startDate)}{nearestEvent.endDate ? ` ~ ${getDatePart(nearestEvent.endDate)}` : ''}
             </span>
           </div>
-          {nearestEvent.goingDate && nearestEvent.goingDate !== nearestEvent.startDate && (
+          {nearestEvent.goingDate && getDatePart(nearestEvent.goingDate) !== getDatePart(nearestEvent.startDate) && (
             <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-              <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon" />
-              <span class="truncate">计划：{nearestEvent.goingDate} </span>
+              <Icon name="material-symbols:navigation-outline" class="info-icon" />
+              <span class="truncate">赴约：{getDatePart(nearestEvent.goingDate)} </span>
             </div>
           )}
           {getPriceText(nearestEvent) && (
             <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-              <Icon name="mdi:ticket-outline" class="info-icon" />
-              <span>票价：{getPriceText(nearestEvent)}</span>
+              <Icon name="mdi:ticket-outline" class="info-icon shrink-0" />
+              <span class="price-label shrink-0">票价：</span>
+              <div class="price-scroll-wrapper">
+                <span class="price-text" title={getPriceText(nearestEvent)}>{getPriceText(nearestEvent)}</span>
+              </div>
             </div>
           )}
         </div>
@@ -166,23 +175,35 @@ const getPriceText = (event) => {
 
 <script is:inline>
 window.addEventListener('DOMContentLoaded', function() {
-  const displays = document.querySelectorAll('.countdown-display');
+  const displays = document.querySelectorAll('.countdown-wrap');
   
   displays.forEach(function(display) {
     const targetDateStr = display.dataset.targetDate;
     const onGoingText = display.dataset.onGoingText || '主包正在逛展位';
-    const passedText = display.dataset.passedText || '已经过去了';
+    // 直接获取 passedText，不使用默认值替换空字符串
+    const passedText = display.dataset.passedText;
     
     if (!targetDateStr) return;
 
-    const parts = targetDateStr.split('-');
+    // 支持两种格式：YYYY-MM-DD 或 YYYY-MM-DD HH:mm:ss
+    const dateParts = targetDateStr.split(' ');
+    const datePart = dateParts[0];
+    const timePart = dateParts[1] || '00:00:00';
+    
+    const parts = datePart.split('-');
     if (parts.length !== 3) return;
     
     const year = parseInt(parts[0]);
     const month = parseInt(parts[1]) - 1;
     const day = parseInt(parts[2]);
     
-    const targetDate = new Date(year, month, day);
+    // 解析时间部分
+    const timeParts = timePart.split(':');
+    const hours = timeParts.length >= 1 ? parseInt(timeParts[0]) : 0;
+    const minutes = timeParts.length >= 2 ? parseInt(timeParts[1]) : 0;
+    const seconds = timeParts.length >= 3 ? parseInt(timeParts[2]) : 0;
+    
+    const targetDate = new Date(year, month, day, hours, minutes, seconds);
     const targetTime = targetDate.getTime();
 
     // 获取前缀元素
@@ -223,24 +244,37 @@ window.addEventListener('DOMContentLoaded', function() {
       }
 
       if (diff < 0) {
-        // 已过去：显示"已经过去了X天"，隐藏前缀
+        // 已过去：隐藏前缀
         if (prefix) prefix.style.display = 'none';
         const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
         
         // 使用内联样式确保生效
-        display.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span style="font-size: 1.25rem; font-weight: bold; color: #6B7280; background-color: rgba(0, 0, 0, 0.05); padding: 6px 10px; border-radius: 6px;">
-              ${passedText}
-            </span>
-            <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 12px; border-radius: 6px; min-width: 40px; text-align: center;">
-              ${passedDays}
-            </span>
-            <span style="font-size: 1.25rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 10px; border-radius: 6px;">
-              天
-            </span>
-          </div>
-        `;
+        if (passedText && passedText.trim() !== '') {
+          // passedText 存在时，支持 {days} 占位符
+          const displayText = passedText.replace('{days}', passedDays);
+          display.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+              <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 12px; border-radius: 6px; text-align: center; min-width: 140px;">
+                ${displayText}
+              </span>
+            </div>
+          `;
+        } else {
+          // passedText 为空时渲染"已经过去了x天"，统一主题色，放在一个容器内
+          display.innerHTML = `
+            <div style="display: flex; align-items: baseline; justify-content: center; background-color: rgba(0, 0, 0, 0.05); padding: 8px 16px; border-radius: 8px; gap: 4px;">
+              <span style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">
+                已经过去了
+              </span>
+              <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">
+                ${passedDays}
+              </span>
+              <span style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">
+                天
+              </span>
+            </div>
+          `;
+        }
         
         // 停止重复渲染
         if (intervalId) {
@@ -295,6 +329,15 @@ window.addEventListener('DOMContentLoaded', function() {
     updateDisplay();
     intervalId = setInterval(updateDisplay, 1000);
   });
+  
+  // 添加滚轮控制水平滚动
+  const priceWrappers = document.querySelectorAll('.price-scroll-wrapper');
+  priceWrappers.forEach(function(wrapper) {
+    wrapper.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      this.scrollLeft += e.deltaY;
+    }, { passive: false });
+  });
 });
 </script>
 
@@ -328,8 +371,11 @@ window.addEventListener('DOMContentLoaded', function() {
     transform: scale(1.05);
   }
 
-  .countdown-display {
+  .countdown-wrap {
+    display: flex;
     align-items: center;
+    justify-content: center;
+    gap: 8px;
   }
 
   .countdown-item {
@@ -360,6 +406,9 @@ window.addEventListener('DOMContentLoaded', function() {
     font-size: 1.25rem;
     font-weight: bold;
     color: var(--primary);
+    align-self: center;
+    line-height: 1;
+    padding-bottom: 20px;
   }
 
   .countdown-status {
@@ -381,6 +430,25 @@ window.addEventListener('DOMContentLoaded', function() {
     min-width: 100px;
     display: inline-block;
     letter-spacing: 0.05em;
+  }
+
+  .price-scroll-wrapper {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+  }
+
+  .price-text {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    cursor: help;
+  }
+
+  .price-label {
+    flex-shrink: 0;
   }
 
   .countdown-status.passed {
