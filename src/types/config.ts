@@ -415,7 +415,7 @@ export type CoverImageConfig = {
 	};
 };
 
-// 组件配置类型定义
+// 组件配置类型定义111
 export type WidgetComponentType =
 	| "profile"
 	| "announcement"
@@ -426,6 +426,7 @@ export type WidgetComponentType =
 	| "stats"
 	| "calendar"
 	| "music";
+	
 
 export type WidgetComponentConfig = {
 	type: WidgetComponentType; // 组件类型
