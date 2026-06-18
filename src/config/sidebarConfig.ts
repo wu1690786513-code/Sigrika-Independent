@@ -131,6 +131,16 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			showOnPostPage: true,
 		},
 		{
+			// 组件类型：站点统计组件
+			type: "schedule",
+			// 是否启用该组件
+			enable: true,
+			// 组件位置
+			position: "top",
+			// 是否在文章详情页显示
+			showOnPostPage: true,
+		},
+		{
 			// 组件类型：日历组件
 			type: "calendar",
 			// 是否启用该组件
@@ -144,6 +154,7 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 				// 是否显示年度文章热力图
 				showHeatmap: true,
 			},
+
 		},
 		{
 			// 组件类型：侧边栏目录组件（只在文章详情页显示）
@@ -191,10 +202,18 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			showOnPostPage: true,
 		},
 		{
+			// 组件类型：天气组件
+			type: "schedule",
+			// 是否启用该组件
+			enable: true,
+			// 是否在文章详情页显示
+			showOnPostPage: true,
+		},
+		{
 			// 组件类型：公告组件
 			type: "announcement",
 			// 是否启用该组件
-			enable: true,
+			enable: false,
 			// 是否在文章详情页显示
 			showOnPostPage: true,
 		},

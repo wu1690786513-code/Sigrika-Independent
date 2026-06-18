@@ -426,7 +426,8 @@ export type WidgetComponentType =
 	| "stats"
 	| "calendar"
 	| "music"
-	| "weather";
+	| "weather"
+	| "schedule";
 	
 
 export type WidgetComponentConfig = {
