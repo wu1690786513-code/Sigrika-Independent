@@ -1,7 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import WidgetLayout from "@/components/common/WidgetLayout.astro";
-import { comicEvents, comicEventConfig } from "@/config/comicEvents";
+import { comicEvents, comicEventConfig, defaultComicPoster } from "@/config/comicEvents";
 
 interface Props {
 	class?: string;
@@ -13,11 +13,11 @@ const { class: className, style } = Astro.props;
 // 生成唯一ID
 const widgetId = `comic-${Math.random().toString(36).substr(2, 9)}`;
 
-// 获取用于轮播的漫展（过去最近3场 + 将来3场）
+// 获取用于轮播的漫展（过去最近3场 + 正在进行中 + 将来3场）
 const getDisplayEvents = () => {
   const now = new Date();
   
-  // 分离已结束和未开始的活动
+  // 分离已结束、正在进行中和未开始的活动
   const passedEvents = comicEvents.filter(event => {
     const endDate = event.endDate ? new Date(event.endDate) : new Date(event.startDate);
     endDate.setHours(23, 59, 59, 999);
@@ -28,6 +28,18 @@ const getDisplayEvents = () => {
     const bEnd = new Date(b.endDate || b.startDate);
     return bEnd.getTime() - aEnd.getTime();
   }).slice(0, 3); // 取最近的3场
+  
+  const onGoingEvents = comicEvents.filter(event => {
+    const startDate = new Date(event.startDate);
+    const endDate = event.endDate ? new Date(event.endDate) : new Date(event.startDate);
+    endDate.setHours(23, 59, 59, 999);
+    return startDate <= now && endDate >= now;
+  }).sort((a, b) => {
+    // 按结束日期正序排列，快结束的在前
+    const aEnd = new Date(a.endDate || a.startDate);
+    const bEnd = new Date(b.endDate || b.startDate);
+    return aEnd.getTime() - bEnd.getTime();
+  }).slice(0, 3); // 取正在进行中的最多3场
   
   const futureEvents = comicEvents.filter(event => {
     const startDate = new Date(event.startDate);
@@ -42,11 +54,11 @@ const getDisplayEvents = () => {
   // 根据配置决定排序顺序
   const { sortOrder } = comicEventConfig;
   if (sortOrder === 'futureFirst') {
-    // 即将举行的放在前面
-    return [...futureEvents, ...passedEvents];
+    // 即将举行的放在前面：正在进行中 + 将来3场 + 已结束3场
+    return [...onGoingEvents, ...futureEvents, ...passedEvents];
   } else {
     // 已结束的放在前面
-    return [...passedEvents, ...futureEvents];
+    return [...passedEvents, ...onGoingEvents, ...futureEvents];
   }
 };
 
@@ -66,6 +78,14 @@ const getPriceText = (event) => {
     return `预售${event.preSalePrice}元 | 现场${event.onSitePrice}元`;
   }
   return null;
+};
+
+// 获取海报图片，支持空字符串使用默认值
+const getPoster = (event) => {
+  if (event.poster && event.poster.trim() !== '') {
+    return event.poster;
+  }
+  return defaultComicPoster;
 };
 
 // 提取日期部分（去掉时间）
@@ -100,9 +120,9 @@ const getDatePart = (dateStr) => {
                 <!-- 海报区域 -->
                 <div class="poster-wrapper mb-3">
                   {event.url ? (
-                    <a href={event.url} target="_blank" rel="noopener noreferrer" class="poster-link">
+                    <a href={event.url} target="_blank" rel="noopener noreferrer" class="poster-link" title="戳我去官网ฅ^•ﻌ•^ฅ">
                       <img 
-                        src={event.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
+                        src={getPoster(event)} 
                         alt={event.name}
                         class="comic-poster"
                         loading="lazy"
@@ -110,7 +130,7 @@ const getDatePart = (dateStr) => {
                     </a>
                   ) : (
                     <img 
-                      src={event.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
+                      src={getPoster(event)} 
                       alt={event.name}
                       class="comic-poster"
                       loading="lazy"
@@ -157,13 +177,13 @@ const getDatePart = (dateStr) => {
                     </span>
                   </div>
                   {event.goingDate && getDatePart(event.goingDate) !== getDatePart(event.startDate) && (
-                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                    <div class="flex items-center gap-2" style="color: var(--content-meta)">
                       <Icon name="material-symbols:navigation-outline" class="info-icon" />
                       <span class="truncate">赴约：{getDatePart(event.goingDate)} </span>
                     </div>
                   )}
                   {getPriceText(event) && (
-                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                    <div class="flex items-center gap-2" style="color: var(--content-meta)">
                       <Icon name="mdi:ticket-outline" class="info-icon shrink-0" />
                       <span class="price-label shrink-0">票价：</span>
                       <div class="price-scroll-wrapper">
@@ -179,7 +199,7 @@ const getDatePart = (dateStr) => {
 
         <!-- 轮播指示器 -->
         <div class="carousel-indicators-container">
-          <button class="carousel-arrow carousel-arrow-left text-neutral-600 dark:text-neutral-400" data-direction="prev">
+          <button class="carousel-arrow carousel-arrow-left" style="color: var(--content-meta)" data-direction="prev">
             <Icon name="material-symbols:chevron-left" class="arrow-icon" />
           </button>
           <div class="carousel-indicators">
@@ -191,7 +211,7 @@ const getDatePart = (dateStr) => {
               ></button>
             ))}
           </div>
-          <button class="carousel-arrow carousel-arrow-right text-neutral-600 dark:text-neutral-400" data-direction="next">
+          <button class="carousel-arrow carousel-arrow-right" style="color: var(--content-meta)" data-direction="next">
             <Icon name="material-symbols:chevron-right" class="arrow-icon" />
           </button>
         </div>
@@ -590,18 +610,8 @@ window.addEventListener('DOMContentLoaded', function() {
   .arrow-icon {
     width: 18px;
     height: 18px;
-    color: var(--neutral-600);
-    fill: var(--neutral-600);
-  }
-
-  .dark .arrow-icon {
-    color: var(--neutral-400);
-    fill: var(--neutral-400);
-  }
-
-  .carousel-arrow:hover .arrow-icon {
-    color: var(--primary) !important;
-    fill: var(--primary) !important;
+    color: inherit;
+    fill: currentColor;
   }
 
   .carousel-indicators {
@@ -614,23 +624,23 @@ window.addEventListener('DOMContentLoaded', function() {
     height: 8px;
     border-radius: 50%;
     background-color: rgba(0, 0, 0, 0.15);
-    border: 1.5px solid var(--neutral-500);
+    border: 1.5px solid var(--content-meta);
     cursor: pointer;
     transition: all 0.3s ease;
   }
 
-  :global(.dark .comic-event-container .indicator-dot) {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border-color: var(--neutral-400) !important;
+  .dark .indicator-dot {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--content-meta);
   }
 
   .indicator-dot:hover {
-    border-color: var(--neutral-600);
+    border-color: var(--primary);
     background-color: rgba(0, 0, 0, 0.2);
   }
 
   .dark .indicator-dot:hover {
-    border-color: var(--neutral-400);
+    border-color: var(--primary);
     background-color: rgba(255, 255, 255, 0.15);
   }
 
@@ -674,14 +684,10 @@ window.addEventListener('DOMContentLoaded', function() {
   .countdown-status.passed .status-text {
     font-size: 1.25rem;
     font-weight: bold;
-    color: var(--neutral-600);
+    color: var(--content-meta);
     background-color: rgba(0, 0, 0, 0.05);
     padding: 4px 8px;
     border-radius: 4px;
-  }
-
-  .dark .countdown-status.passed .status-text {
-    color: var(--neutral-400);
   }
 
   .countdown-status.passed .status-days {
