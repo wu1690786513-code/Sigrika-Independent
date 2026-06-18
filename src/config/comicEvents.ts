@@ -9,18 +9,22 @@ export interface ComicEvent {
   priceText?: string;     // 自定义价格文本（可选，优先使用）
   poster?: string;        // 海报图片URL（可选）
   url?: string;           // 官网链接（可选）
+  onGoingText?: string;   // 当天进行中的文本（可选，默认"主包正在逛展位"）
+  passedText?: string;    // 已过去的文本（可选，默认"已经过去了"）
 }
 
 export const comicEvents: ComicEvent[] = [
   {
     name: '杭州国际动漫节',
     startDate: '2026-06-15',
-    endDate: '2026-06-19',
-    goingDate: '2026-06-19',
+    endDate: '2026-06-24',
+    goingDate: '2026-06-18',
     location: '杭州·白马湖会展中心',
     priceText: '工作日50元 | 现场70元',
     poster: 'https://cicaf.hzxcw.gov.cn/assets/images/banner.jpg',
-    url: 'https://www.cicaf.com'
+    url: 'https://www.cicaf.com',
+    onGoingText: '主包正在逛展中...',
+    passedText: ''
   },
   {
     name: '上海Comicup',

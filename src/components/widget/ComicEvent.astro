@@ -104,27 +104,27 @@ const getPriceText = (event) => {
           )}
         </div>
 
-        <!-- 倒计时区域 -->
+        <!-- 倒计时/状态区域 -->
         <div class="countdown-section text-center mb-3">
-          <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-2">距离开展：</p>
-          <div class="countdown-display flex justify-center gap-2">
+          <p class="countdown-prefix text-sm text-neutral-500 dark:text-neutral-400 mb-2">距离开展：</p>
+          <div class="countdown-display flex justify-center gap-2" data-widget-id={widgetId} data-target-date={targetDate} data-on-going-text={nearestEvent.onGoingText || '主包正在逛展位'} data-passed-text={nearestEvent.passedText || '已经过去了'}>
             <div class="countdown-item">
-              <span class="countdown-number" data-id={`${widgetId}-days`}>--</span>
+              <span class="countdown-number">--</span>
               <span class="countdown-label">天</span>
             </div>
             <span class="countdown-separator">:</span>
             <div class="countdown-item">
-              <span class="countdown-number" data-id={`${widgetId}-hours`}>--</span>
+              <span class="countdown-number">--</span>
               <span class="countdown-label">时</span>
             </div>
             <span class="countdown-separator">:</span>
             <div class="countdown-item">
-              <span class="countdown-number" data-id={`${widgetId}-minutes`}>--</span>
+              <span class="countdown-number">--</span>
               <span class="countdown-label">分</span>
             </div>
             <span class="countdown-separator">:</span>
             <div class="countdown-item">
-              <span class="countdown-number" data-id={`${widgetId}-seconds`}>--</span>
+              <span class="countdown-number">--</span>
               <span class="countdown-label">秒</span>
             </div>
           </div>
@@ -166,13 +166,14 @@ const getPriceText = (event) => {
 
 <script is:inline>
 window.addEventListener('DOMContentLoaded', function() {
-  const containers = document.querySelectorAll('.comic-event-container');
+  const displays = document.querySelectorAll('.countdown-display');
   
-  containers.forEach(function(container) {
-    const widgetId = container.dataset.widgetId;
-    const targetDateStr = container.dataset.targetDate;
+  displays.forEach(function(display) {
+    const targetDateStr = display.dataset.targetDate;
+    const onGoingText = display.dataset.onGoingText || '主包正在逛展位';
+    const passedText = display.dataset.passedText || '已经过去了';
     
-    if (!widgetId || !targetDateStr) return;
+    if (!targetDateStr) return;
 
     const parts = targetDateStr.split('-');
     if (parts.length !== 3) return;
@@ -184,41 +185,115 @@ window.addEventListener('DOMContentLoaded', function() {
     const targetDate = new Date(year, month, day);
     const targetTime = targetDate.getTime();
 
-    function updateCountdown() {
-      const now = new Date().getTime();
-      const diff = targetTime - now;
+    // 获取前缀元素
+    const section = display.closest('.countdown-section');
+    const prefix = section ? section.querySelector('.countdown-prefix') : null;
 
-      const daysEl = container.querySelector('[data-id="' + widgetId + '-days"]');
-      const hoursEl = container.querySelector('[data-id="' + widgetId + '-hours"]');
-      const minutesEl = container.querySelector('[data-id="' + widgetId + '-minutes"]');
-      const secondsEl = container.querySelector('[data-id="' + widgetId + '-seconds"]');
+    let intervalId = null;
 
-      if (!daysEl || !hoursEl || !minutesEl || !secondsEl) {
-        setTimeout(updateCountdown, 50);
+    function updateDisplay() {
+      const now = new Date();
+      const nowTime = now.getTime();
+      const diff = targetTime - nowTime;
+      
+      // 判断是否是当天（日期相同）
+      const isToday = now.getFullYear() === year && 
+                     now.getMonth() === month && 
+                     now.getDate() === day;
+
+      if (isToday) {
+        // 当天：显示"主包正在逛展位"，隐藏前缀
+        if (prefix) prefix.style.display = 'none';
+        
+        // 使用内联样式确保生效
+        display.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+            <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 12px; border-radius: 6px; text-align: center; min-width: 140px;">
+              ${onGoingText}
+            </span>
+          </div>
+        `;
+        
+        // 停止重复渲染
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
         return;
       }
 
-      if (diff <= 0) {
-        daysEl.textContent = '0';
-        hoursEl.textContent = '00';
-        minutesEl.textContent = '00';
-        secondsEl.textContent = '00';
+      if (diff < 0) {
+        // 已过去：显示"已经过去了X天"，隐藏前缀
+        if (prefix) prefix.style.display = 'none';
+        const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
+        
+        // 使用内联样式确保生效
+        display.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span style="font-size: 1.25rem; font-weight: bold; color: #6B7280; background-color: rgba(0, 0, 0, 0.05); padding: 6px 10px; border-radius: 6px;">
+              ${passedText}
+            </span>
+            <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 12px; border-radius: 6px; min-width: 40px; text-align: center;">
+              ${passedDays}
+            </span>
+            <span style="font-size: 1.25rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 10px; border-radius: 6px;">
+              天
+            </span>
+          </div>
+        `;
+        
+        // 停止重复渲染
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
         return;
       }
 
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      // 倒计时模式：显示前缀，更新数字
+      if (prefix) prefix.style.display = 'block';
+      
+      // 如果是第一次进入倒计时模式或DOM已被替换，重新创建结构
+      if (!display.querySelector('.countdown-item')) {
+        display.innerHTML = `
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">天</span>
+          </div>
+          <span class="countdown-separator">:</span>
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">时</span>
+          </div>
+          <span class="countdown-separator">:</span>
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">分</span>
+          </div>
+          <span class="countdown-separator">:</span>
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">秒</span>
+          </div>
+        `;
+      }
+      
+      const nums = display.querySelectorAll('.countdown-number');
+      if (nums.length >= 4) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      daysEl.textContent = days;
-      hoursEl.textContent = String(hours).padStart(2, '0');
-      minutesEl.textContent = String(minutes).padStart(2, '0');
-      secondsEl.textContent = String(seconds).padStart(2, '0');
+        nums[0].textContent = days;
+        nums[1].textContent = String(hours).padStart(2, '0');
+        nums[2].textContent = String(minutes).padStart(2, '0');
+        nums[3].textContent = String(seconds).padStart(2, '0');
+      }
     }
 
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
+    updateDisplay();
+    intervalId = setInterval(updateDisplay, 1000);
   });
 });
 </script>
@@ -284,6 +359,69 @@ window.addEventListener('DOMContentLoaded', function() {
   .countdown-separator {
     font-size: 1.25rem;
     font-weight: bold;
+    color: var(--primary);
+  }
+
+  .countdown-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .countdown-status.on-going .status-text {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    min-width: 100px;
+    display: inline-block;
+    letter-spacing: 0.05em;
+  }
+
+  .countdown-status.passed {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .countdown-status.passed .status-text {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--neutral-600);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .dark .countdown-status.passed .status-text {
+    color: var(--neutral-400);
+  }
+
+  .countdown-status.passed .status-days {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .countdown-status.passed .status-label {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .dark .countdown-status.passed .status-label {
     color: var(--primary);
   }
 
