@@ -13,6 +13,9 @@ export interface ComicEvent {
   passedText?: string;    // 已过去的文本（可选，默认"已经过去了{days}"，支持{days}占位符显示天数）
 }
 
+// 默认海报图片
+export const defaultComicPoster = 'https://upload.codexing.top/Blogs/study.webp';
+
 export const comicEvents: ComicEvent[] = [
   {
     name: '杭州国际动漫节',
@@ -27,7 +30,27 @@ export const comicEvents: ComicEvent[] = [
     passedText: '',
   },
   {
-    name: '上海Bilibili Word',
+    name: '上海Comicup',
+    startDate: '2026-05-01',
+    endDate: '2026-05-02',
+    location: '上海·新国际博览中心',
+    priceText: '预售60元 | 现场80元',
+    poster: defaultComicPoster,
+    onGoingText: '主包正在逛展中...',
+    passedText: '',
+  },
+  {
+    name: '广州萤火虫漫展',
+    startDate: '2026-04-20',
+    endDate: '2026-04-22',
+    location: '广州·琶洲展馆',
+    priceText: '预售55元 | 现场70元',
+    poster: defaultComicPoster,
+    onGoingText: '主包正在逛展中...',
+    passedText: '',
+  },
+  {
+    name: '上海Bilibili World',
     startDate: '2026-07-10 09:00:00',
     endDate: '2026-07-12',
     goingDate: '2026-07-11 09:00:00',
@@ -35,5 +58,25 @@ export const comicEvents: ComicEvent[] = [
     poster: 'https://upload.codexing.top/Sigrika/26/06/20260618192812362.webp',
     url: 'https://bw.bilibili.com/',
     priceText: '游园票128元 | IP典藏票328元 | VIP票588元',
+  },
+  {
+    name: '成都ComicDay',
+    startDate: '2026-08-15',
+    endDate: '2026-08-17',
+    location: '成都·世纪城新国际会展中心',
+    priceText: '预售50元 | 现场65元',
+    poster: defaultComicPoster,
+    onGoingText: '主包正在逛展中...',
+    passedText: '',
+  },
+  {
+    name: '北京IDO动漫游戏嘉年华',
+    startDate: '2026-09-20',
+    endDate: '2026-09-22',
+    location: '北京·国家会议中心',
+    priceText: '预售60元 | 现场80元',
+    poster: defaultComicPoster,
+    onGoingText: '主包正在逛展中...',
+    passedText: '',
   },
 ];

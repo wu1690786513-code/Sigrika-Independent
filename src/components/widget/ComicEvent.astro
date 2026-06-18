@@ -13,51 +13,42 @@ const { class: className, style } = Astro.props;
 // 生成唯一ID
 const widgetId = `comic-${Math.random().toString(36).substr(2, 9)}`;
 
-// 获取最近的漫展活动（在活动期间都显示）
-const getNearestEvent = () => {
+// 获取用于轮播的漫展（过去最近3场 + 将来3场）
+const getDisplayEvents = () => {
   const now = new Date();
   
-  // 先筛选出还没结束的活动
-  const activeEvents = comicEvents.filter(event => {
+  // 分离已结束和未开始的活动
+  const passedEvents = comicEvents.filter(event => {
     const endDate = event.endDate ? new Date(event.endDate) : new Date(event.startDate);
     endDate.setHours(23, 59, 59, 999);
-    return endDate >= now;
-  });
+    return endDate < now;
+  }).sort((a, b) => {
+    // 按结束日期倒序排列，最近结束的在前
+    const aEnd = new Date(a.endDate || a.startDate);
+    const bEnd = new Date(b.endDate || b.startDate);
+    return bEnd.getTime() - aEnd.getTime();
+  }).slice(0, 3); // 取最近的3场
   
-  if (activeEvents.length === 0) {
-    return null;
-  }
-  
-  // 先找正在进行的活动
-  const ongoingEvent = activeEvents.find(event => {
+  const futureEvents = comicEvents.filter(event => {
     const startDate = new Date(event.startDate);
-    return startDate <= now;
-  });
+    return startDate > now;
+  }).sort((a, b) => {
+    // 按开始日期正序排列，最近开始的在前
+    const aStart = new Date(a.startDate);
+    const bStart = new Date(b.startDate);
+    return aStart.getTime() - bStart.getTime();
+  }).slice(0, 3); // 取最近的3场
   
-  if (ongoingEvent) {
-    return ongoingEvent;
-  }
-  
-  // 找最近即将开始的活动
-  let nearest = null;
-  let minDiff = Infinity;
-  
-  activeEvents.forEach(event => {
-    const startDate = new Date(event.startDate);
-    const diff = startDate.getTime() - now.getTime();
-    if (diff < minDiff) {
-      minDiff = diff;
-      nearest = event;
-    }
-  });
-  
-  return nearest;
+  // 合并：过去3场 + 将来3场
+  return [...passedEvents, ...futureEvents];
 };
 
-const nearestEvent = getNearestEvent();
+const displayEvents = getDisplayEvents();
+const currentIndex = 0;
+const currentEvent = displayEvents[currentIndex];
 
 // 计算倒计时目标日期：优先使用goingDate，否则使用startDate
-const targetDate = nearestEvent?.goingDate || nearestEvent?.startDate || '';
+const targetDate = currentEvent?.goingDate || currentEvent?.startDate || '';
 
 // 获取价格文本
 const getPriceText = (event) => {
@@ -78,96 +69,129 @@ const getDatePart = (dateStr) => {
 ---
 
 <WidgetLayout id="comic-event-widget" name="最近漫展" class={className} style={style}>
-  <div class="comic-event-container" data-widget-id={widgetId} data-target-date={targetDate}>
-    {nearestEvent ? (
+  <div class="comic-event-container" data-widget-id={widgetId}>
+    {displayEvents.length > 0 ? (
       <>
-        <!-- 标题区域 -->
-        <div class="mb-3">
-          <p class="text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-            <Icon name="material-symbols:festival" class="info-icon" />
-            <span>{nearestEvent.name}</span>
-          </p>
-        </div>
+        <!-- 轮播内容区域 -->
+        <div class="carousel-content">
+          {displayEvents.map((event, index) => {
+            const eventTargetDate = event.goingDate || event.startDate;
+            return (
+              <div 
+                key={index} 
+                class={`carousel-item ${index === currentIndex ? 'active' : ''}`}
+                data-event-index={index}
+              >
+                <!-- 标题区域 -->
+                <div class="mb-3">
+                  <p class="text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                    <Icon name="material-symbols:festival" class="info-icon" />
+                    <span>{event.name}</span>
+                  </p>
+                </div>
 
-        <!-- 海报区域 -->
-        <div class="poster-wrapper mb-3">
-          {nearestEvent.url ? (
-            <a href={nearestEvent.url} target="_blank" rel="noopener noreferrer" class="poster-link">
-              <img 
-                src={nearestEvent.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
-                alt={nearestEvent.name}
-                class="comic-poster"
-                loading="lazy"
-              />
-            </a>
-          ) : (
-            <img 
-              src={nearestEvent.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
-              alt={nearestEvent.name}
-              class="comic-poster"
-              loading="lazy"
-            />
-          )}
-        </div>
+                <!-- 海报区域 -->
+                <div class="poster-wrapper mb-3">
+                  {event.url ? (
+                    <a href={event.url} target="_blank" rel="noopener noreferrer" class="poster-link">
+                      <img 
+                        src={event.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
+                        alt={event.name}
+                        class="comic-poster"
+                        loading="lazy"
+                      />
+                    </a>
+                  ) : (
+                    <img 
+                      src={event.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
+                      alt={event.name}
+                      class="comic-poster"
+                      loading="lazy"
+                    />
+                  )}
+                </div>
 
-        <!-- 倒计时/状态区域 -->
-        <div class="countdown-section text-center mb-3">
-          <p class="countdown-prefix text-sm text-neutral-500 dark:text-neutral-400 mb-2">距离开展：</p>
-          <div class="countdown-wrap" data-widget-id={widgetId} data-target-date={targetDate} data-on-going-text={nearestEvent.onGoingText || '主包正在逛展位'} data-passed-text={nearestEvent.passedText ?? ''}>
-            <div class="countdown-item">
-              <span class="countdown-number">--</span>
-              <span class="countdown-label">天</span>
-            </div>
-            <span class="countdown-separator">:</span>
-            <div class="countdown-item">
-              <span class="countdown-number">--</span>
-              <span class="countdown-label">时</span>
-            </div>
-            <span class="countdown-separator">:</span>
-            <div class="countdown-item">
-              <span class="countdown-number">--</span>
-              <span class="countdown-label">分</span>
-            </div>
-            <span class="countdown-separator">:</span>
-            <div class="countdown-item">
-              <span class="countdown-number">--</span>
-              <span class="countdown-label">秒</span>
-            </div>
-          </div>
-        </div>
+                <!-- 倒计时/状态区域 -->
+                <div class="countdown-section text-center mb-3">
+                  <p class="countdown-prefix text-sm text-neutral-500 dark:text-neutral-400 mb-2">距离开展：</p>
+                  <div class="countdown-wrap" data-target-date={eventTargetDate} data-on-going-text={event.onGoingText || '主包正在逛展位'} data-passed-text={event.passedText ?? ''}>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">天</span>
+                    </div>
+                    <span class="countdown-separator">:</span>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">时</span>
+                    </div>
+                    <span class="countdown-separator">:</span>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">分</span>
+                    </div>
+                    <span class="countdown-separator">:</span>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">秒</span>
+                    </div>
+                  </div>
+                </div>
 
-        <!-- 信息区域 -->
-        <div class="info-section space-y-2 text-sm">
-          <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-            <Icon name="material-symbols:location-on" class="info-icon" />
-            <span class="truncate">{nearestEvent.location}</span>
-          </div>
-          <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-            <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon" />
-            <span class="truncate">
-              开展：{getDatePart(nearestEvent.startDate)}{nearestEvent.endDate ? ` ~ ${getDatePart(nearestEvent.endDate)}` : ''}
-            </span>
-          </div>
-          {nearestEvent.goingDate && getDatePart(nearestEvent.goingDate) !== getDatePart(nearestEvent.startDate) && (
-            <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-              <Icon name="material-symbols:navigation-outline" class="info-icon" />
-              <span class="truncate">赴约：{getDatePart(nearestEvent.goingDate)} </span>
-            </div>
-          )}
-          {getPriceText(nearestEvent) && (
-            <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-              <Icon name="mdi:ticket-outline" class="info-icon shrink-0" />
-              <span class="price-label shrink-0">票价：</span>
-              <div class="price-scroll-wrapper">
-                <span class="price-text" title={getPriceText(nearestEvent)}>{getPriceText(nearestEvent)}</span>
+                <!-- 信息区域 -->
+                <div class="info-section space-y-2 text-sm">
+                  <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                    <Icon name="material-symbols:location-on" class="info-icon" />
+                    <span class="truncate">{event.location}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                    <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon" />
+                    <span class="truncate">
+                      开展：{getDatePart(event.startDate)}{event.endDate ? ` ~ ${getDatePart(event.endDate)}` : ''}
+                    </span>
+                  </div>
+                  {event.goingDate && getDatePart(event.goingDate) !== getDatePart(event.startDate) && (
+                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                      <Icon name="material-symbols:navigation-outline" class="info-icon" />
+                      <span class="truncate">赴约：{getDatePart(event.goingDate)} </span>
+                    </div>
+                  )}
+                  {getPriceText(event) && (
+                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                      <Icon name="mdi:ticket-outline" class="info-icon shrink-0" />
+                      <span class="price-label shrink-0">票价：</span>
+                      <div class="price-scroll-wrapper">
+                        <span class="price-text" title={getPriceText(event)}>{getPriceText(event)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
+        </div>
+
+        <!-- 轮播指示器 -->
+        <div class="carousel-indicators-container">
+          <button class="carousel-arrow carousel-arrow-left" data-direction="prev">
+            <Icon name="material-symbols:chevron-left" class="arrow-icon" />
+          </button>
+          <div class="carousel-indicators">
+            {displayEvents.map((_, index) => (
+              <button 
+                key={index} 
+                class={`indicator-dot ${index === currentIndex ? 'active' : ''}`}
+                data-index={index}
+              ></button>
+            ))}
+          </div>
+          <button class="carousel-arrow carousel-arrow-right" data-direction="next">
+            <Icon name="material-symbols:chevron-right" class="arrow-icon" />
+          </button>
         </div>
       </>
     ) : (
       <div class="text-center py-8 text-neutral-500 dark:text-neutral-400">
-        <p>暂无即将举办的漫展</p>
+        <p>暂无漫展信息</p>
       </div>
     )}
   </div>
@@ -338,6 +362,74 @@ window.addEventListener('DOMContentLoaded', function() {
       this.scrollLeft += e.deltaY;
     }, { passive: false });
   });
+  
+  // 轮播功能
+  const carouselContainers = document.querySelectorAll('.comic-event-container');
+  carouselContainers.forEach(function(container) {
+    const items = container.querySelectorAll('.carousel-item');
+    const indicators = container.querySelectorAll('.indicator-dot');
+    const totalItems = items.length;
+    let currentIndex = 0;
+    let carouselIntervalId = null;
+    
+    function showItem(index) {
+      // 隐藏所有项
+      items.forEach((item, i) => {
+        item.classList.remove('active');
+        indicators[i]?.classList.remove('active');
+      });
+      // 显示当前项
+      items[index]?.classList.add('active');
+      indicators[index]?.classList.add('active');
+      currentIndex = index;
+    }
+    
+    function nextItem() {
+      const nextIndex = (currentIndex + 1) % totalItems;
+      showItem(nextIndex);
+    }
+    
+    // 点击指示器切换
+    indicators.forEach((indicator, index) => {
+      indicator.addEventListener('click', function() {
+        showItem(index);
+      });
+    });
+    
+    // 点击箭头切换
+    const arrows = container.querySelectorAll('.carousel-arrow');
+    arrows.forEach((arrow) => {
+      arrow.addEventListener('click', function() {
+        const direction = this.dataset.direction;
+        if (direction === 'prev') {
+          const prevIndex = (currentIndex - 1 + totalItems) % totalItems;
+          showItem(prevIndex);
+        } else {
+          nextItem();
+        }
+      });
+    });
+    
+    // 自动轮播，每5秒切换一次
+    if (totalItems > 1) {
+      carouselIntervalId = setInterval(nextItem, 5000);
+      
+      // hover时暂停轮播
+      container.addEventListener('mouseenter', function() {
+        if (carouselIntervalId) {
+          clearInterval(carouselIntervalId);
+          carouselIntervalId = null;
+        }
+      });
+      
+      // mouseleave时恢复轮播
+      container.addEventListener('mouseleave', function() {
+        if (!carouselIntervalId && totalItems > 1) {
+          carouselIntervalId = setInterval(nextItem, 5000);
+        }
+      });
+    }
+  });
 });
 </script>
 
@@ -430,6 +522,90 @@ window.addEventListener('DOMContentLoaded', function() {
     min-width: 100px;
     display: inline-block;
     letter-spacing: 0.05em;
+  }
+
+  /* 轮播样式 */
+  .carousel-content {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .carousel-item {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .carousel-item.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .carousel-indicators-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-bottom: 8px;
+  }
+
+  .carousel-arrow {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--neutral-500);
+    transition: all 0.3s ease;
+    border-radius: 4px;
+  }
+
+  .carousel-arrow:hover {
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .arrow-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .carousel-indicators {
+    display: flex;
+    gap: 6px;
+  }
+
+  .indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.15);
+    border: 1.5px solid var(--neutral-500);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .indicator-dot:hover {
+    border-color: var(--neutral-600);
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+
+  .indicator-dot.active {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.2);
   }
 
   .price-scroll-wrapper {
