@@ -15,6 +15,7 @@ import type {
 	WidgetComponentConfig,
 	WidgetComponentType,
 } from "@/types/config";
+import Weather from "@/components/widget/Weather.astro"; // 引入天气组件
 
 interface Props {
 	class?: string;
@@ -49,6 +50,7 @@ const componentMap = {
 	stats: SiteStats,
 	calendar: Calendar,
 	music: Music,
+	weather: Weather, // 添加天气组件映射
 } satisfies Record<WidgetComponentType, typeof Profile>;
 
 // 获取侧边栏位置

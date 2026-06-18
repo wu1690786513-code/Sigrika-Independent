@@ -425,7 +425,8 @@ export type WidgetComponentType =
 	| "advertisement"
 	| "stats"
 	| "calendar"
-	| "music";
+	| "music"
+	| "weather";
 	
 
 export type WidgetComponentConfig = {
