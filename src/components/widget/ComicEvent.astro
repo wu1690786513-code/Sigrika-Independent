@@ -268,13 +268,24 @@ window.addEventListener('DOMContentLoaded', function() {
       const nowTime = now.getTime();
       const diff = targetTime - nowTime;
       
-      // 判断是否是当天（日期相同）
+      // 判断是否是当天且已到目标时间
       const isToday = now.getFullYear() === year && 
                      now.getMonth() === month && 
                      now.getDate() === day;
+      
+      // 获取当前时间的时分秒
+      const nowHours = now.getHours();
+      const nowMinutes = now.getMinutes();
+      const nowSeconds = now.getSeconds();
+      
+      // 判断是否已到目标时间（时分秒都大于等于）
+      const hasReachedTarget = isToday && 
+                              (nowHours > hours || 
+                               (nowHours === hours && nowMinutes > minutes) || 
+                               (nowHours === hours && nowMinutes === minutes && nowSeconds >= seconds));
 
-      if (isToday) {
-        // 当天：显示"主包正在逛展位"，隐藏前缀
+      if (hasReachedTarget) {
+        // 当天且已到目标时间：显示"主包正在逛展位"，隐藏前缀
         if (prefix) prefix.style.display = 'none';
         
         // 使用内联样式确保生效
