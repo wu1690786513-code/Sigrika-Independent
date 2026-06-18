@@ -1,7 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import WidgetLayout from "@/components/common/WidgetLayout.astro";
-import { comicEvents } from "@/config/comicEvents";
+import { comicEvents, comicEventConfig } from "@/config/comicEvents";
 
 interface Props {
 	class?: string;
@@ -39,8 +39,15 @@ const getDisplayEvents = () => {
     return aStart.getTime() - bStart.getTime();
   }).slice(0, 3); // 取最近的3场
   
-  // 合并：过去3场 + 将来3场
-  return [...passedEvents, ...futureEvents];
+  // 根据配置决定排序顺序
+  const { sortOrder } = comicEventConfig;
+  if (sortOrder === 'futureFirst') {
+    // 即将举行的放在前面
+    return [...futureEvents, ...passedEvents];
+  } else {
+    // 已结束的放在前面
+    return [...passedEvents, ...futureEvents];
+  }
 };
 
 const displayEvents = getDisplayEvents();
@@ -172,7 +179,7 @@ const getDatePart = (dateStr) => {
 
         <!-- 轮播指示器 -->
         <div class="carousel-indicators-container">
-          <button class="carousel-arrow carousel-arrow-left" data-direction="prev">
+          <button class="carousel-arrow carousel-arrow-left text-neutral-600 dark:text-neutral-400" data-direction="prev">
             <Icon name="material-symbols:chevron-left" class="arrow-icon" />
           </button>
           <div class="carousel-indicators">
@@ -184,7 +191,7 @@ const getDatePart = (dateStr) => {
               ></button>
             ))}
           </div>
-          <button class="carousel-arrow carousel-arrow-right" data-direction="next">
+          <button class="carousel-arrow carousel-arrow-right text-neutral-600 dark:text-neutral-400" data-direction="next">
             <Icon name="material-symbols:chevron-right" class="arrow-icon" />
           </button>
         </div>
@@ -488,9 +495,13 @@ window.addEventListener('DOMContentLoaded', function() {
     text-align: center;
   }
 
+  .dark .countdown-number {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
   .countdown-label {
     font-size: 0.625rem;
-    color: var(--neutral-500);
+    color: var(--content-meta);
     margin-top: 2px;
   }
 
@@ -567,19 +578,30 @@ window.addEventListener('DOMContentLoaded', function() {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--neutral-500);
     transition: all 0.3s ease;
     border-radius: 4px;
   }
 
   .carousel-arrow:hover {
-    color: var(--primary);
+    color: var(--primary) !important;
     background-color: rgba(0, 0, 0, 0.05);
   }
 
   .arrow-icon {
     width: 18px;
     height: 18px;
+    color: var(--neutral-600);
+    fill: var(--neutral-600);
+  }
+
+  .dark .arrow-icon {
+    color: var(--neutral-400);
+    fill: var(--neutral-400);
+  }
+
+  .carousel-arrow:hover .arrow-icon {
+    color: var(--primary) !important;
+    fill: var(--primary) !important;
   }
 
   .carousel-indicators {
@@ -597,15 +619,32 @@ window.addEventListener('DOMContentLoaded', function() {
     transition: all 0.3s ease;
   }
 
+  :global(.dark .comic-event-container .indicator-dot) {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--neutral-400) !important;
+  }
+
   .indicator-dot:hover {
     border-color: var(--neutral-600);
     background-color: rgba(0, 0, 0, 0.2);
+  }
+
+  .dark .indicator-dot:hover {
+    border-color: var(--neutral-400);
+    background-color: rgba(255, 255, 255, 0.15);
   }
 
   .indicator-dot.active {
     background-color: var(--primary);
     border-color: var(--primary);
     transform: scale(1.2);
+  }
+
+  :global(.dark .comic-event-container .indicator-dot.active) {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 8px var(--primary);
+    border-width: 2px;
   }
 
   .price-scroll-wrapper {

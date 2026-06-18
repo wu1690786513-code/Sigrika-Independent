@@ -13,6 +13,18 @@ export interface ComicEvent {
   passedText?: string;    // 已过去的文本（可选，默认"已经过去了{days}"，支持{days}占位符显示天数）
 }
 
+// 排序方式配置
+export type SortOrder = 'futureFirst' | 'passedFirst';
+
+export interface ComicEventConfig {
+  sortOrder: SortOrder;   // 排序顺序：'futureFirst'（即将举行在前）| 'passedFirst'（已结束在前）
+}
+
+// 漫展展示顺序配置
+export const comicEventConfig: ComicEventConfig = {
+  sortOrder: 'futureFirst',  // 默认即将举行的放在前面
+};
+
 // 默认海报图片
 export const defaultComicPoster = 'https://upload.codexing.top/Blogs/study.webp';
 
@@ -63,6 +75,7 @@ export const comicEvents: ComicEvent[] = [
     name: '成都ComicDay',
     startDate: '2026-08-15',
     endDate: '2026-08-17',
+    goingDate: '2026-08-16 09:00:00',
     location: '成都·世纪城新国际会展中心',
     priceText: '预售50元 | 现场65元',
     poster: defaultComicPoster,
