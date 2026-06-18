@@ -1,0 +1,310 @@
+---
+import { Icon } from "astro-icon/components";
+import WidgetLayout from "@/components/common/WidgetLayout.astro";
+import { comicEvents } from "@/config/comicEvents";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+
+const { class: className, style } = Astro.props;
+
+// 生成唯一ID
+const widgetId = `comic-${Math.random().toString(36).substr(2, 9)}`;
+
+// 获取最近的漫展活动（在活动期间都显示）
+const getNearestEvent = () => {
+  const now = new Date();
+  
+  // 先筛选出还没结束的活动
+  const activeEvents = comicEvents.filter(event => {
+    const endDate = event.endDate ? new Date(event.endDate) : new Date(event.startDate);
+    endDate.setHours(23, 59, 59, 999);
+    return endDate >= now;
+  });
+  
+  if (activeEvents.length === 0) {
+    return null;
+  }
+  
+  // 先找正在进行的活动
+  const ongoingEvent = activeEvents.find(event => {
+    const startDate = new Date(event.startDate);
+    return startDate <= now;
+  });
+  
+  if (ongoingEvent) {
+    return ongoingEvent;
+  }
+  
+  // 找最近即将开始的活动
+  let nearest = null;
+  let minDiff = Infinity;
+  
+  activeEvents.forEach(event => {
+    const startDate = new Date(event.startDate);
+    const diff = startDate.getTime() - now.getTime();
+    if (diff < minDiff) {
+      minDiff = diff;
+      nearest = event;
+    }
+  });
+  
+  return nearest;
+};
+
+const nearestEvent = getNearestEvent();
+
+// 计算倒计时目标日期：优先使用goingDate，否则使用startDate
+const targetDate = nearestEvent?.goingDate || nearestEvent?.startDate || '';
+
+// 获取价格文本
+const getPriceText = (event) => {
+  if (event.priceText) {
+    return event.priceText;
+  }
+  if (event.preSalePrice && event.onSitePrice) {
+    return `预售${event.preSalePrice}元 | 现场${event.onSitePrice}元`;
+  }
+  return null;
+};
+---
+
+<WidgetLayout id="comic-event-widget" name="最近漫展" class={className} style={style}>
+  <div class="comic-event-container" data-widget-id={widgetId} data-target-date={targetDate}>
+    {nearestEvent ? (
+      <>
+        <!-- 标题区域 -->
+        <div class="mb-3">
+          <p class="text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+            <Icon name="material-symbols:festival" class="info-icon" />
+            <span>{nearestEvent.name}</span>
+          </p>
+        </div>
+
+        <!-- 海报区域 -->
+        <div class="poster-wrapper mb-3">
+          {nearestEvent.url ? (
+            <a href={nearestEvent.url} target="_blank" rel="noopener noreferrer" class="poster-link">
+              <img 
+                src={nearestEvent.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
+                alt={nearestEvent.name}
+                class="comic-poster"
+                loading="lazy"
+              />
+            </a>
+          ) : (
+            <img 
+              src={nearestEvent.poster || 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=anime%20comic%20con%20poster%20colorful%20festival&image_size=landscape_4_3'} 
+              alt={nearestEvent.name}
+              class="comic-poster"
+              loading="lazy"
+            />
+          )}
+        </div>
+
+        <!-- 倒计时区域 -->
+        <div class="countdown-section text-center mb-3">
+          <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-2">距离开展：</p>
+          <div class="countdown-display flex justify-center gap-2">
+            <div class="countdown-item">
+              <span class="countdown-number" data-id={`${widgetId}-days`}>--</span>
+              <span class="countdown-label">天</span>
+            </div>
+            <span class="countdown-separator">:</span>
+            <div class="countdown-item">
+              <span class="countdown-number" data-id={`${widgetId}-hours`}>--</span>
+              <span class="countdown-label">时</span>
+            </div>
+            <span class="countdown-separator">:</span>
+            <div class="countdown-item">
+              <span class="countdown-number" data-id={`${widgetId}-minutes`}>--</span>
+              <span class="countdown-label">分</span>
+            </div>
+            <span class="countdown-separator">:</span>
+            <div class="countdown-item">
+              <span class="countdown-number" data-id={`${widgetId}-seconds`}>--</span>
+              <span class="countdown-label">秒</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 信息区域 -->
+        <div class="info-section space-y-2 text-sm">
+          <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+            <Icon name="material-symbols:location-on" class="info-icon" />
+            <span class="truncate">{nearestEvent.location}</span>
+          </div>
+          <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+            <Icon name="material-symbols:calendar-today" class="info-icon" />
+            <span class="truncate">
+              开展：{nearestEvent.startDate}{nearestEvent.endDate ? ` ~ ${nearestEvent.endDate}` : ''}
+            </span>
+          </div>
+          {nearestEvent.goingDate && nearestEvent.goingDate !== nearestEvent.startDate && (
+            <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+              <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon" />
+              <span class="truncate">计划：{nearestEvent.goingDate} </span>
+            </div>
+          )}
+          {getPriceText(nearestEvent) && (
+            <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+              <Icon name="mdi:ticket-outline" class="info-icon" />
+              <span>票价：{getPriceText(nearestEvent)}</span>
+            </div>
+          )}
+        </div>
+      </>
+    ) : (
+      <div class="text-center py-8 text-neutral-500 dark:text-neutral-400">
+        <p>暂无即将举办的漫展</p>
+      </div>
+    )}
+  </div>
+</WidgetLayout>
+
+<script is:inline>
+window.addEventListener('DOMContentLoaded', function() {
+  const containers = document.querySelectorAll('.comic-event-container');
+  
+  containers.forEach(function(container) {
+    const widgetId = container.dataset.widgetId;
+    const targetDateStr = container.dataset.targetDate;
+    
+    if (!widgetId || !targetDateStr) return;
+
+    const parts = targetDateStr.split('-');
+    if (parts.length !== 3) return;
+    
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1;
+    const day = parseInt(parts[2]);
+    
+    const targetDate = new Date(year, month, day);
+    const targetTime = targetDate.getTime();
+
+    function updateCountdown() {
+      const now = new Date().getTime();
+      const diff = targetTime - now;
+
+      const daysEl = container.querySelector('[data-id="' + widgetId + '-days"]');
+      const hoursEl = container.querySelector('[data-id="' + widgetId + '-hours"]');
+      const minutesEl = container.querySelector('[data-id="' + widgetId + '-minutes"]');
+      const secondsEl = container.querySelector('[data-id="' + widgetId + '-seconds"]');
+
+      if (!daysEl || !hoursEl || !minutesEl || !secondsEl) {
+        setTimeout(updateCountdown, 50);
+        return;
+      }
+
+      if (diff <= 0) {
+        daysEl.textContent = '0';
+        hoursEl.textContent = '00';
+        minutesEl.textContent = '00';
+        secondsEl.textContent = '00';
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      daysEl.textContent = days;
+      hoursEl.textContent = String(hours).padStart(2, '0');
+      minutesEl.textContent = String(minutes).padStart(2, '0');
+      secondsEl.textContent = String(seconds).padStart(2, '0');
+    }
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  });
+});
+</script>
+
+<style>
+  .comic-event-container {
+    padding: 0;
+  }
+
+  .poster-wrapper {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+    position: relative;
+  }
+
+  .poster-link {
+    display: block;
+    overflow: hidden;
+    border-radius: 8px;
+  }
+
+  .comic-poster {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    max-height: 200px;
+    transition: transform 0.3s ease;
+  }
+
+  .poster-link:hover .comic-poster {
+    transform: scale(1.05);
+  }
+
+  .countdown-display {
+    align-items: center;
+  }
+
+  .countdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 40px;
+  }
+
+  .countdown-number {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .countdown-label {
+    font-size: 0.625rem;
+    color: var(--neutral-500);
+    margin-top: 2px;
+  }
+
+  .countdown-separator {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+  }
+
+  .info-section {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--neutral-200);
+  }
+
+  .dark .info-section {
+    border-top-color: var(--neutral-700);
+  }
+
+  .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .info-icon {
+    font-size: 1rem;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+</style>

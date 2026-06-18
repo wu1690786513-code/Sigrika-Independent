@@ -7,7 +7,7 @@ const REPO_URL = TOKEN
   ? `https://${TOKEN}@github.com/wu1690786513-code/Blog-Posts-Sync.git`
   : 'https://github.com/wu1690786513-code/Blog-Posts-Sync.git';
 const TEMP_DIR = path.join(__dirname, '..', '.temp-posts');
-const TARGET_DIR = path.join(__dirname, '..', 'src', 'content', 'posts', '同步文章');
+const TARGET_DIR = path.join(__dirname, '..', 'src', 'content', 'posts', '同步文章2');
 
 if (fs.existsSync(TEMP_DIR)) {
   fs.rmSync(TEMP_DIR, { recursive: true, force: true });
@@ -41,4 +41,4 @@ function copyDir(src, dest) {
 
 copyDir(TEMP_DIR, TARGET_DIR);
 fs.rmSync(TEMP_DIR, { recursive: true, force: true });
-console.log('✅ Posts synced to src/content/posts/同步文章/（已跳过 00_其他 目录）');
+console.log('✅ Posts synced to src/content/posts/同步文章2/（已跳过 00_其他 目录）');

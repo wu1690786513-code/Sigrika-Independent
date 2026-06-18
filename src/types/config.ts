@@ -427,7 +427,8 @@ export type WidgetComponentType =
 	| "calendar"
 	| "music"
 	| "weather"
-	| "schedule";
+	| "schedule"
+	| "comicEvent";
 	
 
 export type WidgetComponentConfig = {
