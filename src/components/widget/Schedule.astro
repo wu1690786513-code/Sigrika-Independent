@@ -104,6 +104,23 @@ const { class: className, style } = Astro.props;
     return new Date(year, 4, 22);
   };
 
+  const getMidAutumnDate = (year) => {
+    // 中秋节是农历八月十五，使用精确的公历日期映射
+    const midAutumnMap = {
+      2020: [10, 1], 2021: [9, 21], 2022: [9, 10], 2023: [9, 29], 2024: [9, 17],
+      2025: [10, 6], 2026: [9, 25], 2027: [9, 15], 2028: [10, 3], 2029: [9, 23],
+      2030: [9, 12], 2031: [10, 1], 2032: [9, 20], 2033: [9, 10], 2034: [9, 29],
+      2035: [9, 18], 2036: [10, 7], 2037: [9, 26], 2038: [9, 15], 2039: [10, 4],
+      2040: [9, 23]
+    };
+    if (midAutumnMap[year]) {
+      const [month, day] = midAutumnMap[year];
+      return new Date(year, month - 1, day);
+    }
+    // 默认回退到农历八月十五的近似日期
+    return new Date(year, 8, 15);
+  };
+
   const getHolidays = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -114,7 +131,7 @@ const { class: className, style } = Astro.props;
       { name: '清明', date: new Date(year, 3, 4) },
       { name: '劳动节', date: new Date(year, 4, 1) },
       { name: '端午', date: getDragonBoatDate(year) },
-      { name: '中秋', date: new Date(year, 8, 15) },
+      { name: '中秋', date: getMidAutumnDate(year) },
       { name: '国庆', date: new Date(year, 9, 1) },
       { name: '元旦', date: new Date(year + 1, 0, 1) }
     ];

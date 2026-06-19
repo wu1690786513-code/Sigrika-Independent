@@ -120,7 +120,7 @@ const getDatePart = (dateStr) => {
                 <!-- 海报区域 -->
                 <div class="poster-wrapper mb-3">
                   {event.url ? (
-                    <a href={event.url} target="_blank" rel="noopener noreferrer" class="poster-link" title="戳我去官网ฅ^•ﻌ•^ฅ">
+                    <a href={event.url} target="_blank" rel="noopener noreferrer" class="poster-link" title="戳我查看详情ฅ^•ﻌ•^ฅ">
                       <img 
                         src={getPoster(event)} 
                         alt={event.name}
@@ -176,7 +176,7 @@ const getDatePart = (dateStr) => {
                       开展：{getDatePart(event.startDate)}{event.endDate ? ` ~ ${getDatePart(event.endDate)}` : ''}
                     </span>
                   </div>
-                  {event.goingDate && getDatePart(event.goingDate) !== getDatePart(event.startDate) && (
+                  {event.goingDate && (
                     <div class="flex items-center gap-2" style="color: var(--content-meta)">
                       <Icon name="material-symbols:navigation-outline" class="info-icon" />
                       <span class="truncate">赴约：{getDatePart(event.goingDate)} </span>
