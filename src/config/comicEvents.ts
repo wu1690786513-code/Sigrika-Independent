@@ -34,7 +34,7 @@ export const comicEvents: ComicEvent[] = [
     startDate: '2026-02-07 10:00:00',
     endDate: '2026-02-08',
     goingDate: '2026-02-07 10:00:00',
-    location: '杭州 · in77席子廊桥大屏',
+    location: '杭州 · in77西子廊桥大屏',
     priceText: '免费',
     poster: 'https://upload.codexing.top/Sigrika/26/06/20260619231517110.webp',
     url: 'https://www.xiaohongshu.com/discovery/item/69831fe40000000022031487?source=webshare&xhsshare=pc_web&xsec_token=ABYotRluvOOPY9v-0beRvkk5iqUzWhvxxviqKDhSpTL9g=&xsec_source=pc_share',
@@ -79,7 +79,7 @@ export const comicEvents: ComicEvent[] = [
   {
     name: '上海轻音少女ONLY3.0',
     poster: 'https://upload.codexing.top/Sigrika/26/06/20260619225231864.webp',
-    url: 'https://www.xiaohongshu.com/discovery/item/6a12d90200000000350254cb?source=webshare&xhsshare=pc_web&xsec_token=ABD6gETAcH3soj3Ev921ZGzDH6RnEfErRzYNUph0QIBjc=&xsec_source=pc_share',
+    url: 'https://www.xiaohongshu.com/discovery/item/6a34e7ff000000002103d88b?source=webshare&xhsshare=pc_web&xsec_token=ABuCz8HuDGjpPAFZ9TFzlsXV-8Ku6QClnKo6hFdWb_0nA=&xsec_source=pc_share',
     location: '上海 · 交运智慧湾科创园25号楼',
     startDate: '2026-08-09 09:00:00',
     endDate: '2026-08-09',
@@ -91,7 +91,7 @@ export const comicEvents: ComicEvent[] = [
   {
     name: '夏日星炬·学院回响',
     poster: 'https://upload.codexing.top/Sigrika/26/06/20260619224044547.webp',
-    url: 'https://www.xiaohongshu.com/discovery/item/6a34e7ff000000002103d88b?source=webshare&xhsshare=pc_web&xsec_token=ABuCz8HuDGjpPAFZ9TFzlsXV-8Ku6QClnKo6hFdWb_0nA=&xsec_source=pc_share',
+    url: 'https://www.xiaohongshu.com/discovery/item/6a12d90200000000350254cb?source=webshare&xhsshare=pc_web&xsec_token=ABD6gETAcH3soj3Ev921ZGzDH6RnEfErRzYNUph0QIBjc=&xsec_source=pc_share',
     location: '杭州 · 良渚芯云艺术中心',
     startDate: '2026-08-09 09:00:00',
     endDate: '2026-08-09',
