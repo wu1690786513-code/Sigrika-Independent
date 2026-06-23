@@ -11,6 +11,11 @@ const { class: className, style } = Astro.props;
 
 <WidgetLayout id="schedule-widget" class={className} style={style}>
   <div class="schedule-container" data-schedule-id="schedule-${Math.random().toString(36).substr(2, 9)}">
+    <!-- 今日日期 -->
+    <div class="today-date text-center mb-4">
+      <span class="text-sm font-medium text-neutral-600 dark:text-neutral-400 today-date-content">--年--月--日 --</span>
+    </div>
+    
     <!-- 进度区域 -->
     <div class="progress-section space-y-4">
       <!-- 本年进度 -->
@@ -143,6 +148,9 @@ const { class: className, style } = Astro.props;
     const month = now.getMonth();
     const day = now.getDate();
     const weekDay = now.getDay();
+    
+    const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const todayStr = `${year}年${month + 1}月${day}日 ${weekDays[weekDay]}`;
 
     // 本年进度
     const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
@@ -156,12 +164,12 @@ const { class: className, style } = Astro.props;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const monthPassedDays = day;
     const monthDaysLeft = daysInMonth - day;
-    const monthProgress = ((monthPassedDays / daysInMonth) * 100).toFixed(1);
+    const monthProgress = ((monthDaysLeft / daysInMonth) * 100).toFixed(1);
 
     // 本周进度
     const weekPassedDays = weekDay === 0 ? 7 : weekDay;
     const weekDaysLeft = 7 - weekPassedDays;
-    const weekProgress = ((weekPassedDays / 7) * 100).toFixed(1);
+    const weekProgress = ((weekDaysLeft / 7) * 100).toFixed(1);
 
     // 最近节假日
     const holidays = getHolidays();
@@ -186,14 +194,18 @@ const { class: className, style } = Astro.props;
     // 更新所有 Schedule 组件实例
     const containers = document.querySelectorAll('.schedule-container');
     containers.forEach(container => {
+      // 更新今日日期
+      const todayDateEl = container.querySelector('.today-date-content');
+      if (todayDateEl) todayDateEl.textContent = todayStr;
+      
       // 更新进度条
       const pBarYear = container.querySelector('.pBar_year');
       const pBarMonth = container.querySelector('.pBar_month');
       const pBarWeek = container.querySelector('.pBar_week');
       
       if (pBarYear) pBarYear.value = yearPassedDays;
-      if (pBarMonth) pBarMonth.value = monthPassedDays;
-      if (pBarWeek) pBarWeek.value = weekPassedDays;
+      if (pBarMonth) pBarMonth.value = monthDaysLeft;
+      if (pBarWeek) pBarWeek.value = weekDaysLeft;
       
       // 更新进度百分比显示
       const yearProgressEl = container.querySelector('.year-progress');

@@ -55,7 +55,7 @@ export const comicEvents: ComicEvent[] = [
   },
   {
     name: '杭州国际动漫节',
-    startDate: '2026-06-10 09:00:00',
+    startDate: '2026-06-15 09:00:00',
     endDate: '2026-06-19',
     goingDate: '2026-06-19 09:00:00',
     location: '杭州 · 白马湖会展中心',
