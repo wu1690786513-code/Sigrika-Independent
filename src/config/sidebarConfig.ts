@@ -16,7 +16,7 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 	// 平板端(769-1279px)显示哪侧侧边栏，仅position为both时生效
 	// left: 平板端显示左侧边栏
 	// right: 平板端显示右侧边栏
-	tabletSidebar: "left",
+	tabletSidebar: "right",
 
 	// 使用单侧栏(position为left或right)时，是否在文章详情页显示双侧边栏
 	// 当position为left时开启此项，文章详情页将额外显示右侧边栏
@@ -128,7 +128,7 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			// 组件位置
 			position: "top",
 			// 是否在文章详情页显示
-			showOnPostPage: true,
+			showOnPostPage: false,
 		},
 		{
 			// 组件类型：站点统计组件
@@ -138,7 +138,7 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			// 组件位置
 			position: "top",
 			// 是否在文章详情页显示
-			showOnPostPage: true,
+			showOnPostPage: false,
 		},
 		{
 			// 组件类型：站点统计组件
@@ -148,7 +148,7 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 			// 组件位置
 			position: "top",
 			// 是否在文章详情页显示
-			showOnPostPage: true,
+			showOnPostPage: false,
 		},
 		{
 			// 组件类型：日历组件
