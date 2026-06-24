@@ -2,17 +2,10 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_USER = process.env.GITHUB_USER;
-
-let REPO_URL;
-if (GITHUB_TOKEN && GITHUB_USER) {
-  // 正确格式：用户名:Token@
-  REPO_URL = `https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/wu1690786513-code/Blog-Posts-Sync.git`;
-} else {
-  REPO_URL = 'https://github.com/wu1690786513-code/Blog-Posts-Sync.git';
-}
-
+const TOKEN = process.env.GITHUB_TOKEN;
+const REPO_URL = TOKEN 
+  ? `https://${TOKEN}@github.com/wu1690786513-code/Blog-Posts-Sync.git`
+  : 'https://github.com/wu1690786513-code/Blog-Posts-Sync.git';
 const TEMP_DIR = path.join(__dirname, '..', '.temp-posts');
 const TARGET_DIR = path.join(__dirname, '..', 'src', 'content', 'posts', '同步文章2');
 
