@@ -3,9 +3,10 @@ const fs = require('fs');
 const path = require('path');
 
 const TOKEN = process.env.GITHUB_TOKEN;
-const REPO_URL = TOKEN 
-  ? `https://${TOKEN}@github.com/wu1690786513-code/Blog-Posts-Sync.git`
-  : 'https://github.com/wu1690786513-code/Blog-Posts-Sync.git';
+// const REPO_URL = TOKEN 
+//   ? `https://${TOKEN}@github.com/wu1690786513-code/Blog-Posts-Sync.git`
+//   : 'https://github.com/wu1690786513-code/Blog-Posts-Sync.git';
+const REPO_URL = 'https://github.com/wu1690786513-code/Blog-Posts-Sync.git';
 const TEMP_DIR = path.join(__dirname, '..', '.temp-posts');
 const TARGET_DIR = path.join(__dirname, '..', 'src', 'content', 'posts', '同步文章2');
 
