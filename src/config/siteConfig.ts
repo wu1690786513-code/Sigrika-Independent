@@ -1,5 +1,4 @@
-import type { SiteConfig } from "@/types/config";
-import { fontConfig } from "./fontConfig";
+import type { SiteConfig } from "@/types/siteConfig";
 
 // 定义站点语言
 // 语言代码，例如：'zh_CN', 'zh_TW', 'en', 'ja', 'ru'。
@@ -74,7 +73,7 @@ export const siteConfig: SiteConfig = {
 		// 支持三种类型：
 		// 1. Astro图标库: { type: "icon", value: "material-symbols:home-pin-outline" }
 		// 2. 本地图片（public目录，不优化）: { type: "image", value: "/assets/images/logo.webp", alt: "Logo" }
-		// 3. 本地图片（src目录，自动优化但会增加构建时间，推荐）: { type: "image", value: "assets/images/logo.webp", alt: "Logo" }
+		// 3. 本地图片（src目录，自动优化但会增加构建时间）: { type: "image", value: "assets/images/logo.webp", alt: "Logo" }
 		// 4. 网络图片: { type: "url", value: "https://example.com/logo.png", alt: "Logo" }
 		logo: {
 			type: "image",
@@ -155,6 +154,9 @@ export const siteConfig: SiteConfig = {
 	// 分类导航栏开关，在首页和归档页顶部显示分类快捷导航
 	categoryBar: true,
 
+	// 归档页是否折叠非最新年份文章，禁用后默认展开全部年份
+	foldArticle: true,
+
 	// 文章列表布局配置
 	postListLayout: {
 		// 默认布局模式："list" 列表模式（单列布局），"grid" 网格模式（多列布局）
@@ -174,6 +176,26 @@ export const siteConfig: SiteConfig = {
 			// 网格模式卡片最小宽度(px)，浏览器根据容器宽度自动计算列数
 			columnWidth: 320,
 		},
+	},
+
+	// 文章内容页配置
+	post: {
+		// 提醒框（Admonitions）配置，修改后需要重启开发服务器才能生效
+		// 主题：'github' | 'obsidian' | 'vitepress' | 'docusaurus'，每个主题风格和语法不同，可根据喜好选择
+		rehypeCallouts: {
+			theme: "github",
+			// 是否启用兼容 Python-Markdown 风格的 admonition 语法（!!!和???语法）
+			// 注意：只有 theme 配置成 obsidian 主题才能基本支持这些语法，其他主题会有样式问题或不兼容的情况
+			enablePythonMarkdownAdmonitions: false,
+		},
+		// 文章页底部的"上次编辑时间"卡片开关
+		showLastModified: true,
+		// 文章过期阈值（天数），超过此天数才显示"上次编辑"卡片
+		outdatedThreshold: 30,
+		// 是否开启分享海报生成功能
+		sharePoster: true,
+		// OpenGraph图片功能，注意开启后要渲染很长时间，不建议本地调试的时候开启
+		generateOgImages: false,
 	},
 
 	// 分页配置
@@ -250,10 +272,6 @@ export const siteConfig: SiteConfig = {
 		// 可解决指定域名图片加载时的 403 问题（如防盗链图片）
 		noReferrerDomains: [],
 	},
-
-	// 字体配置
-	// 在src/config/fontConfig.ts中配置具体字体
-	font: fontConfig,
 
 	// 站点语言，在本配置文件顶部SITE_LANG定义
 	lang: SITE_LANG,

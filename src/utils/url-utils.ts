@@ -5,7 +5,8 @@ import { i18n } from "@i18n/translation";
  * 移除文件扩展名（.md, .mdx, .markdown）
  * 用于将 Astro v5 Content Layer API 的 id 转换为 URL 友好的 slug
  */
-export function removeFileExtension(id: string): string {
+export function removeFileExtension(id: string | undefined): string {
+	if (!id) return "";
 	return id.replace(/\.(md|mdx|markdown)$/i, "");
 }
 
@@ -72,7 +73,8 @@ export function getSearchUrl(query: string): string {
 	return url(`/search/?q=${encodeURIComponent(query.trim())}`);
 }
 
-export function url(path: string): string {
+export function url(path: string | undefined): string {
+	if (!path) return "";
 	// 关键修复：如果是网络URL，直接返回原地址
 	if (
 		path.startsWith("http://") ||

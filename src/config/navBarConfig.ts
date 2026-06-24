@@ -7,6 +7,73 @@ import {
 } from "../types/config";
 import { siteConfig } from "./siteConfig";
 
+// LinkPreset 到实际链接对象的映射
+const linkPresets: Record<LinkPreset, NavBarLink> = {
+	[LinkPreset.Home]: {
+		name: "首页",
+		url: "/",
+		icon: "material-symbols:home",
+	},
+	[LinkPreset.Archive]: {
+		name: "归档",
+		url: "/archive/",
+		icon: "material-symbols:archive",
+	},
+	[LinkPreset.About]: {
+		name: "关于",
+		url: "/about/",
+		icon: "material-symbols:info",
+	},
+	[LinkPreset.Friends]: {
+		name: "友链",
+		url: "/friends/",
+		icon: "material-symbols:group",
+		pageKey: "friends",
+	},
+	[LinkPreset.Sponsor]: {
+		name: "赞助",
+		url: "/sponsor/",
+		icon: "material-symbols:coffee",
+		pageKey: "sponsor",
+	},
+	[LinkPreset.Guestbook]: {
+		name: "留言板",
+		url: "/guestbook/",
+		icon: "material-symbols:chat",
+		pageKey: "guestbook",
+	},
+	[LinkPreset.Bangumi]: {
+		name: "番剧",
+		url: "/bangumi/",
+		icon: "material-symbols:movie",
+		pageKey: "bangumi",
+	},
+	[LinkPreset.Gallery]: {
+		name: "相册",
+		url: "/gallery/",
+		icon: "material-symbols:photo-library",
+		pageKey: "gallery",
+	},
+	[LinkPreset.Tags]: {
+		name: "标签",
+		url: "/archive/?tags",
+		icon: "material-symbols:tag",
+	},
+	[LinkPreset.Categories]: {
+		name: "分类",
+		url: "/archive/?categories",
+		icon: "material-symbols:folder-open",
+	},
+};
+
+// 将 LinkPreset 或 NavBarLink 转换为 NavBarLink
+function resolveLink(link: NavBarLink | LinkPreset): NavBarLink {
+	if (typeof link === "number") {
+		return linkPresets[link];
+	}
+	return link;
+}
+
 // 根据页面开关动态生成导航栏配置
 const getDynamicNavBarConfig = (): NavBarConfig => {
 	// 基础导航栏链接
@@ -31,14 +98,9 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	});
 
 	// 根据配置决定是否添加友链，在siteConfig关闭pages.friends时导航栏不显示友链
-	links.push({
-		name: "友链",
-		url: "/friends/",
-		icon: "material-symbols:group",
-	});
 
 	
-
+	links.push(LinkPreset.Friends);
 	// 我的及其子菜单
 	links.push({
 		name: "相册",
@@ -132,8 +194,22 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 	// 	],
 	// });
 
+		// 递归解析所有的 LinkPreset 为 NavBarLink
+	function resolveLinks(links: (NavBarLink | LinkPreset)[]): NavBarLink[] {
+		return links.map((link) => {
+			const resolved = resolveLink(link);
+			if (resolved.children) {
+				return {
+					...resolved,
+					children: resolveLinks(resolved.children),
+				};
+			}
+			return resolved;
+		});
+	}
+
 	// 仅返回链接，其它导航搜索相关配置在模块顶层常量中独立导出
-	return { links } as NavBarConfig;
+	return { links: resolveLinks(links) } as NavBarConfig;
 };
 
 // 导航搜索配置

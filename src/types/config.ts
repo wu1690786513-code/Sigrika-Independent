@@ -802,28 +802,56 @@ export type SponsorConfig = {
 	showComment?: boolean; // 是否显示评论区，默认 false
 	showButtonInPost?: boolean; // 是否在文章详情页底部显示赞助按钮，默认 true
 };
+export type { AnalyticsConfig } from "./analyticsConfig";
+export type { AnnouncementConfig } from "./announcementConfig";
+export type { BackgroundWallpaperConfig } from "./backgroundWallpaper";
+export type { CommentConfig } from "./commentConfig";
+export type { CoverImageConfig } from "./coverImageConfig";
+export type { SakuraConfig } from "./effectsConfig";
+export type {
+	ExpressiveCodeConfig,
+	PluginCollapsibleConfig,
+	PluginLanguageBadgeConfig,
+} from "./expressiveCodeConfig";
+export type { FontConfig, FontItem } from "./fontConfig";
+export type { FooterConfig } from "./footerConfig";
+export type { FriendLink, FriendsPageConfig } from "./friendsConfig";
+export type { GalleryAlbum, GalleryConfig } from "./galleryConfig";
+export type { LicenseConfig } from "./licenseConfig";
+export type { MusicPlayerConfig } from "./musicConfig";
+export type {
+	NavBarConfig,
+	NavBarLink,
+	NavBarSearchConfig,
+	NavBarSearchMethod,
+} from "./navBarConfig";
+export type { Live2DWidgetConfig, SpineModelConfig } from "./pioConfig";
+export type { PlantUMLConfig } from "./plantumlConfig";
+export type { ProfileConfig } from "./profileConfig";
+export type {
+	AdConfig,
+	CalendarConfig,
+	MobileBottomComponentConfig,
+	SidebarLayoutConfig,
+	SiteInfoConfig,
+	WidgetComponentConfig,
+	WidgetComponentType,
+	WidgetSpecificConfig,
+} from "./sidebarConfig";
+export type {
+	Favicon,
+	LIGHT_DARK_MODE,
+	SiteConfig,
+	WALLPAPER_MODE,
+} from "./siteConfig";
+export type {
+	SponsorConfig,
+	SponsorItem,
+	SponsorMethod,
+} from "./sponsorConfig";
 
 // 响应式图像布局类型
 export type ResponsiveImageLayout = "constrained" | "full-width" | "none";
 
 // 图像格式类型
 export type ImageFormat = "avif" | "webp" | "png" | "jpg" | "jpeg" | "gif";
-
-// 相册元信息（用户在配置文件中填写）
-export type GalleryAlbum = {
-	id: string; // URL slug + 目录名，如 "japan-2025"
-	name: string; // 相册名称
-	description?: string; // 相册描述
-	date?: string; // 日期
-	location?: string; // 拍摄地点
-	tags?: string[]; // 标签（用于首页筛选）
-	cover?: string; // 手动指定封面（可选，省略则自动取 cover.* 或第一张）
-	password?: string; // 加密密码（非空时启用加密）
-	passwordHint?: string; // 密码提示
-};
-
-// 相册配置
-export type GalleryConfig = {
-	albums: GalleryAlbum[];
-	columnWidth?: number; // 瀑布流最小列宽(px)，默认 240，浏览器根据容器宽度自动计算列数
-};
