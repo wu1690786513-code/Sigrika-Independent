@@ -56,12 +56,12 @@ const linkPresets: Record<LinkPreset, NavBarLink> = {
 	},
 	[LinkPreset.Tags]: {
 		name: "标签",
-		url: "/archive/?tags",
+		url: "/tags/",
 		icon: "material-symbols:tag",
 	},
 	[LinkPreset.Categories]: {
 		name: "分类",
-		url: "/archive/?categories",
+		url: "/categories/",
 		icon: "material-symbols:folder-open",
 	},
 };

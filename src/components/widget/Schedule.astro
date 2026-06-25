@@ -44,6 +44,15 @@ const { class: className, style } = Astro.props;
           <progress max="7" class="schedule-progress-bar pBar_week" value="0"></progress>
         </div>
       </div>
+
+      <!-- 今日进度 -->
+      <div class="progress-item flex items-center gap-3">
+        <span class="text-[14px] font-semibold text-(--primary) shrink-0 w-[60px] day-progress">--%</span>
+        <div class="flex-1 min-w-0">
+          <span class="text-sm text-neutral-700 dark:text-neutral-300 day-hours-left">今日还剩 -- 小时</span>
+          <progress max="24" class="schedule-progress-bar pBar_day" value="0"></progress>
+        </div>
+      </div>
     </div>
 
     <!-- 节假日倒计时区域 -->
@@ -171,6 +180,13 @@ const { class: className, style } = Astro.props;
     const weekDaysLeft = 7 - weekPassedDays;
     const weekProgress = ((weekDaysLeft / 7) * 100).toFixed(1);
 
+    // 今日进度
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentSecond = now.getSeconds();
+    const dayHoursLeft = 24 - currentHour - 1;
+    const dayProgress = (((24 - currentHour - 1) / 24) * 100).toFixed(1);
+
     // 最近节假日
     const holidays = getHolidays();
     let nearestHoliday = { name: '元旦', days: '--', date: '--' };
@@ -202,27 +218,33 @@ const { class: className, style } = Astro.props;
       const pBarYear = container.querySelector('.pBar_year');
       const pBarMonth = container.querySelector('.pBar_month');
       const pBarWeek = container.querySelector('.pBar_week');
+      const pBarDay = container.querySelector('.pBar_day');
       
       if (pBarYear) pBarYear.value = yearPassedDays;
       if (pBarMonth) pBarMonth.value = monthDaysLeft;
       if (pBarWeek) pBarWeek.value = weekDaysLeft;
+      if (pBarDay) pBarDay.value = 24 - currentHour - 1;
       
       // 更新进度百分比显示
       const yearProgressEl = container.querySelector('.year-progress');
       const monthProgressEl = container.querySelector('.month-progress');
       const weekProgressEl = container.querySelector('.week-progress');
+      const dayProgressEl = container.querySelector('.day-progress');
       
       const yearDaysLeftEl = container.querySelector('.year-days-left');
       const monthDaysLeftEl = container.querySelector('.month-days-left');
       const weekDaysLeftEl = container.querySelector('.week-days-left');
+      const dayHoursLeftEl = container.querySelector('.day-hours-left');
 
       if (yearProgressEl) yearProgressEl.textContent = yearProgress + '%';
       if (monthProgressEl) monthProgressEl.textContent = monthProgress + '%';
       if (weekProgressEl) weekProgressEl.textContent = weekProgress + '%';
+      if (dayProgressEl) dayProgressEl.textContent = dayProgress + '%';
       
       if (yearDaysLeftEl) yearDaysLeftEl.textContent = `本年还剩 ${yearDaysLeft} 天`;
       if (monthDaysLeftEl) monthDaysLeftEl.textContent = `本月还剩 ${monthDaysLeft} 天`;
       if (weekDaysLeftEl) weekDaysLeftEl.textContent = `本周还剩 ${weekDaysLeft} 天`;
+      if (dayHoursLeftEl) dayHoursLeftEl.textContent = `今日还剩 ${dayHoursLeft} 小时`;
       
       const holidayFull = container.querySelector('.nearest-holiday-full');
       const holidayDays = container.querySelector('.nearest-holiday-days');
