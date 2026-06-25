@@ -138,7 +138,7 @@ const tabs = [
                     </div>
                     <div class="card-content">
                       <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                        <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                        <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{event.name}</span>
                       </p>
                       <div class="card-info space-y-2 text-sm mt-2">
@@ -173,7 +173,7 @@ const tabs = [
                     </div>
                     <div class="card-content">
                       <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                        <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                        <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{event.name}</span>
                       </p>
                       <div class="card-info space-y-2 text-sm mt-2">
@@ -207,10 +207,11 @@ const tabs = [
         </section>
 
         <section class="event-section" data-status="future" style={futureEvents.length === 0 ? 'display:none' : ''}>
-          <h2 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-[var(--primary)]"></span>
-            即将到来
-          </h2>
+          <div class="section-divider">
+            <span class="divider-line"></span>
+            <span class="divider-text">即将到来</span>
+            <span class="divider-line"></span>
+          </div>
           {futureEvents[0] && (
             <div class:list={['comic-card', 'comic-card-large', 'event-card']} data-status="future" data-city={futureEvents[0].city || ''}>
               {futureEvents[0].url ? (
@@ -222,14 +223,9 @@ const tabs = [
                   <div class="card-content">
                     <div class="card-header">
                       <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                        <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                        <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{futureEvents[0].name}</span>
                       </p>
-                      <comic-large-countdown data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
-                        <span class="large-countdown-text text-[var(--primary)]">还有</span>
-                        <span class="large-countdown-number">--</span>
-                        <span class="large-countdown-text">天</span>
-                      </comic-large-countdown>
                     </div>
                     <div class="card-info space-y-2 text-sm mt-2">
                       <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
@@ -264,14 +260,9 @@ const tabs = [
                   <div class="card-content">
                     <div class="card-header">
                       <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                        <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                        <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{futureEvents[0].name}</span>
                       </p>
-                      <comic-large-countdown data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
-                        <span class="large-countdown-text text-[var(--primary)]">还有</span>
-                        <span class="large-countdown-number">--</span>
-                        <span class="large-countdown-text">天</span>
-                      </comic-large-countdown>
                     </div>
                     <div class="card-info space-y-2 text-sm mt-2">
                       <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
@@ -308,11 +299,10 @@ const tabs = [
                     <a href={event.url} target="_blank" rel="noopener noreferrer" class="block">
                       <div class="card-poster">
                         <img src={getPoster(event)} alt={event.name} loading="lazy" />
-                        <span class="status-badge future">即将开始</span>
                       </div>
                       <div class="card-content">
                         <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                          <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                          <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                           <span>{event.name}</span>
                         </p>
                         <div class="card-info space-y-2 text-sm mt-2">
@@ -343,11 +333,10 @@ const tabs = [
                     <div>
                       <div class="card-poster">
                         <img src={getPoster(event)} alt={event.name} loading="lazy" />
-                        <span class="status-badge future">即将开始</span>
                       </div>
                       <div class="card-content">
                         <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                          <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                          <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                           <span>{event.name}</span>
                         </p>
                         <div class="card-info space-y-2 text-sm mt-2">
@@ -382,10 +371,11 @@ const tabs = [
         </section>
 
         <section class="event-section" data-status="passed" style={passedEvents.length === 0 ? 'display:none' : ''}>
-          <h2 class="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-4 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-neutral-400"></span>
-            历史漫展
-          </h2>
+          <div class="section-divider">
+            <span class="divider-line"></span>
+            <span class="divider-text">完结撒花</span>
+            <span class="divider-line"></span>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {passedEvents.map((event) => {
               const targetStr = event.goingDate || event.startDate;
@@ -407,7 +397,7 @@ const tabs = [
                       </div>
                       <div class="card-content">
                         <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                          <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                          <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                           <span>{event.name}</span>
                         </p>
                         <div class="card-info space-y-2 text-sm mt-2">
@@ -442,7 +432,7 @@ const tabs = [
                       </div>
                       <div class="card-content">
                         <p class="card-title text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                          <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                          <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                           <span>{event.name}</span>
                         </p>
                         <div class="card-info space-y-2 text-sm mt-2">
@@ -855,6 +845,38 @@ const tabs = [
     width: 100%;
   }
 
+  :global(.event-section) {
+    margin-top: 10px !important;
+    padding-bottom: 16px !important;
+  }
+
+  :global(.event-section[data-status="passed"]) {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .section-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--primary), transparent);
+  }
+
+  .divider-text {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+    padding: 0 12px;
+  }
+
   .tab-count {
     background: color-mix(in srgb, currentColor 20%, transparent);
     padding: 2px 6px;
@@ -1103,7 +1125,7 @@ const tabs = [
       margin-right: 16px;
       aspect-ratio: auto;
       height: 100%;
-      min-height: 200px;
+      min-height: auto;
     }
 
     .comic-card-large .card-content {

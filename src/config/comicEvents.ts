@@ -35,6 +35,19 @@ export const defaultComicPoster = 'https://upload.codexing.top/Blogs/study.webp'
 
 export const comicEvents: ComicEvent[] = [
   {
+    name: '鸣潮 · 巡回演唱会',
+    startDate: '2026-07-16 19:00:00',
+    endDate: '2026-07-18 19:00:00',
+    goingDate: '2026-07-18 19:00:00',
+    location: '上海 · 浦发银行东方体育中心',
+    city: '上海',
+    priceText: 'S档1280元 | A档1180元 | B档980元 | C档880元 | D档680元 | E档480元 | F档380元',
+    poster: 'https://upload.codexing.top/Sigrika/26/06/20260625165551103.webp',
+    url: 'https://www.xiaohongshu.com/explore/6a34afdb000000001502478d?xsec_token=ABCrX6Q1EwGuexqnclW6Vn80j3Emd-627f-kVY0t-vKe4=&xsec_source=pc_user',
+    onGoingText: '主包正在逛展中...',
+    passedText: '什么?已经{days}天了!',
+  },
+  {
     name: '飞行雪绒应援企划',
     startDate: '2026-02-07 10:00:00',
     endDate: '2026-02-08',
@@ -94,7 +107,7 @@ export const comicEvents: ComicEvent[] = [
     startDate: '2026-07-12 09:00:00',
     endDate: '2026-07-12',
     goingDate: '2026-07-12 09:00:00',
-    priceText: '普票88元 | vip票108元',
+    priceText: '普票88元 | vip票138元',
     onGoingText: '主包正在逛展中...',
     passedText: '已经过去了{days}天',
   },

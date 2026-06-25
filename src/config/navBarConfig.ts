@@ -97,31 +97,39 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 		],
 	});
 
+	// 我的及其子菜单
+	links.push({
+		name: "我的",
+		url: "/gallery/",
+		icon: "material-symbols:person",
+		children: [
+			{
+				name: "漫展",
+				url: "/comic-events/",
+				icon: "material-symbols:festival",
+			},
+			{
+				name: "相册",
+				url: "/gallery/",
+				icon: "material-symbols:photo-library",
+			},
+			{
+				name: "番剧",
+				url: "/bangumi/",
+				icon: "material-symbols:movie",
+			},
+		],
+	});
+
 	// 根据配置决定是否添加友链，在siteConfig关闭pages.friends时导航栏不显示友链
 
 	
 	links.push(LinkPreset.Friends);
-	// 我的及其子菜单
-	links.push({
-		name: "相册",
-		url: "/gallery/",
-		icon: "material-symbols:photo-library",
-	});
-	links.push({
-		name: "番剧",
-		url: "/bangumi/",
-		icon: "material-symbols:movie",
-	});
 	// 根据配置决定是否添加留言板，在siteConfig关闭pages.guestbook时导航栏不显示留言板
 		links.push({
 			name: "图谱",
 			url: "/graph/",
 			icon: "material-symbols:hub",
-		});
-	links.push({
-			name: "漫展",
-			url: "/comic-events/",
-			icon: "material-symbols:festival",
 		});
 	// 放到关于中
 	// if (siteConfig.pages.guestbook) {
