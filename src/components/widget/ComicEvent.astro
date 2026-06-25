@@ -13,21 +13,19 @@ const { class: className, style } = Astro.props;
 // 生成唯一ID
 const widgetId = `comic-${Math.random().toString(36).substr(2, 9)}`;
 
-// 获取用于轮播的漫展（过去最近3场 + 正在进行中 + 将来3场）
 const getDisplayEvents = () => {
   const now = new Date();
+  const { sortOrder, passedCount = 3, futureCount = 3 } = comicEventConfig;
   
-  // 分离已结束、正在进行中和未开始的活动
   const passedEvents = comicEvents.filter(event => {
     const endDate = event.endDate ? new Date(event.endDate) : new Date(event.startDate);
     endDate.setHours(23, 59, 59, 999);
     return endDate < now;
   }).sort((a, b) => {
-    // 按结束日期倒序排列，最近结束的在前
     const aEnd = new Date(a.endDate || a.startDate);
     const bEnd = new Date(b.endDate || b.startDate);
     return bEnd.getTime() - aEnd.getTime();
-  }).slice(0, 3); // 取最近的3场
+  }).slice(0, passedCount);
   
   const onGoingEvents = comicEvents.filter(event => {
     const startDate = new Date(event.startDate);
@@ -35,29 +33,23 @@ const getDisplayEvents = () => {
     endDate.setHours(23, 59, 59, 999);
     return startDate <= now && endDate >= now;
   }).sort((a, b) => {
-    // 按结束日期正序排列，快结束的在前
     const aEnd = new Date(a.endDate || a.startDate);
     const bEnd = new Date(b.endDate || b.startDate);
     return aEnd.getTime() - bEnd.getTime();
-  }).slice(0, 3); // 取正在进行中的最多3场
+  }).slice(0, 3);
   
   const futureEvents = comicEvents.filter(event => {
     const startDate = new Date(event.startDate);
     return startDate > now;
   }).sort((a, b) => {
-    // 按开始日期正序排列，最近开始的在前
     const aStart = new Date(a.startDate);
     const bStart = new Date(b.startDate);
     return aStart.getTime() - bStart.getTime();
-  }).slice(0, 3); // 取最近的3场
+  }).slice(0, futureCount);
   
-  // 根据配置决定排序顺序
-  const { sortOrder } = comicEventConfig;
   if (sortOrder === 'futureFirst') {
-    // 即将举行的放在前面：正在进行中 + 将来3场 + 已结束3场
     return [...onGoingEvents, ...futureEvents, ...passedEvents];
   } else {
-    // 已结束的放在前面
     return [...passedEvents, ...onGoingEvents, ...futureEvents];
   }
 };
@@ -112,7 +104,7 @@ const getDatePart = (dateStr) => {
                 <!-- 标题区域 -->
                 <div class="mb-3">
                   <p class="text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
-                    <Icon name="material-symbols:festival" class="info-icon" />
+                    <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                     <span>{event.name}</span>
                   </p>
                 </div>
@@ -167,28 +159,25 @@ const getDatePart = (dateStr) => {
                 <!-- 信息区域 -->
                 <div class="info-section space-y-2 text-sm">
                   <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <Icon name="material-symbols:location-on" class="info-icon" />
+                    <Icon name="material-symbols:location-on" class="info-icon text-[var(--primary)]" />
                     <span class="truncate">{event.location}</span>
                   </div>
                   <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon" />
+                    <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon text-[var(--primary)]" />
                     <span class="truncate">
                       开展：{getDatePart(event.startDate)}{event.endDate ? ` ~ ${getDatePart(event.endDate)}` : ''}
                     </span>
                   </div>
                   {event.goingDate && (
-                    <div class="flex items-center gap-2" style="color: var(--content-meta)">
-                      <Icon name="material-symbols:navigation-outline" class="info-icon" />
+                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                      <Icon name="material-symbols:navigation-outline" class="info-icon text-[var(--primary)]" />
                       <span class="truncate">赴约：{getDatePart(event.goingDate)} </span>
                     </div>
                   )}
                   {getPriceText(event) && (
-                    <div class="flex items-center gap-2" style="color: var(--content-meta)">
-                      <Icon name="mdi:ticket-outline" class="info-icon shrink-0" />
-                      <span class="price-label shrink-0">票价：</span>
-                      <div class="price-scroll-wrapper">
-                        <span class="price-text" title={getPriceText(event)}>{getPriceText(event)}</span>
-                      </div>
+                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                      <Icon name="mdi:ticket-outline" class="info-icon shrink-0 text-[var(--primary)]" />
+                      <span class="price-label shrink-0" title={getPriceText(event)}>票价：{getPriceText(event)}</span>
                     </div>
                   )}
                 </div>
@@ -481,19 +470,21 @@ window.addEventListener('DOMContentLoaded', function() {
     overflow: hidden;
     border-radius: 8px;
     position: relative;
+    aspect-ratio: 3 / 2;
   }
 
   .poster-link {
     display: block;
     overflow: hidden;
     border-radius: 8px;
+    width: 100%;
+    height: 100%;
   }
 
   .comic-poster {
     width: 100%;
-    height: auto;
-    object-fit: contain;
-    max-height: 200px;
+    height: 100%;
+    object-fit: cover;
     transition: transform 0.3s ease;
   }
 
@@ -669,14 +660,16 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 
   .price-scroll-wrapper {
-    flex: 1;
     overflow: hidden;
     white-space: nowrap;
     display: flex;
     align-items: center;
+    min-width: 0;
   }
 
   .price-text {
+    flex: 1;
+    min-width: 0;
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;

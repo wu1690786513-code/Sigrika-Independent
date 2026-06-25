@@ -118,6 +118,11 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 			url: "/graph/",
 			icon: "material-symbols:hub",
 		});
+	links.push({
+			name: "漫展",
+			url: "/comic-events/",
+			icon: "material-symbols:festival",
+		});
 	// 放到关于中
 	// if (siteConfig.pages.guestbook) {
 	// 	links.push(LinkPreset.Guestbook);

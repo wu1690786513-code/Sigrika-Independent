@@ -381,13 +381,15 @@
                 {#each tags as tag}
                     <a
                         href={getTagUrl(tag.name)}
-                        class="btn-regular px-3 py-1.5 text-sm rounded-md
-                               transition-all duration-200
-                               hover:scale-105 hover:bg-[var(--primary)]/20
-                               active:scale-95"
+                        class="tag-item inline-flex items-center gap-1.5 rounded-lg
+                               h-8 text-sm px-3 transition-all duration-200
+                               hover:scale-105 hover:shadow-md"
+                        style={`--tag-depth: ${tag.count > 1 ? 0.5 : 0.3}`}
                     >
-                        #{tag.name}
-                        <span class="ml-1 text-xs opacity-60">({tag.count})</span>
+                        <span class="font-medium">
+                            <span class="opacity-50">#</span>{tag.name.trim()}
+                        </span>
+                        <span class="tag-count-badge text-xs font-bold px-1.5 rounded-md min-w-[1.5rem] text-center">{tag.count}</span>
                     </a>
                 {/each}
             </div>
@@ -814,5 +816,20 @@
 
     :global(.grid-mode) .post-meta .pinned-btn {
         padding: 0.25rem 0.375rem !important;
+    }
+
+    /* 标签样式 - 使用 color-mix 基于主题色变化 */
+    :global(.tag-item) {
+        background: color-mix(in oklch, var(--primary) calc(var(--tag-depth, 0.5) * 12% + 5%), transparent) !important;
+        color: var(--primary) !important;
+    }
+    
+    :global(.tag-item:hover) {
+        background: color-mix(in oklch, var(--primary) calc(var(--tag-depth, 0.5) * 20% + 10%), transparent) !important;
+    }
+    
+    :global(.tag-item .tag-count-badge) {
+        background: color-mix(in oklch, var(--primary) calc(var(--tag-depth, 0.5) * 30% + 15%), transparent) !important;
+        color: white !important;
     }
 </style>
