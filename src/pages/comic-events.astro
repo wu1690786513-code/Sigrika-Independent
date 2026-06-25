@@ -64,9 +64,11 @@ const tabs = [
   { id: 'ongoing', label: '进行中', count: ongoingEvents.length },
   { id: 'passed', label: '已结束', count: passedEvents.length },
 ];
+
 ---
 
 <MainGridLayout title="漫展日程" description="主包的漫展日程安排">
+
   <div class={`comic-events-page ${className || ''}`}>
     <div class="card-base rounded-(--radius-large) overflow-hidden p-6 mb-6">
       <div class="flex items-center gap-3 mb-6">
@@ -79,7 +81,7 @@ const tabs = [
         </div>
       </div>
 
-      <div class="filter-tabs mb-6">
+      <comic-events-filter class="filter-tabs mb-6">
         <div class="tabs-container flex flex-wrap gap-2 mb-3">
           {tabs.map((tab) => (
             <button 
@@ -117,7 +119,7 @@ const tabs = [
             ))}
           </div>
         )}
-      </div>
+      </comic-events-filter>
 
       <div id="events-container">
         <section class="event-section" data-status="ongoing" style={ongoingEvents.length === 0 ? 'display:none' : ''}>
@@ -139,17 +141,6 @@ const tabs = [
                         <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{event.name}</span>
                       </p>
-                      <div class="countdown-section text-center mt-2">
-                        <div class="countdown-wrap" data-target={event.goingDate || event.startDate} data-ongoing={event.onGoingText || '主包正在逛展位'} data-passed={event.passedText ?? ''}>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">天</span></div>
-                          <span class="countdown-separator">:</span>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">时</span></div>
-                          <span class="countdown-separator">:</span>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">分</span></div>
-                          <span class="countdown-separator">:</span>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">秒</span></div>
-                        </div>
-                      </div>
                       <div class="card-info space-y-2 text-sm mt-2">
                         <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
                           <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon text-[var(--primary)]" />
@@ -185,17 +176,6 @@ const tabs = [
                         <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{event.name}</span>
                       </p>
-                      <div class="countdown-section text-center mt-2">
-                        <div class="countdown-wrap" data-target={event.goingDate || event.startDate} data-ongoing={event.onGoingText || '主包正在逛展位'} data-passed={event.passedText ?? ''}>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">天</span></div>
-                          <span class="countdown-separator">:</span>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">时</span></div>
-                          <span class="countdown-separator">:</span>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">分</span></div>
-                          <span class="countdown-separator">:</span>
-                          <div class="countdown-item"><span class="countdown-number">--</span><span class="countdown-label">秒</span></div>
-                        </div>
-                      </div>
                       <div class="card-info space-y-2 text-sm mt-2">
                         <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
                           <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon text-[var(--primary)]" />
@@ -245,11 +225,11 @@ const tabs = [
                         <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{futureEvents[0].name}</span>
                       </p>
-                      <div class="large-countdown-wrap" data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
+                      <comic-large-countdown data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
                         <span class="large-countdown-text text-[var(--primary)]">还有</span>
                         <span class="large-countdown-number">--</span>
                         <span class="large-countdown-text">天</span>
-                      </div>
+                      </comic-large-countdown>
                     </div>
                     <div class="card-info space-y-2 text-sm mt-2">
                       <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
@@ -272,19 +252,6 @@ const tabs = [
                           <span class="price-text text-left flex-1 min-w-0" title={getPriceText(futureEvents[0])}>票价：{getPriceText(futureEvents[0])}</span>
                         </div>
                       )}
-                      <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                        <Icon name="material-symbols:timer" class="info-icon shrink-0 text-[var(--primary)]" />
-                        <span class="price-label shrink-0">倒计时：</span>
-                        <div class="mini-countdown-wrap" data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">天</span></span>
-                          <span class="mini-countdown-sep">:</span>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">时</span></span>
-                          <span class="mini-countdown-sep">:</span>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">分</span></span>
-                          <span class="mini-countdown-sep">:</span>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">秒</span></span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </a>
@@ -300,11 +267,11 @@ const tabs = [
                         <Icon name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
                         <span>{futureEvents[0].name}</span>
                       </p>
-                      <div class="large-countdown-wrap" data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
-                        <span class="large-countdown-text text-[var(--primary)]" >还有</span>
+                      <comic-large-countdown data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
+                        <span class="large-countdown-text text-[var(--primary)]">还有</span>
                         <span class="large-countdown-number">--</span>
                         <span class="large-countdown-text">天</span>
-                      </div>
+                      </comic-large-countdown>
                     </div>
                     <div class="card-info space-y-2 text-sm mt-2">
                       <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
@@ -327,19 +294,6 @@ const tabs = [
                           <span class="price-text text-left flex-1 min-w-0" title={getPriceText(futureEvents[0])}>票价：{getPriceText(futureEvents[0])}</span>
                         </div>
                       )}
-                      <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                        <Icon name="material-symbols:timer" class="info-icon shrink-0 text-[var(--primary)]" />
-                        <span class="price-label shrink-0">倒计时：</span>
-                        <div class="mini-countdown-wrap" data-target={futureEvents[0].goingDate || futureEvents[0].startDate} data-ongoing={futureEvents[0].onGoingText || '主包正在逛展位'} data-passed={futureEvents[0].passedText ?? ''}>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">天</span></span>
-                          <span class="mini-countdown-sep">:</span>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">时</span></span>
-                          <span class="mini-countdown-sep">:</span>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">分</span></span>
-                          <span class="mini-countdown-sep">:</span>
-                          <span class="mini-countdown-item"><span class="mini-countdown-num">--</span><span class="mini-countdown-label">秒</span></span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -530,267 +484,370 @@ const tabs = [
   </div>
 </MainGridLayout>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const tabButtons = document.querySelectorAll('.tab-button');
-    const cityButtons = document.querySelectorAll('.city-tag');
-    const sections = document.querySelectorAll('.event-section');
-    const emptyState = document.getElementById('empty-state');
-    
-    let currentTab = 'all';
-    let currentCity = '';
+<script slot="head" is:inline>
+  if (!customElements.get("comic-events-filter")) {
+    class ComicEventsFilter extends HTMLElement {
+      selectedTab = "all";
+      selectedCity = "";
 
-    function applyFilters() {
-      let hasVisible = false;
+      constructor() {
+        super();
+      }
 
-      sections.forEach(section => {
-        const sectionStatus = section.dataset.status;
-        const shouldShowSection = currentTab === 'all' || sectionStatus === currentTab;
-        
-        if (!shouldShowSection) {
-          section.style.display = 'none';
-          return;
+      connectedCallback() {
+        this.addEventListener("click", this.handleClick);
+      }
+
+      disconnectedCallback() {
+        this.removeEventListener("click", this.handleClick);
+      }
+
+      handleClick(e) {
+        const target = e.target;
+        const tabButton = target.closest(".tab-button");
+        const cityButton = target.closest(".city-tag");
+
+        if (tabButton) {
+          this.selectedTab = tabButton.dataset.tab || "all";
+          this.updateTabStyles();
+          this.applyFilters();
+        } else if (cityButton) {
+          this.selectedCity = cityButton.dataset.city || "";
+          this.updateCityStyles();
+          this.applyFilters();
         }
-        
-        const sectionCards = section.querySelectorAll('.event-card');
-        let sectionHasVisible = false;
-        
-        sectionCards.forEach(card => {
-          const cardCity = card.dataset.city || '';
-          const shouldShowCard = currentCity === '' || cardCity === currentCity;
-          
-          if (shouldShowCard) {
-            card.style.display = '';
-            sectionHasVisible = true;
-            hasVisible = true;
-          } else {
-            card.style.display = 'none';
+      }
+
+      updateTabStyles() {
+        const tabs = this.querySelectorAll(".tab-button");
+        tabs.forEach((tab) => {
+          tab.classList.remove("bg-(--primary)", "text-white", "hover:bg-(--primary)");
+          tab.classList.add("bg-(--btn-regular-bg)", "text-(--btn-content)", "hover:bg-(--btn-regular-bg-hover)");
+          if (tab.dataset.tab === this.selectedTab) {
+            tab.classList.remove("bg-(--btn-regular-bg)", "text-(--btn-content)", "hover:bg-(--btn-regular-bg-hover)");
+            tab.classList.add("bg-(--primary)", "text-white", "hover:bg-(--primary)");
           }
         });
-        
-        section.style.display = sectionHasVisible ? '' : 'none';
-      });
+      }
 
-      emptyState!.style.display = hasVisible ? 'none' : 'block';
+      updateCityStyles() {
+        const cities = this.querySelectorAll(".city-tag");
+        cities.forEach((city) => {
+          city.classList.remove("bg-(--primary)", "text-white", "hover:bg-(--primary)");
+          city.classList.add("bg-(--btn-regular-bg)", "text-(--btn-content)", "hover:bg-(--btn-regular-bg-hover)");
+          if (city.dataset.city === this.selectedCity) {
+            city.classList.remove("bg-(--btn-regular-bg)", "text-(--btn-content)", "hover:bg-(--btn-regular-bg-hover)");
+            city.classList.add("bg-(--primary)", "text-white", "hover:bg-(--primary)");
+          }
+        });
+      }
+
+      applyFilters() {
+        const container = this.closest(".card-base");
+        if (!container) return;
+
+        const sections = container.querySelectorAll(".event-section");
+        const emptyState = container.querySelector("#empty-state");
+        let hasVisible = false;
+
+        sections.forEach((section) => {
+          const sectionStatus = section.dataset.status;
+          const shouldShowSection = this.selectedTab === "all" || sectionStatus === this.selectedTab;
+
+          if (!shouldShowSection) {
+            section.style.display = "none";
+            return;
+          }
+
+          const sectionCards = section.querySelectorAll(".event-card");
+          let sectionHasVisible = false;
+
+          sectionCards.forEach((card) => {
+            const cardCity = card.dataset.city || "";
+            const shouldShowCard = this.selectedCity === "" || cardCity === this.selectedCity;
+
+            if (shouldShowCard) {
+              card.style.display = "";
+              sectionHasVisible = true;
+              hasVisible = true;
+            } else {
+              card.style.display = "none";
+            }
+          });
+
+          section.style.display = sectionHasVisible ? "" : "none";
+        });
+
+        if (emptyState) {
+          emptyState.style.display = hasVisible ? "none" : "block";
+        }
+      }
     }
+    customElements.define("comic-events-filter", ComicEventsFilter);
+  }
 
-    tabButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabButtons.forEach(b => {
-          b.classList.remove('bg-(--primary)', 'text-white', 'hover:bg-(--primary)');
-          b.classList.add('bg-(--btn-regular-bg)', 'text-(--btn-content)', 'hover:bg-(--btn-regular-bg-hover)');
-        });
-        btn.classList.remove('bg-(--btn-regular-bg)', 'text-(--btn-content)', 'hover:bg-(--btn-regular-bg-hover)');
-        btn.classList.add('bg-(--primary)', 'text-white', 'hover:bg-(--primary)');
-        currentTab = btn.dataset.tab || 'all';
-        applyFilters();
-      });
-    });
+  if (!customElements.get("comic-countdown")) {
+    class ComicCountdown extends HTMLElement {
+      intervalId = null;
+      initialized = false;
 
-    cityButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        cityButtons.forEach(b => {
-          b.classList.remove('bg-(--primary)', 'text-white', 'hover:bg-(--primary)');
-          b.classList.add('bg-(--btn-regular-bg)', 'text-(--btn-content)', 'hover:bg-(--btn-regular-bg-hover)');
-        });
-        btn.classList.remove('bg-(--btn-regular-bg)', 'text-(--btn-content)', 'hover:bg-(--btn-regular-bg-hover)');
-        btn.classList.add('bg-(--primary)', 'text-white', 'hover:bg-(--primary)');
-        currentCity = btn.dataset.city || '';
-        applyFilters();
-      });
-    });
-
-    const largeCountdownWraps = document.querySelectorAll('.large-countdown-wrap');
-    
-    largeCountdownWraps.forEach(wrap => {
-      const targetStr = wrap.dataset.target;
-      const onGoingText = wrap.dataset.ongoing || '主包正在逛展位';
-      const passedText = wrap.dataset.passed || '';
-      
-      if (!targetStr) return;
-
-      const dateParts = targetStr.split(' ');
-      const datePart = dateParts[0];
-      const timePart = dateParts[1] || '00:00:00';
-      
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hour = 0, minute = 0, second = 0] = timePart.split(':').map(Number);
-      
-      const targetDate = new Date(year, month - 1, day, hour, minute, second);
-      const targetTime = targetDate.getTime();
-
-      let intervalId = null;
-
-      function updateDisplay() {
-        const now = new Date();
-        const nowTime = now.getTime();
-        const diff = targetTime - nowTime;
-        
-        const isToday = now.getFullYear() === year && 
-                       now.getMonth() === month - 1 && 
-                       now.getDate() === day;
-
-        if (diff <= 0) {
-          if (intervalId) clearInterval(intervalId);
-          const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
-          const showOngoing = isToday && diff >= -1000 * 60 * 60 * 24;
-          
-          if (showOngoing) {
-            wrap.innerHTML = `<span class="large-countdown-text">${onGoingText}</span>`;
-          } else if (passedText) {
-            const text = passedText.replace('{days}', String(passedDays));
-            wrap.innerHTML = `<span class="large-countdown-text">${text}</span>`;
-          } else {
-            wrap.innerHTML = `<span class="large-countdown-text">已经过去</span><span class="large-countdown-number">${passedDays}</span><span class="large-countdown-text">天</span>`;
-          }
-          return;
-        }
-
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-        wrap.innerHTML = `
-          <span class="large-countdown-text text-[var(--primary)]">还有</span>
-          <span class="large-countdown-number text-[var(--primary)]">${days}</span>
-          <span class="large-countdown-text text-[var(--primary)]">天</span>
-        `;
+      constructor() {
+        super();
       }
 
-      updateDisplay();
-      intervalId = setInterval(updateDisplay, 1000);
-    });
-
-    const miniCountdownWraps = document.querySelectorAll('.mini-countdown-wrap');
-    
-    miniCountdownWraps.forEach(wrap => {
-      const targetStr = wrap.dataset.target;
-      const onGoingText = wrap.dataset.ongoing || '主包正在逛展位';
-      const passedText = wrap.dataset.passed || '';
-      
-      if (!targetStr) return;
-
-      const dateParts = targetStr.split(' ');
-      const datePart = dateParts[0];
-      const timePart = dateParts[1] || '00:00:00';
-      
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hour = 0, minute = 0, second = 0] = timePart.split(':').map(Number);
-      
-      const targetDate = new Date(year, month - 1, day, hour, minute, second);
-      const targetTime = targetDate.getTime();
-
-      let intervalId = null;
-
-      function updateDisplay() {
-        const now = new Date();
-        const nowTime = now.getTime();
-        const diff = targetTime - nowTime;
-        
-        const isToday = now.getFullYear() === year && 
-                       now.getMonth() === month - 1 && 
-                       now.getDate() === day;
-
-        if (diff <= 0) {
-          if (intervalId) clearInterval(intervalId);
-          const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
-          const showOngoing = isToday && diff >= -1000 * 60 * 60 * 24;
-          
-          if (showOngoing) {
-            wrap.innerHTML = `<span class="mini-countdown-item"><span class="mini-countdown-num" style="color: var(--primary); min-width: auto;">${onGoingText}</span></span>`;
-          } else if (passedText) {
-            const text = passedText.replace('{days}', String(passedDays));
-            wrap.innerHTML = `<span class="mini-countdown-item"><span class="mini-countdown-num" style="color: var(--content-meta); min-width: auto;">${text}</span></span>`;
-          } else {
-            wrap.innerHTML = `<span class="mini-countdown-item"><span class="mini-countdown-num" style="color: var(--content-meta); min-width: auto;">已过去 ${passedDays} 天</span></span>`;
-          }
-          return;
-        }
-
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        wrap.innerHTML = `
-          <span class="mini-countdown-item"><span class="mini-countdown-num">${days}</span><span class="mini-countdown-label">天</span></span>
-          <span class="mini-countdown-sep">:</span>
-          <span class="mini-countdown-item"><span class="mini-countdown-num">${String(hours).padStart(2, '0')}</span><span class="mini-countdown-label">时</span></span>
-          <span class="mini-countdown-sep">:</span>
-          <span class="mini-countdown-item"><span class="mini-countdown-num">${String(minutes).padStart(2, '0')}</span><span class="mini-countdown-label">分</span></span>
-          <span class="mini-countdown-sep">:</span>
-          <span class="mini-countdown-item"><span class="mini-countdown-num">${String(seconds).padStart(2, '0')}</span><span class="mini-countdown-label">秒</span></span>
-        `;
+      connectedCallback() {
+        if (this.initialized) return;
+        this.initialized = true;
+        this.startCountdown();
       }
 
-      updateDisplay();
-      intervalId = setInterval(updateDisplay, 1000);
-    });
-
-    const countdownWraps = document.querySelectorAll('.countdown-wrap');
-    
-    countdownWraps.forEach(wrap => {
-      const targetStr = wrap.dataset.target;
-      const onGoingText = wrap.dataset.ongoing || '主包正在逛展位';
-      const passedText = wrap.dataset.passed || '';
-      
-      if (!targetStr) return;
-
-      const dateParts = targetStr.split(' ');
-      const datePart = dateParts[0];
-      const timePart = dateParts[1] || '00:00:00';
-      
-      const [year, month, day] = datePart.split('-').map(Number);
-      const [hour = 0, minute = 0, second = 0] = timePart.split(':').map(Number);
-      
-      const targetDate = new Date(year, month - 1, day, hour, minute, second);
-      const targetTime = targetDate.getTime();
-
-      let intervalId = null;
-
-      function updateDisplay() {
-        const now = new Date();
-        const nowTime = now.getTime();
-        const diff = targetTime - nowTime;
-        
-        const isToday = now.getFullYear() === year && 
-                       now.getMonth() === month - 1 && 
-                       now.getDate() === day;
-
-        if (diff <= 0) {
-          if (intervalId) clearInterval(intervalId);
-          const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
-          const showOngoing = isToday && diff >= -1000 * 60 * 60 * 24;
-          
-          if (showOngoing) {
-            wrap.innerHTML = `<div class="countdown-item"><span class="countdown-number" style="color: var(--primary); font-size: 14px; min-width: auto;">${onGoingText}</span></div>`;
-          } else if (passedText) {
-            const text = passedText.replace('{days}', String(passedDays));
-            wrap.innerHTML = `<div class="countdown-item"><span class="countdown-number" style="color: var(--content-meta); font-size: 14px; min-width: auto;">${text}</span></div>`;
-          } else {
-            wrap.innerHTML = `<div class="countdown-item"><span class="countdown-number" style="color: var(--content-meta); font-size: 14px; min-width: auto;">已经过去了 ${passedDays} 天</span></div>`;
-          }
-          return;
+      disconnectedCallback() {
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
         }
-
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        wrap.innerHTML = `
-          <div class="countdown-item"><span class="countdown-number">${days}</span><span class="countdown-label">天</span></div>
-          <span class="countdown-separator">:</span>
-          <div class="countdown-item"><span class="countdown-number">${String(hours).padStart(2, '0')}</span><span class="countdown-label">时</span></div>
-          <span class="countdown-separator">:</span>
-          <div class="countdown-item"><span class="countdown-number">${String(minutes).padStart(2, '0')}</span><span class="countdown-label">分</span></div>
-          <span class="countdown-separator">:</span>
-          <div class="countdown-item"><span class="countdown-number">${String(seconds).padStart(2, '0')}</span><span class="countdown-label">秒</span></div>
-        `;
       }
 
-      updateDisplay();
-      intervalId = setInterval(updateDisplay, 1000);
-    });
-  });
+      startCountdown() {
+        const targetStr = this.dataset.target;
+        const onGoingText = this.dataset.ongoing || "主包正在逛展位";
+        const passedText = this.dataset.passed || "";
+
+        if (!targetStr) return;
+
+        const dateParts = targetStr.split(" ");
+        const datePart = dateParts[0];
+        const timePart = dateParts[1] || "00:00:00";
+
+        const [year, month, day] = datePart.split("-").map(Number);
+        const [hour = 0, minute = 0, second = 0] = timePart.split(":").map(Number);
+
+        const targetDate = new Date(year, month - 1, day, hour, minute, second);
+        const targetTime = targetDate.getTime();
+
+        const updateDisplay = () => {
+          const now = new Date();
+          const nowTime = now.getTime();
+          const diff = targetTime - nowTime;
+
+          const isToday = now.getFullYear() === year &&
+            now.getMonth() === month - 1 &&
+            now.getDate() === day;
+
+          if (diff <= 0) {
+            if (this.intervalId) {
+              clearInterval(this.intervalId);
+              this.intervalId = null;
+            }
+            const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
+            const showOngoing = isToday && diff >= -1000 * 60 * 60 * 24;
+
+            if (showOngoing) {
+              this.innerHTML = `<span class="countdown-status-text" style="color: var(--primary);">${onGoingText}</span>`;
+            } else if (passedText) {
+              const text = passedText.replace("{days}", String(passedDays));
+              this.innerHTML = `<span class="countdown-status-text" style="color: var(--content-meta);">${text}</span>`;
+            } else {
+              this.innerHTML = `<span class="countdown-status-text" style="color: var(--content-meta);">已经过去了 ${passedDays} 天</span>`;
+            }
+            return;
+          }
+
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+          this.innerHTML = `
+            <span class="countdown-item"><span class="countdown-num">${days}</span><span class="countdown-label">天</span></span>
+            <span class="countdown-sep">:</span>
+            <span class="countdown-item"><span class="countdown-num">${String(hours).padStart(2, '0')}</span><span class="countdown-label">时</span></span>
+            <span class="countdown-sep">:</span>
+            <span class="countdown-item"><span class="countdown-num">${String(minutes).padStart(2, '0')}</span><span class="countdown-label">分</span></span>
+            <span class="countdown-sep">:</span>
+            <span class="countdown-item"><span class="countdown-num">${String(seconds).padStart(2, '0')}</span><span class="countdown-label">秒</span></span>
+          `;
+        };
+
+        updateDisplay();
+        this.intervalId = setInterval(updateDisplay, 1000);
+      }
+    }
+    customElements.define("comic-countdown", ComicCountdown);
+  }
+
+  if (!customElements.get("comic-large-countdown")) {
+    class ComicLargeCountdown extends HTMLElement {
+      intervalId = null;
+      initialized = false;
+
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        if (this.initialized) return;
+        this.initialized = true;
+        this.startCountdown();
+      }
+
+      disconnectedCallback() {
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
+        }
+      }
+
+      startCountdown() {
+        const targetStr = this.dataset.target;
+        const onGoingText = this.dataset.ongoing || "主包正在逛展位";
+        const passedText = this.dataset.passed || "";
+
+        if (!targetStr) return;
+
+        const dateParts = targetStr.split(" ");
+        const datePart = dateParts[0];
+        const timePart = dateParts[1] || "00:00:00";
+
+        const [year, month, day] = datePart.split("-").map(Number);
+        const [hour = 0, minute = 0, second = 0] = timePart.split(":").map(Number);
+
+        const targetDate = new Date(year, month - 1, day, hour, minute, second);
+        const targetTime = targetDate.getTime();
+
+        const updateDisplay = () => {
+          const now = new Date();
+          const nowTime = now.getTime();
+          const diff = targetTime - nowTime;
+
+          const isToday = now.getFullYear() === year &&
+            now.getMonth() === month - 1 &&
+            now.getDate() === day;
+
+          if (diff <= 0) {
+            if (this.intervalId) {
+              clearInterval(this.intervalId);
+              this.intervalId = null;
+            }
+            const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
+            const showOngoing = isToday && diff >= -1000 * 60 * 60 * 24;
+
+            if (showOngoing) {
+              this.innerHTML = `<span class="large-countdown-text">${onGoingText}</span>`;
+            } else if (passedText) {
+              const text = passedText.replace("{days}", String(passedDays));
+              this.innerHTML = `<span class="large-countdown-text">${text}</span>`;
+            } else {
+              this.innerHTML = `<span class="large-countdown-text">已经过去</span><span class="large-countdown-number">${passedDays}</span><span class="large-countdown-text">天</span>`;
+            }
+            return;
+          }
+
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+          this.innerHTML = `
+            <span class="large-countdown-text text-[var(--primary)]">还有</span>
+            <span class="large-countdown-number text-[var(--primary)]">${days}</span>
+            <span class="large-countdown-text text-[var(--primary)]">天</span>
+          `;
+        };
+
+        updateDisplay();
+        this.intervalId = setInterval(updateDisplay, 1000);
+      }
+    }
+    customElements.define("comic-large-countdown", ComicLargeCountdown);
+  }
+
+  if (!customElements.get("comic-mini-countdown")) {
+    class ComicMiniCountdown extends HTMLElement {
+      intervalId = null;
+      initialized = false;
+
+      constructor() {
+        super();
+      }
+
+      connectedCallback() {
+        if (this.initialized) return;
+        this.initialized = true;
+        this.startCountdown();
+      }
+
+      disconnectedCallback() {
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = null;
+        }
+      }
+
+      startCountdown() {
+        const targetStr = this.dataset.target;
+        const onGoingText = this.dataset.ongoing || "主包正在逛展位";
+        const passedText = this.dataset.passed || "";
+
+        if (!targetStr) return;
+
+        const dateParts = targetStr.split(" ");
+        const datePart = dateParts[0];
+        const timePart = dateParts[1] || "00:00:00";
+
+        const [year, month, day] = datePart.split("-").map(Number);
+        const [hour = 0, minute = 0, second = 0] = timePart.split(":").map(Number);
+
+        const targetDate = new Date(year, month - 1, day, hour, minute, second);
+        const targetTime = targetDate.getTime();
+
+        const updateDisplay = () => {
+          const now = new Date();
+          const nowTime = now.getTime();
+          const diff = targetTime - nowTime;
+
+          const isToday = now.getFullYear() === year &&
+            now.getMonth() === month - 1 &&
+            now.getDate() === day;
+
+          if (diff <= 0) {
+            if (this.intervalId) {
+              clearInterval(this.intervalId);
+              this.intervalId = null;
+            }
+            const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
+            const showOngoing = isToday && diff >= -1000 * 60 * 60 * 24;
+
+            if (showOngoing) {
+              this.innerHTML = `<span class="mini-countdown-item"><span class="mini-countdown-num" style="color: var(--primary); min-width: auto;">${onGoingText}</span></span>`;
+            } else if (passedText) {
+              const text = passedText.replace("{days}", String(passedDays));
+              this.innerHTML = `<span class="mini-countdown-item"><span class="mini-countdown-num" style="color: var(--content-meta); min-width: auto;">${text}</span></span>`;
+            } else {
+              this.innerHTML = `<span class="mini-countdown-item"><span class="mini-countdown-num" style="color: var(--content-meta); min-width: auto;">已过去 ${passedDays} 天</span></span>`;
+            }
+            return;
+          }
+
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+          this.innerHTML = `
+            <span class="mini-countdown-item"><span class="mini-countdown-num">${days}</span><span class="mini-countdown-label">天</span></span>
+            <span class="mini-countdown-sep">:</span>
+            <span class="mini-countdown-item"><span class="mini-countdown-num">${String(hours).padStart(2, '0')}</span><span class="mini-countdown-label">时</span></span>
+            <span class="mini-countdown-sep">:</span>
+            <span class="mini-countdown-item"><span class="mini-countdown-num">${String(minutes).padStart(2, '0')}</span><span class="mini-countdown-label">分</span></span>
+            <span class="mini-countdown-sep">:</span>
+            <span class="mini-countdown-item"><span class="mini-countdown-num">${String(seconds).padStart(2, '0')}</span><span class="mini-countdown-label">秒</span></span>
+          `;
+        };
+
+        updateDisplay();
+        this.intervalId = setInterval(updateDisplay, 1000);
+      }
+    }
+    customElements.define("comic-mini-countdown", ComicMiniCountdown);
+  }
 </script>
 
 <style>
@@ -880,6 +937,13 @@ const tabs = [
     margin-bottom: 8px;
   }
 
+  comic-countdown {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
   .countdown-wrap {
     display: flex;
     align-items: center;
@@ -922,6 +986,13 @@ const tabs = [
     align-self: center;
     line-height: 1;
     padding-bottom: 20px;
+  }
+
+  comic-mini-countdown {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-wrap: nowrap;
   }
 
   .mini-countdown-wrap {
@@ -992,7 +1063,7 @@ const tabs = [
     gap: 8px;
   }
 
-  .large-countdown-wrap {
+  comic-large-countdown {
     display: flex;
     align-items: baseline;
     justify-content: center;
@@ -1022,7 +1093,7 @@ const tabs = [
     .comic-card-large > div {
       display: flex;
       flex-direction: row;
-      align-items: flex-start;
+      align-items: stretch;
     }
 
     .comic-card-large .card-poster {
@@ -1030,11 +1101,17 @@ const tabs = [
       flex-shrink: 0;
       margin-bottom: 0;
       margin-right: 16px;
+      aspect-ratio: auto;
+      height: 100%;
+      min-height: 200px;
     }
 
     .comic-card-large .card-content {
       flex: 1;
-      padding: 0;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .comic-card-large .card-header {
@@ -1049,7 +1126,7 @@ const tabs = [
       margin-bottom: 0;
     }
 
-    .comic-card-large .large-countdown-wrap {
+    .comic-card-large comic-large-countdown {
       width: auto;
       padding: 12px 20px;
       background-color: color-mix(in srgb, var(--primary) 10%, transparent);
