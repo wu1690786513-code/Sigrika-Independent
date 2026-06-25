@@ -87,7 +87,7 @@ const getDatePart = (dateStr) => {
 };
 ---
 
-<WidgetLayout id="comic-event-widget" name="最近漫展" class={className} style={style}>
+<WidgetLayout id="comic-event-widget" name="最近漫展" class={className} style={style}  isCollapsed={true} moreUrl="/comic-events/">
   <div class="comic-event-container" data-widget-id={widgetId}>
     {displayEvents.length > 0 ? (
       <>
