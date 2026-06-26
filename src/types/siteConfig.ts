@@ -133,7 +133,11 @@ export type SiteConfig = {
 		subjectBaseUrl?: string; // 条目详情页地址
 		categoryOrder?: ("anime" | "game" | "book" | "music" | "real")[]; // 条目类型排序顺序
 	};
-
+// 朋友圈页面封面配置
+	momentsCover: {
+		enable: boolean;
+	image?: string;
+	},
 	// 分页配置
 	pagination: {
 		postsPerPage: number; // 每页显示的文章数量

@@ -278,6 +278,12 @@ export default defineConfig({
 		},
 		resolve: {
 			alias: {
+				"@": "./src",
+				"@components": "./src/components",
+				"@layouts": "./src/layouts",
+				"@config": "./src/config",
+				"@utils": "./src/utils",
+				"@data": "./src/data",
 				"@rehype-callouts-theme": `rehype-callouts/theme/${siteConfig.post.rehypeCallouts.theme}`,
 			},
 		},

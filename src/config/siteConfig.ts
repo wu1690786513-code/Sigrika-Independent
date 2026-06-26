@@ -150,6 +150,11 @@ export const siteConfig: SiteConfig = {
 		// 相册页面开关
 		gallery: true,
 	},
+	// 朋友圈页面封面配置（微信朋友圈风格）
+	momentsCover: {
+		enable: true,
+		image: "https://s3.bitiful.net/cloud-azusa/ech0/images/019ef29d_1782190563_ecdcf4b1.jpg",
+	},
 
 	// 分类导航栏开关，在首页和归档页顶部显示分类快捷导航
 	categoryBar: true,
