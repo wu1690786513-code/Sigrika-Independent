@@ -65,7 +65,7 @@ const linkPresets: Record<LinkPreset, NavBarLink> = {
 		icon: "material-symbols:folder-open",
 	},
 	[LinkPreset.Moments]: {
-		name: "朋友圈",
+		name: "说说",
 		url: "/moments/",
 		icon: "mdi:wechat",
 	},
@@ -123,8 +123,8 @@ const getDynamicNavBarConfig = (): NavBarConfig => {
 				url: "/bangumi/",
 				icon: "material-symbols:movie",
 			},
-			// 朋友圈
-			// LinkPreset.Moments,
+			// 说说
+			LinkPreset.Moments,
 		],
 	});
 
