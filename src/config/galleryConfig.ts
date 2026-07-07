@@ -108,7 +108,7 @@ export const galleryConfig: GalleryConfig = {
 			date: "2026-05-30",
 			tags: ["鸣潮","弗洛洛"],
 		},
-		// 多元IP-
+		// 多元IP-update
 		{
 			id: "yzk-www",
 			name: "缘之空X乌丸屋",
