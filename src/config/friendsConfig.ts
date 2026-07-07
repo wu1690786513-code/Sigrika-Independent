@@ -207,6 +207,15 @@ export const friendsConfig: FriendLink[] = [
 	"weight": 8,
 	"enabled": true
 	},
+	{
+	"title": "JustPureH2O 的博客",
+	"imgurl": "https://justpureh2o.cn/avatar.jpg",
+	"desc": "穷方圆平直之情，尽规矩准绳之用",
+	"siteurl": "https://justpureh2o.cn",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
 	// 	title: "小曹同学",
 	// 	imgurl: "https://pic.caotx.cn/home/friends/avatars_0_myweb.webp",
 	// 	desc: "春祺夏安 秋绥冬禧",
