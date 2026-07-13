@@ -144,6 +144,14 @@ export const galleryConfig: GalleryConfig = {
 			tags: ["鸣潮","今汐"],
 		},
 		{
+			id: "mc-mxx-slzz",
+			name: "汐汐在西湖",
+			description: "森林之中系列玩偶",
+			location: "杭州市 西湖区 花港观鱼码头",
+			date: "2026-07-10",
+			tags: ["鸣潮","今汐"],
+		},
+		{
 			id: "mc-bzqx",
 			name: "波仔千咲",
 			description: "买波仔送千咲",
