@@ -45,7 +45,7 @@ export const comicEvents: ComicEvent[] = [
     poster: 'https://upload.codexing.top/Sigrika/26/06/20260625165551103.webp',
     url: 'https://www.xiaohongshu.com/explore/6a34afdb000000001502478d?xsec_token=ABCrX6Q1EwGuexqnclW6Vn80j3Emd-627f-kVY0t-vKe4=&xsec_source=pc_user',
     onGoingText: '主包正在逛展中...',
-    passedText: '什么?已经{days}天了!',
+    passedText: '什么?已经过去 {days}天了!',
   },
   {
     name: '飞行雪绒应援企划',
