@@ -226,22 +226,14 @@ export const friendsConfig: FriendLink[] = [
 	"enabled": true
 	},
 	{
-	"title": "JerryLife",
-	"imgurl": "https://upload.codexing.top/Sigrika/26/07/19/20260719230042167.webp",
-	"desc": "Enjoy life",
-	"siteurl": "https://jerry-nis.top",
+	"title": "Sigrika",
+	"imgurl": "https://sigrika.fans/avatar.avif",
+	"desc": "海洛耙耙柑批发中~",
+	"siteurl": "https://sigrika.fans/",
 	"tags": ["博客"],
 	"weight": 8,
 	"enabled": true
 	},
-	// 	title: "Sigrika",
-	// 	imgurl: "https://sigrika.fans/avatar.avif",
-	// 	desc: "拉海洛耙耙柑批发中~",
-	// 	siteurl: "https://sigrika.fans/",
-	// 	tags: ["博客"],
-	// 	weight: 8,
-	// 	enabled: true,
-	// },
 ];
 
 // 获取启用的友链并进行排序
