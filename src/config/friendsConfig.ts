@@ -218,7 +218,7 @@ export const friendsConfig: FriendLink[] = [
 	},
 	{
 	"title": "JerryLife",
-	"imgurl": "https://upload.codexing.top/Sigrika/26/07/19/20260719230042167.webp",
+	"imgurl": "https://img.jerry-nis.top/d8703c5c-4c4a-49cc-bd94-3363c9eda2d8.png",
 	"desc": "Enjoy life",
 	"siteurl": "https://jerry-nis.top",
 	"tags": ["博客"],

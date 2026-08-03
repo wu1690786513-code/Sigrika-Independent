@@ -1,7 +1,7 @@
 import type { SiteConfig } from "@/types/siteConfig";
 
 // 定义站点语言
-// 语言代码，例如：'zh_CN', 'zh_TW', 'en', 'ja', 'ru'。
+// 语言代码，例如：'zh_CN', 'zh_TW', 'en', 'ja', 'ru', 'ko'。
 const SITE_LANG = "zh_CN";
 
 export const siteConfig: SiteConfig = {
@@ -50,12 +50,13 @@ export const siteConfig: SiteConfig = {
 	// 网站Card样式配置
 	card: {
 		// 是否开启卡片边框和阴影，开启后让网站更有立体感
-		border: true,
+		border: false,
 		// 是否让卡片风格跟随主题色相
 		followTheme: true,
 	},
 
 	// Favicon 配置
+	// 如果启用了OpenGraph图片功能，数组中需要包含png格式的favicon图标
 	favicon: [
 		{
 			// 图标文件路径
@@ -75,6 +76,9 @@ export const siteConfig: SiteConfig = {
 		// 2. 本地图片（public目录，不优化）: { type: "image", value: "/assets/images/logo.webp", alt: "Logo" }
 		// 3. 本地图片（src目录，自动优化但会增加构建时间）: { type: "image", value: "assets/images/logo.webp", alt: "Logo" }
 		// 4. 网络图片: { type: "url", value: "https://example.com/logo.png", alt: "Logo" }
+		// image 和 url 类型可额外设置 valueDark，用于暗色模式下显示另一张图片，不设置则亮暗色共用 value
+		// 例如: { type: "image", value: "assets/images/logo.png", valueDark: "assets/images/logo-dark.png", alt: "Logo" }
+		// 使用 Astro 图标库时不需要设置 valueDark，图标会自动跟随主题亮暗色切换
 		logo: {
 			type: "image",
 			value: "/assets/images/avatar.gif",
@@ -149,6 +153,10 @@ export const siteConfig: SiteConfig = {
 		bangumi: true,
 		// 相册页面开关
 		gallery: true,
+		// 追番页面开关
+		anime: true,
+		// 动态页面开关
+		dynamic: true,
 	},
 	// 朋友圈页面封面配置（微信朋友圈风格）
 	momentsCover: {
@@ -168,12 +176,39 @@ export const siteConfig: SiteConfig = {
 		defaultMode: "grid",
 		// 移动端默认布局模式，不设置则跟随 defaultMode
 		mobileDefaultMode: "grid",
-		// 是否在文章列表中显示标签
-		showTags: true,
 		// 文章简介显示行数，设为 0 则不截断
 		descriptionLines: 2,
-		// 是否允许用户切换布局
-		allowSwitch: true,
+		// 文章卡片底部统计和发布日期是否显示图标
+		showStatsIcons: true,
+		// 标签显示位置
+		// 设置为"meta"：显示在文章标题下的元数据
+		// 设置为"bottom"：顶替stats在底部显示
+		tagsPosition: "bottom",
+		// PostMeta 元数据显示控制
+		meta: {
+			// 是否显示发布日期
+			showPublished: true,
+			// 是否显示分类
+			showCategory: true,
+			// 是否显示标签
+			showTags: true,
+			// 标签数量，设为 0 则不限制
+			tagCount: 5,
+			// 是否显示字数
+			showWords: false,
+			// 是否显示阅读时间
+			showReadingTime: false,
+		},
+		// 底部 PostStats 统计信息显示控制
+		// 如果tagsPosition设置为"bottom"，则stats将不显示
+		stats: {
+			// 是否显示发布日期
+			showPublished: true,
+			// 是否显示字数
+			showWords: true,
+			// 是否显示阅读时间
+			showReadingTime: true,
+		},
 		// 网格布局配置，仅在 defaultMode 为 "grid" 或允许切换布局时生效
 		grid: {
 			// 是否开启瀑布流布局，同时有封面图和无封面图的混合文章推荐开启
@@ -201,6 +236,44 @@ export const siteConfig: SiteConfig = {
 		sharePoster: true,
 		// OpenGraph图片功能，注意开启后要渲染很长时间，不建议本地调试的时候开启
 		generateOgImages: false,
+	},
+
+	// bangumi配置
+	bangumi: {
+		// Bangumi用户ID
+		userId: "1143164",
+		// 数据模式：static=构建时获取，dynamic=客户端实时获取
+		// static 模式在构建时获取数据并静态渲染，部署后数据不更新
+		// dynamic 模式在浏览器中实时请求 API，始终显示最新数据
+		mode: "dynamic",
+		// Bangumi API 地址
+		apiUrl: "https://bgmapi.anibt.net",
+		// 详情页地址
+		subjectBaseUrl: "https://bgmmi.anibt.net/subject/",
+		// 条目类型排序，数组中的类型将按顺序优先展示
+		// 可选值: "anime" | "book" | "music" | "game" | "real" (暂不支持"real"类型)
+		// 未列出的类型将按默认顺序排在后面
+		categoryOrder: ["anime", "book", "music", "game"],
+		// 控制各分类的启用状态（true/false），未指定的分类默认启用
+		// categories: {
+		// 	game: false, // 禁用游戏分类显示
+		// },
+	},
+
+	// 追番配置（Bilibili + TMDB）
+	anime: {
+		// Bilibili 配置
+		bilibili: {
+			// 你的 Bilibili 用户 UID
+			uid: "38932988",
+		},
+		// TMDB 配置（可选，需要翻墙）
+		// tmdb: {
+		//   // TMDB API 密钥
+		//   apiKey: "your_tmdb_api_key",
+		//   // TMDB 列表 ID
+		//   listId: "your_list_id",
+		// },
 	},
 
 	// 分页配置
@@ -266,16 +339,16 @@ export const siteConfig: SiteConfig = {
 	// Astro 图像文档 https://docs.astro.build/zh-cn/guides/images/
 	imageOptimization: {
 		// 输出图片格式
-		// - "avif": 仅输出 AVIF 格式（最新技术，最小体积，目前兼容性较低）
-		// - "webp": 仅输出 WebP 格式（体积适中，兼容性好）
-		// - "both": 同时输出 AVIF 和 WebP（推荐，浏览器自动选择最佳格式）
+		// - "avif": 仅输出 AVIF 格式（最新技术，最小体积，目前兼容性较低，构建时间较长）
+		// - "webp": 仅输出 WebP 格式（体积适中，兼容性好，构建时间短）
+		// - "both": 同时输出 AVIF 和 WebP（浏览器自动选择最佳格式）
 		formats: "webp",
 		// 图片压缩质量 (1-100)，值越低体积越小但质量越差，推荐 70-85
 		quality: 85,
 		// 为特定域名的图片添加 referrerpolicy="no-referrer" 属性
 		// 支持通配符 *，例如：["i0.hdslb.com", "*.bilibili.com"]
 		// 可解决指定域名图片加载时的 403 问题（如防盗链图片）
-		noReferrerDomains: [],
+		noReferrerDomains: ["*.hdslb.com", "*.bilibili.com"],
 	},
 
 	// 站点语言，在本配置文件顶部SITE_LANG定义

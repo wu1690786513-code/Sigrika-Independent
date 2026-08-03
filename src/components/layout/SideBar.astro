@@ -4,6 +4,7 @@ import Advertisement from "@/components/widget/Advertisement.astro";
 import Announcement from "@/components/widget/Announcement.astro";
 import Calendar from "@/components/widget/Calendar.astro";
 import Categories from "@/components/widget/Categories.astro";
+import Dynamic from "@/components/widget/Dynamic.astro";
 import Music from "@/components/widget/Music.astro";
 import Profile from "@/components/widget/Profile.astro";
 import SidebarTOC from "@/components/widget/SidebarTOC.astro";
@@ -21,6 +22,7 @@ import ComicEvent from "@/components/widget/ComicEvent.astro"; // 引入漫展�
 interface Props {
 	class?: string;
 	headings?: MarkdownHeading[];
+	encrypted?: boolean;
 	side?: "left" | "right" | "bottom";
 }
 
@@ -55,7 +57,9 @@ const componentMap = {
 	schedule: Schedule, // 添加时间进度组件映射
 	comicEvent: ComicEvent, // 添加漫展活动组件映射
 	siteInfo: SiteInfo,
+	dynamic: Dynamic,
 } satisfies Record<WidgetComponentType, typeof Profile>;
+
 
 // 获取侧边栏位置
 const side = (Astro.props.side ||
@@ -87,11 +91,12 @@ const filterAndSortComponents = (
 };
 
 // 分离 top 和 sticky 位置的组件（保持原始数组顺序）
+// 没有 position 属性的组件默认归入 top 组
 const getComponentsByPosition = (
 	components: (WidgetComponentConfig | MobileBottomComponentConfig)[],
 ) => {
 	const topComponents = components.filter(
-		(c) => "position" in c && c.position === COMPONENT_POSITION.TOP,
+		(c) => !("position" in c) || c.position === COMPONENT_POSITION.TOP,
 	) as WidgetComponentConfig[];
 	const stickyComponents = components.filter(
 		(c) => "position" in c && c.position === COMPONENT_POSITION.STICKY,
@@ -156,7 +161,11 @@ const getComponentProps = (
 
 	// 特殊处理 SidebarTOC 组件
 	if (config.type === "sidebarToc") {
-		return { ...baseProps, headings: Astro.props.headings || [] };
+		return {
+			...baseProps,
+			headings: Astro.props.headings || [],
+			encrypted: Astro.props.encrypted || false,
+		};
 	}
 
 	return baseProps;

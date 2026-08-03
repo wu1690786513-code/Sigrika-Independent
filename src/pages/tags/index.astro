@@ -34,7 +34,7 @@ const topMaxCount = topTags.length > 0 ? topTags[0].count : 1;
 
     <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
         <div class="card-base z-10 px-9 py-6 relative w-full">
-            <div class="flex flex-wrap gap-2.5">
+            <div class="tags-cloud flex flex-wrap gap-2.5">
                 {tags.map((t) => (
                     <a href={getTagUrl(t.name)}
                        class="tag-item group inline-flex items-center gap-1.5 rounded-lg
@@ -104,3 +104,21 @@ const topMaxCount = topTags.length > 0 ? topTags[0].count : 1;
         </div>
     )}
 </MainGridLayout>
+
+<style is:global>
+/* 标签云：根据 --tag-depth (0~1) 用主题色渲染，数量越多颜色越深 */
+.tags-cloud .tag-item {
+    background: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 10% + 3%), transparent);
+    color: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 40% + 50%), var(--btn-content));
+    border: 1px solid color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 15% + 5%), transparent);
+}
+.tags-cloud .tag-item:hover {
+    background: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 18% + 8%), transparent);
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 30% + 15%), transparent);
+}
+.tags-cloud .tag-item .tag-count-badge {
+    background: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 12% + 6%), transparent);
+    color: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 50% + 50%), var(--btn-content));
+}
+</style>
