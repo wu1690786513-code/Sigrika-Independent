@@ -255,7 +255,7 @@ const graphData = {
     </div>
   </div>
 
-<script is:inline define:vars={{ graphData }}>
+<script is:inline data-astro-rerun define:vars={{ graphData }}>
 (function() {
   if (window.__obsidianGraphCleanup) {
     window.__obsidianGraphCleanup();
@@ -267,14 +267,6 @@ const graphData = {
   const container = document.getElementById("obsidianGraph");
   if (!wrapper) return;
 
-  // 等待 D3 加载完成
-  // if (!window.d3) {
-  //   const d3Script = document.querySelector('script[src*="d3"]');
-  //   if (d3Script) {
-  //     d3Script.addEventListener('load', initGraph);
-  //   }
-  //   return;
-  // }
   // 等待 D3 加载完成（稳定版）
 function tryInit() {
   if (window.d3) {
@@ -283,7 +275,14 @@ function tryInit() {
     setTimeout(tryInit, 30);
   }
 }
-document.addEventListener('DOMContentLoaded', tryInit);
+// 兼容首次硬加载与 Astro 视图过渡导航：
+// - 首次加载时 readyState 为 'loading'，等待 DOMContentLoaded
+// - 视图过渡导航时 readyState 已为 'complete'，直接初始化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', tryInit);
+} else {
+  tryInit();
+}
 
   const d3 = window.d3;
   const svg = d3.select("#graphSvg");

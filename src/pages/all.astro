@@ -1,0 +1,125 @@
+---
+import { Icon } from "astro-icon/components";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+import { getTagList } from "@/utils/content-utils";
+import { getTagUrl } from "@/utils/url-utils";
+
+// 分类
+import { getCategoryList } from "@/utils/content-utils";
+const categories = await getCategoryList();
+
+const tags = await getTagList();
+
+// 计算标签颜色深度 0~1：数量越多颜色越深
+const maxCount = Math.max(...tags.map((t) => t.count), 1);
+const minCount = Math.min(...tags.map((t) => t.count), 1);
+const getDepth = (count: number) => {
+	if (maxCount === minCount) return 0.5;
+	return (count - minCount) / (maxCount - minCount);
+};
+
+// Top 10 标签排行
+const topTags = [...tags].sort((a, b) => b.count - a.count).slice(0, 10);
+const topMaxCount = topTags.length > 0 ? topTags[0].count : 1;
+---
+
+<MainGridLayout title="全部分类&Top10标签" description={i18n(I18nKey.allTags)}>
+      <div class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32">
+        <div class="card-base z-10 px-9 py-6 relative w-full">
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-0">
+                    <div class="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                        {i18n(I18nKey.allCategories)}
+                    </div>
+                    <span class="text-sm font-medium px-2.5 py-0.5 rounded-full
+                                 bg-[oklch(0.95_0.025_var(--hue))] dark:bg-[oklch(0.25_0.025_var(--hue))]
+                                 text-neutral-500 dark:text-neutral-400">
+                        {categories.length}
+                    </span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {categories.filter((c) => c.name.trim().toLowerCase() !== i18n(I18nKey.uncategorized).toLowerCase()).map((c) => (
+                    <a href={c.url}
+                       class="group flex items-center justify-between px-5 py-4 rounded-xl
+                              bg-[oklch(0.95_0.025_var(--hue))] dark:bg-[oklch(0.25_0.025_var(--hue))]
+                              hover:bg-[oklch(0.9_0.05_var(--hue))] dark:hover:bg-[oklch(0.3_0.05_var(--hue))]
+                              transition-all duration-200"
+                    >
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-lg
+                                        bg-(--primary) text-white text-lg shrink-0">
+                                <Icon name="material-symbols:folder-open-rounded" is:inline class:list={["text-xl"]} />
+                            </div>
+                            <span class="font-medium text-neutral-800 dark:text-neutral-200 truncate
+                                         group-hover:text-(--primary) transition-colors">
+                                {c.name.trim()}
+                            </span>
+                        </div>
+                        <span class="shrink-0 ml-3 px-2.5 py-1 rounded-full text-sm font-bold
+                                     text-(--btn-content) dark:text-(--deep-text)
+                                     bg-white/60 dark:bg-white/10">
+                            {c.count}
+                        </span>
+                    </a>
+                ))}
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 10 标签排行 -->
+    {topTags.length > 0 && (
+        <div class="card-base px-8 py-6 mt-4">
+            <h2 class="text-lg font-bold text-75 mb-4">
+                Top 10 标签
+            </h2>
+            <div class="flex flex-col gap-3">
+                {topTags.map((t, i) => (
+                    <a href={getTagUrl(t.name)}
+                       class="flex items-center gap-3 group hover:bg-(--btn-card-bg-hover) rounded-lg px-3 py-2 -mx-3 transition-colors"
+                    >
+                        <span class="text-sm font-bold text-(--primary) w-5 text-right shrink-0">
+                            {i + 1}
+                        </span>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm font-medium text-50 truncate group-hover:text-(--primary) transition-colors">
+                                    #{t.name.trim()}
+                                </span>
+                                <span class="text-xs text-(--primary) ml-2 shrink-0">
+                                    {t.count} {i18n(I18nKey.postsCount)}
+                                </span>
+                            </div>
+                            <div class="h-2 rounded-full bg-(--primary)/10 overflow-hidden">
+                                <div
+                                    class="h-full rounded-full bg-(--primary) transition-all duration-500"
+                                    style={`width: ${(t.count / topMaxCount) * 100}%`}
+                                />
+                            </div>
+                        </div>
+                    </a>
+                ))}
+            </div>
+        </div>
+    )}
+</MainGridLayout>
+
+<style is:global>
+/* 标签云：根据 --tag-depth (0~1) 用主题色渲染，数量越多颜色越深 */
+.tags-cloud .tag-item {
+    background: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 10% + 3%), transparent);
+    color: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 40% + 50%), var(--btn-content));
+    border: 1px solid color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 15% + 5%), transparent);
+}
+.tags-cloud .tag-item:hover {
+    background: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 18% + 8%), transparent);
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 30% + 15%), transparent);
+}
+.tags-cloud .tag-item .tag-count {
+    background: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 12% + 6%), transparent);
+    color: color-mix(in srgb, var(--primary) calc(var(--tag-depth, 0) * 50% + 50%), var(--btn-content));
+}
+</style>
