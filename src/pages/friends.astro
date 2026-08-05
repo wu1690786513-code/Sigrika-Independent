@@ -1,7 +1,6 @@
 ---
-import { getEntry, render } from "astro:content";
+import { getEntry } from "astro:content";
 import Comment from "@components/comment/index.astro";
-import Markdown from "@components/common/Markdown.astro";
 import { Icon } from "astro-icon/components";
 import {
 	commentConfig,
@@ -23,8 +22,6 @@ const friendsPost = await getEntry("spec", "friends");
 if (!friendsPost) {
 	throw new Error("friends page content not found");
 }
-
-const { Content } = await render(friendsPost);
 
 // 检查评论系统是否启用
 const isCommentEnabled =
@@ -103,7 +100,7 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
               class="friend-action-btn relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-(--primary) text-white dark:text-white hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(0,0,0,0.15)] transition-all duration-200 text-sm font-medium cursor-pointer"
             >
               <svg data-v-2d63c78e="" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="10543" width="18" height="18"><path data-v-2d63c78e="" d="M535.630769 821.169231l-41.353846-5.907693s-27.569231-5.907692-41.353846-11.815384c-7.876923-1.969231-17.723077 0-23.630769 5.907692l-9.846154 9.846154c-57.107692 57.107692-149.661538 63.015385-208.738462 11.815385-66.953846-57.107692-68.923077-159.507692-7.876923-220.553847l149.661539-149.661538c19.692308-19.692308 43.323077-31.507692 66.953846-39.384615 31.507692-7.876923 64.984615-5.907692 94.523077 5.907692 17.723077 7.876923 35.446154 17.723077 51.2 33.476923 7.876923 7.876923 13.784615 15.753846 19.692307 25.6 7.876923 13.784615 25.6 15.753846 35.446154 3.938462l55.138462-55.138462c7.876923-7.876923 7.876923-19.692308 1.969231-29.538462-7.876923-11.815385-17.723077-21.661538-27.569231-31.507692-13.784615-13.784615-29.538462-27.569231-47.261539-37.415384-27.569231-17.723077-59.076923-29.538462-92.553846-35.446154-61.046154-11.815385-128-1.969231-183.138461 27.56923-21.661538 11.815385-43.323077 27.569231-61.046154 45.292308l-143.753846 143.753846C17.723077 622.276923 9.846154 791.630769 110.276923 897.969231c104.369231 114.215385 281.6 116.184615 389.907692 7.876923l49.23077-49.230769c13.784615-9.846154 3.938462-33.476923-13.784616-35.446154zM897.969231 114.215385c-108.307692-100.430769-277.661538-92.553846-380.061539 11.815384L472.615385 169.353846c-13.784615 13.784615-3.938462 37.415385 13.784615 39.384616 27.569231 1.969231 55.138462 7.876923 82.707692 15.753846 7.876923 1.969231 17.723077 0 23.63077-5.907693l9.846153-9.846153c57.107692-57.107692 149.661538-63.015385 208.738462-11.815385 66.953846 57.107692 68.923077 159.507692 7.876923 220.553846L669.538462 567.138462c-19.692308 19.692308-43.323077 31.507692-66.953847 39.384615-31.507692 7.876923-64.984615 5.907692-94.523077-5.907692-17.723077-7.876923-35.446154-17.723077-51.2-33.476923-7.876923-7.876923-13.784615-15.753846-19.692307-25.6-7.876923-13.784615-25.6-15.753846-35.446154-3.938462l-55.138462 55.138462c-7.876923 7.876923-7.876923 19.692308-1.96923 29.538461 7.876923 11.815385 17.723077 21.661538 27.56923 31.507692 13.784615 13.784615 31.507692 27.569231 47.261539 37.415385 27.569231 17.723077 59.076923 29.538462 90.584615 35.446154 61.046154 11.815385 128 1.969231 183.138462-27.569231 21.661538-11.815385 43.323077-27.569231 61.046154-45.292308l149.661538-149.661538c110.276923-108.307692 106.338462-285.538462-5.907692-389.907692z" fill="currentColor" p-id="10544"></path></svg>
-              <span class="hidden sm:inline">申请友链</span>
+              <span class="hidden sm:inline">自助申请</span>
             </button>
           </div>
         </div>
@@ -315,14 +312,14 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
           </div>
         </div>
 
-        {/* 右栏：申请流程 */}
+        {/* 右栏：自助申请 */}
         <div class="rounded-2xl border border-(--line-divider) overflow-hidden flex flex-col">
           <div class="p-5 sm:p-6 flex flex-col flex-1">
             <h3 class="text-lg font-bold mb-5 flex items-center gap-2 text-neutral-900 dark:text-neutral-100">
               <span class="w-7 h-7 rounded-lg bg-(--primary)/10 flex items-center justify-center text-(--primary)">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 17H7q-2.075 0-3.537-1.463T2 12t1.463-3.537T7 7h4v2H7q-1.25 0-2.125.875T4 12t.875 2.125T7 15h4zm-3-4v-2h8v2zm5 4v-2h4q1.25 0 2.125-.875T20 12t-.875-2.125T17 9h-4V7h4q2.075 0 3.538 1.463T22 12t-1.463 3.538T17 17z"/></svg>
               </span>
-              申请友链
+              自助申请
             </h3>
 
             <div id="friend-apply-steps" class="space-y-0 flex-1">
@@ -344,7 +341,6 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
                 </div>
                 <div class="pb-4 flex-1 min-w-0">
                   <p class="font-semibold text-sm mb-1 text-neutral-900 dark:text-neutral-100">填写申请信息：</p>
-                  {/* 申请表单：提交本站信息到后端，状态为 pending，等待审核 */}
                   <form id="friend-link-form" class="space-y-3">
                     <div>
                       <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">站点名称 <span class="text-red-500">*</span></label>
@@ -364,7 +360,7 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
                     </div>
                     <div>
                       <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">联系邮箱（可选）</label>
-                      <input type="email" name="email" placeholder="方便站长必要时联系" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors" />
+                      <input type="email" name="email" placeholder="方便站长必要时联系您" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors" />
                     </div>
                     <div>
                       <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">留言（可选）</label>
@@ -406,14 +402,6 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
     
   </div>
 
-  {friendsPageConfig.showCustomContent !== false && (
-    <div class="mt-4 card-base z-10 px-9 py-6 relative w-full">
-      <Markdown class="">
-        <Content />
-      </Markdown>
-    </div>
-  )}
-
   <!-- 评论区 -->
   {isCommentEnabled && (
     <div class="mt-4">
@@ -432,14 +420,12 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
 
         connectedCallback() {
           this.addEventListener("click", this.handleClick);
-          const input = this.querySelector("[data-search]");
-          if (input) {
-            input.addEventListener("input", () => this.applyFilters());
-          }
+          this.addEventListener("input", this.handleInput);
         }
 
         disconnectedCallback() {
           this.removeEventListener("click", this.handleClick);
+          this.removeEventListener("input", this.handleInput);
         }
 
         handleClick(e) {
@@ -456,6 +442,12 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
           button.setAttribute("data-active", "");
 
           this.applyFilters();
+        }
+
+        handleInput(e) {
+          if (e.target instanceof HTMLInputElement && e.target.hasAttribute("data-search")) {
+            this.applyFilters();
+          }
         }
 
         applyFilters() {
@@ -529,8 +521,10 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
         var desc = form.querySelector('input[name="desc"]').value.trim();
         var siteUrl = form.querySelector('input[name="siteUrl"]').value.trim();
         var imgUrl = form.querySelector('input[name="imgUrl"]').value.trim();
-        var email = form.querySelector('input[name="email"]').value.trim();
-        var message = form.querySelector('textarea[name="message"]').value.trim();
+        var emailEl = form.querySelector('input[name="email"]');
+        var messageEl = form.querySelector('textarea[name="message"]');
+        var email = emailEl ? emailEl.value.trim() : '';
+        var message = messageEl ? messageEl.value.trim() : '';
 
         // 校验：任一必填项为空则弹 toast 并返回
         if (!title || !desc || !siteUrl || !imgUrl) {
@@ -548,23 +542,58 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
         submitBtn.querySelector('span').textContent = '提交中...';
 
         try {
-          // 向后端提交申请，状态默认为 pending
-          var res = await fetch('https://seasir.top/api/friends', {
+          console.log('[Friend API] POST 请求地址:', 'https://sigrika-friends.wu1690786513.workers.dev/api/friends');
+          var postBody = {
+            title: title,
+            desc: desc,
+            siteurl: siteUrl,
+            imgurl: imgUrl,
+            email: email || '',
+            message: message || '',
+            type: '博客'
+          };
+
+          console.log('[Friend API] message原始值:', message, '类型:', typeof message);
+          console.log('[Friend API] POST 请求体:', postBody);
+
+          var res = await fetch('https://sigrika-friends.wu1690786513.workers.dev/api/friends', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: title, desc: desc, siteUrl: siteUrl, imgUrl: imgUrl, email: email, message: message })
+            body: JSON.stringify(postBody)
           });
 
-          var data = await res.json();
-          if (!res.ok) throw new Error(data.message || '提交失败');
-          if (!data.success) throw new Error(data.message || '提交失败');
-          // 提交成功：隐藏步骤、显示成功提示
+          console.log('[Friend API] POST 响应状态:', res.status, res.statusText);
+          console.log('[Friend API] POST 响应头:', Object.fromEntries(res.headers.entries()));
+
+          var data;
+          var rawText = await res.text();
+          console.log('[Friend API] POST 原始响应:', rawText);
+
+          try {
+            data = JSON.parse(rawText);
+          } catch (e) {
+            console.error('[Friend API] JSON 解析失败:', e);
+            throw new Error('服务器响应格式异常，请稍后重试');
+          }
+
+          console.log('[Friend API] POST 解析后数据:', data);
+
+          if (!res.ok) throw new Error(data.msg || ('提交失败（HTTP ' + res.status + '）'));
+          if (!data.success) throw new Error(data.msg || '提交失败，请稍后重试');
+
           if (stepsEl) stepsEl.style.display = 'none';
           successEl.classList.remove('hidden');
           successEl.style.display = 'flex';
         } catch (err) {
-          // 网络/后端错误：转换文案并弹 toast
-          var msg = err.message === 'Failed to fetch' ? '网络连接失败，请检查网络' : (err.message || '提交失败，请稍后重试');
+          console.error('[Friend API] 提交失败:', err);
+          console.error('[Friend API] 错误详情:', { name: err.name, message: err.message, stack: err.stack });
+
+          var msg;
+          if (err.message === 'Failed to fetch' || err.message.indexOf('NetworkError') !== -1) {
+            msg = '网络连接失败或被服务器拒绝，请检查网络或稍后重试';
+          } else {
+            msg = err.message || '提交失败，请稍后重试';
+          }
           var toast = document.createElement('div');
           toast.className = 'cc-toast error';
           toast.textContent = msg;
@@ -598,10 +627,10 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
           }).join('') +
         '</div>';
       }
-      return '<a href="' + item.siteUrl + '" target="_blank" rel="noopener noreferrer" data-tags="' + (item.tags ? item.tags.join(',') : '') + '" class="friend-card group flex items-center gap-3 p-2.5 rounded-xl border border-(--line-divider) hover:border-(--primary) hover:bg-(--card-bg) transition-all duration-300 hover:shadow-lg relative overflow-hidden animate-fade-in-up">' +
+      return '<a href="' + item.siteurl + '" target="_blank" rel="noopener noreferrer" data-tags="' + (item.tags ? item.tags.join(',') : '') + '" class="friend-card group flex items-center gap-3 p-2.5 rounded-xl border border-(--line-divider) hover:border-(--primary) hover:bg-(--card-bg) transition-all duration-300 hover:shadow-lg relative overflow-hidden animate-fade-in-up">' +
         '<div class="absolute inset-0 bg-(--primary) opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none"></div>' +
         '<div class="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform duration-300">' +
-          '<img src="' + item.imgUrl + '" alt="' + item.title + '" class="w-full h-full object-cover" loading="lazy" />' +
+          '<img src="' + item.imgurl + '" alt="' + item.title + '" class="w-full h-full object-cover" loading="lazy" />' +
         '</div>' +
         '<div class="grow min-w-0 flex flex-col justify-center gap-0.5">' +
           '<div class="flex items-center justify-between">' +
@@ -621,10 +650,20 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
 
       if (loading) loading.classList.remove('hidden');
 
-      fetch('https://seasir.top/api/friends')
-        .then(function(res) { return res.json(); })
+      fetch('https://sigrika-friends.wu1690786513.workers.dev/api/friends')
+        .then(function(res) {
+          if (!res.ok) throw new Error('网络请求失败（HTTP ' + res.status + '）');
+          return res.text().then(function(text) {
+            try {
+              return JSON.parse(text);
+            } catch (e) {
+              throw new Error('服务器响应格式异常');
+            }
+          });
+        })
         .then(function(data) {
-          var friends = data.items;
+          if (!data.success) throw new Error(data.msg || '加载失败');
+          var friends = data.data;
           if (Array.isArray(friends) && friends.length > 0) {
             friends.sort(function(a, b) {
               return (Number(b.weight) || 0) - (Number(a.weight) || 0);
@@ -633,10 +672,19 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
               return renderFriendCard(item);
             }).join('');
             grid.insertAdjacentHTML('beforeend', html);
+
+            var inputEl = document.querySelector('[data-search]');
+            if (inputEl) {
+              inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
           }
         })
         .catch(function(err) {
-          console.error('加载动态友链失败:', err);
+          var msg = err.message || '加载动态友链失败';
+          if (err.message === 'Failed to fetch' || err.message.indexOf('NetworkError') !== -1) {
+            msg = '动态友链加载失败：网络连接失败或 API 不可达';
+          }
+          console.error(msg, err);
         })
         .finally(function() {
           if (loading) loading.classList.add('hidden');
