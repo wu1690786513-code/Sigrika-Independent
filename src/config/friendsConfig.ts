@@ -20,6 +20,38 @@ export const friendsPageConfig: FriendsPageConfig = {
 
 	// 是否开启随机排序配置，如果开启，就会忽略权重，构建时进行一次随机排序
 	randomizeSort: true,
+
+	// 本站信息，用于友链页面展示和一键复制
+	site: {
+		name: "Sigrika-善良耙耙柑🍊",
+		desc: "记录我的二次元之旅",
+		url: "https://qwq.sigrika.cc/",
+		avatar: "https://qwq.sigrika.cc/assets/images/avatar.gif",
+	},
+
+	// 注意事项，每项包含 title 和 content
+	notes: [
+		{
+			title: "站点要求",
+			content: "站点含二次元相关元素，不限 IP 题材，站点可正常访问并持续维护更新",
+		},
+		{
+			title: "互换原则",
+			content: "请先将本站添加到您的友链页面，确认后会添加您的友链",
+		},
+		{
+			title: "链接维护",
+			content: "友链网站长期无法访问或内容违规，将会被移除",
+		},
+		{
+			title: "内容要求",
+			content: "内容积极向上，不含有任何含色情/反动/暴力等违法违规内容",
+		},
+		{
+			title: "更新要求",
+			content: "为保障本站友链板块的活跃度，半年及以上无内容或动态更新将移除友链",
+		},
+	],
 };
 
 // 友链配置
