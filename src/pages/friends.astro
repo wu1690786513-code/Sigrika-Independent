@@ -542,7 +542,6 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
         submitBtn.querySelector('span').textContent = '提交中...';
 
         try {
-          console.log('[Friend API] POST 请求地址:', 'https://sigrika-friends.wu1690786513.workers.dev/api/friends');
           var postBody = {
             title: title,
             desc: desc,
@@ -553,30 +552,20 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
             type: '博客'
           };
 
-          console.log('[Friend API] message原始值:', message, '类型:', typeof message);
-          console.log('[Friend API] POST 请求体:', postBody);
-
-          var res = await fetch('https://sigrika-friends.wu1690786513.workers.dev/api/friends', {
+          var res = await fetch('https://friends.sigrika.cc/api/friends', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(postBody)
           });
 
-          console.log('[Friend API] POST 响应状态:', res.status, res.statusText);
-          console.log('[Friend API] POST 响应头:', Object.fromEntries(res.headers.entries()));
-
           var data;
           var rawText = await res.text();
-          console.log('[Friend API] POST 原始响应:', rawText);
 
           try {
             data = JSON.parse(rawText);
           } catch (e) {
-            console.error('[Friend API] JSON 解析失败:', e);
             throw new Error('服务器响应格式异常，请稍后重试');
           }
-
-          console.log('[Friend API] POST 解析后数据:', data);
 
           if (!res.ok) throw new Error(data.msg || ('提交失败（HTTP ' + res.status + '）'));
           if (!data.success) throw new Error(data.msg || '提交失败，请稍后重试');
@@ -586,7 +575,6 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
           successEl.style.display = 'flex';
         } catch (err) {
           console.error('[Friend API] 提交失败:', err);
-          console.error('[Friend API] 错误详情:', { name: err.name, message: err.message, stack: err.stack });
 
           var msg;
           if (err.message === 'Failed to fetch' || err.message.indexOf('NetworkError') !== -1) {
@@ -653,7 +641,7 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
 
       if (loading) loading.classList.remove('hidden');
 
-      fetch('https://sigrika-friends.wu1690786513.workers.dev/api/friends')
+      fetch('https://friends.sigrika.cc/api/friends')
         .then(function(res) {
           if (!res.ok) throw new Error('网络请求失败（HTTP ' + res.status + '）');
           return res.text().then(function(text) {
