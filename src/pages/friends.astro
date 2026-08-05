@@ -619,15 +619,18 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
 
   <script is:inline>
     function renderFriendCard(item) {
+      var rawTags = item.tags || item.type;
+      var tags = Array.isArray(rawTags) ? rawTags : (rawTags ? String(rawTags).split(',') : []);
+      tags = tags.map(function(t) { return t.trim(); }).filter(function(t) { return t; });
       var tagsHtml = '';
-      if (item.tags && item.tags.length > 0) {
+      if (tags.length > 0) {
         tagsHtml = '<div class="flex flex-wrap gap-1 mt-1">' +
-          item.tags.slice(0, 3).map(function(tag) {
-            return '<span class="text-[0.65rem] px-1.5 py-0.5 rounded bg-(--btn-regular-bg-hover) text-(--content-meta) transition-colors duration-300">' + tag + '</span>';
+          tags.slice(0, 3).map(function(tag) {
+            return '<span class="text-[0.65rem] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors duration-300">' + tag + '</span>';
           }).join('') +
         '</div>';
       }
-      return '<a href="' + item.siteurl + '" target="_blank" rel="noopener noreferrer" data-tags="' + (item.tags ? item.tags.join(',') : '') + '" class="friend-card group flex items-center gap-3 p-2.5 rounded-xl border border-(--line-divider) hover:border-(--primary) hover:bg-(--card-bg) transition-all duration-300 hover:shadow-lg relative overflow-hidden animate-fade-in-up">' +
+      return '<a href="' + item.siteurl + '" target="_blank" rel="noopener noreferrer" data-tags="' + tags.join(',') + '" class="friend-card group flex items-center gap-3 p-2.5 rounded-xl border border-(--line-divider) hover:border-(--primary) hover:bg-(--card-bg) transition-all duration-300 hover:shadow-lg relative overflow-hidden animate-fade-in-up">' +
         '<div class="absolute inset-0 bg-(--primary) opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none"></div>' +
         '<div class="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform duration-300">' +
           '<img src="' + item.imgurl + '" alt="' + item.title + '" class="w-full h-full object-cover" loading="lazy" />' +
@@ -672,6 +675,30 @@ const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedS
               return renderFriendCard(item);
             }).join('');
             grid.insertAdjacentHTML('beforeend', html);
+
+            // 将动态数据中的新标签合并到顶部 tab 栏
+            var tagBar = document.querySelector('friend-filter .flex.flex-wrap.gap-2');
+            if (tagBar) {
+              var existingTags = [];
+              tagBar.querySelectorAll('button[data-tag]').forEach(function(btn) {
+                existingTags.push(btn.dataset.tag);
+              });
+              friends.forEach(function(item) {
+                var rawTags = item.tags || item.type;
+                var itemTags = Array.isArray(rawTags) ? rawTags : (rawTags ? String(rawTags).split(',') : []);
+                itemTags.forEach(function(t) {
+                  t = t.trim();
+                  if (t && existingTags.indexOf(t) === -1) {
+                    existingTags.push(t);
+                    var newBtn = document.createElement('button');
+                    newBtn.setAttribute('data-tag', t);
+                    newBtn.className = 'category-pill px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200';
+                    newBtn.textContent = t;
+                    tagBar.appendChild(newBtn);
+                  }
+                });
+              });
+            }
 
             var inputEl = document.querySelector('[data-search]');
             if (inputEl) {
