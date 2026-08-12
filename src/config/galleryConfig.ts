@@ -135,6 +135,7 @@ export const galleryConfig: GalleryConfig = {
 			passwordHint: "我是什么？",
 			tags: ["鸣潮"],
 		},
+		// 今汐
 		{
 			id: "mc-mxx",
 			name: "美汐汐",
@@ -149,6 +150,14 @@ export const galleryConfig: GalleryConfig = {
 			description: "森林之中系列玩偶",
 			location: "杭州市 西湖区 花港观鱼码头",
 			date: "2026-07-10",
+			tags: ["鸣潮","今汐"],
+		},
+		{
+			id: "mc-xfn",
+			name: "汐饭你",
+			description: "汐汐陪你恰饭",
+			location: "杭州市 滨江区",
+			date: "2026-08-08",
 			tags: ["鸣潮","今汐"],
 		},
 		{
