@@ -115,7 +115,7 @@ export const comicEvents: ComicEvent[] = [
     name: '夏日星炬·学院回响',
     poster: 'https://upload.codexing.top/Sigrika/26/06/20260619224044547.webp',
     url: 'https://www.xiaohongshu.com/discovery/item/6a12d90200000000350254cb?source=webshare&xhsshare=pc_web&xsec_token=ABD6gETAcH3soj3Ev921ZGzDH6RnEfErRzYNUph0QIBjc=&xsec_source=pc_share',
-    location: '杭州 · 良渚芯云艺术中心',
+    location: '杭州 · 杭州大厦中央商城Zpark街区',
     city: '杭州',
     startDate: '2026-08-15 09:00:00',
     endDate: '2026-08-15',
