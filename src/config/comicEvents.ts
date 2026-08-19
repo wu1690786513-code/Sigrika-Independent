@@ -11,7 +11,7 @@ export interface ComicEvent {
   poster?: string;        // 海报图片URL（可选，默认使用defaultComicPoster）
   url?: string;           // 官网链接（可选）
   onGoingText?: string;   // 当天进行中的文本（可选，默认"主包正在逛展位"）
-  passedText?: string;    // 已过去的文本（可选，默认"已经过去了{days}"，支持{days}占位符显示天数）-1
+  passedText?: string;    // 已过去的文本（可选，默认"已经过去了{days}"，支持{days}占位符显示天数）-0
 }
 
 // 排序方式配置
