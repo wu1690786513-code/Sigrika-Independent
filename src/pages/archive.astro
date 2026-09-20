@@ -1,0 +1,39 @@
+---
+import ArchivePanel from "@components/controls/ArchivePanel.svelte";
+import Category from "@components/custom/Category.svelte";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { getSortedPostsList } from "@/utils/content-utils";
+
+const sortedPostsList = await getSortedPostsList();
+
+const urlParams = new URL(Astro.request.url).searchParams;
+const categoryName = urlParams.get("category") || undefined;
+const tagName = urlParams.get("tag") || undefined;
+const uncategorized = urlParams.has("uncategorized");
+
+const showCategory = categoryName || tagName || uncategorized;
+---
+
+<MainGridLayout title={i18n(I18nKey.archive)}>
+  {showCategory ? (
+    <Category client:only="svelte" />
+  ) : (
+    <>
+      <ArchivePanel sortedPosts={sortedPostsList} client:only="svelte" />
+      <div class="mt-6">
+        <Category client:only="svelte" />
+      </div>
+    </>
+  )}
+</MainGridLayout>
+<!-- import ArchivePanel from "@components/controls/ArchivePanel.astro";
+import I18nKey from "@i18n/i18nKey";
+import { i18n } from "@i18n/translation";
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+---
+这是原本的
+<MainGridLayout title={i18n(I18nKey.archive)}>
+  <ArchivePanel />
+</MainGridLayout> -->

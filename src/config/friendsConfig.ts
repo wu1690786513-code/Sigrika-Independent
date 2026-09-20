@@ -1,0 +1,280 @@
+import type { FriendLink, FriendsPageConfig } from "../types/friendsConfig";
+
+// 可以在src/content/spec/friends.md中编写友链页面下方的自定义内容
+// 2026年6月12日23:47:48
+// 2026年6月13日23:55:50
+// 2026年6月14日00:09:03
+// 友链页面配置
+export const friendsPageConfig: FriendsPageConfig = {
+	// 页面标题，如果留空则使用 i18n 中的翻译
+	title: "",
+
+	// 页面描述文本，如果留空则使用 i18n 中的翻译
+	description: "",
+
+	// 是否显示底部自定义内容（friends.mdx 中的内容）
+	showCustomContent: true,
+
+	// 是否显示评论区，需要先在commentConfig.ts启用评论系统
+	showComment: true,
+
+	// 是否开启随机排序配置，如果开启，就会忽略权重，构建时进行一次随机排序
+	randomizeSort: true,
+
+	// 本站信息，用于友链页面展示和一键复制
+	site: {
+		name: "Sigrika-善良耙耙柑🍊",
+		desc: "记录我的二次元之旅",
+		url: "https://qwq.sigrika.cc/",
+		avatar: "https://qwq.sigrika.cc/assets/images/avatar.gif",
+	},
+
+	// 注意事项，每项包含 title 和 content
+	notes: [
+		{
+			title: "站点要求",
+			content: "站点含二次元相关元素，不限 IP 题材，站点可正常访问并持续维护更新",
+		},
+		{
+			title: "互换原则",
+			content: "请先将本站添加到您的友链页面，确认后会添加您的友链",
+		},
+		{
+			title: "链接维护",
+			content: "友链网站长期无法访问或内容违规，将会被移除",
+		},
+		{
+			title: "内容要求",
+			content: "内容积极向上，不含有任何含色情/反动/暴力等违法违规内容",
+		},
+		{
+			title: "更新要求",
+			content: "为保障本站友链板块的活跃度，半年及以上无内容或动态更新将移除友链",
+		},
+	],
+};
+
+// 友链配置
+// 配置友链-标记
+export const friendsConfig: FriendLink[] = [
+	{
+		title: "夏夜流萤",
+		imgurl:
+			"https://weavatar.com/avatar/d252655d40d6874417a720bad0a6c5f77f8f6a1fd2f882f8f338402dc37e4190?s=640",
+		desc: "飞萤之火自无梦的长夜亮起，绽放在终竟的明天。",
+		siteurl: "https://blog.cuteleaf.cn",
+		tags: ["博客"],
+		weight: 10, // 权重，数字越大排序越靠前
+		enabled: true, // 是否启用
+	},
+	// {
+	// 	title: "Firefly Docs",
+	// 	imgurl: "https://docs-firefly.cuteleaf.cn/logo.png",
+	// 	desc: "Firefly主题模板文档",
+	// 	siteurl: "https://docs-firefly.cuteleaf.cn",
+	// 	tags: ["Docs"],
+	// 	weight: 9,
+	// 	enabled: true,
+	// },
+	// {
+	// 	title: "Astro",
+	// 	imgurl: "https://avatars.githubusercontent.com/u/44914786?v=4&s=640",
+	// 	desc: "The web framework for content-driven websites. ⭐️ Star to support our work!",
+	// 	siteurl: "https://github.com/withastro/astro",
+	// 	tags: ["Framework"],
+	// 	weight: 8,
+	// 	enabled: true,
+	// },
+	{
+		title: "Nachecko",
+		imgurl: "https://avatars.githubusercontent.com/u/172878250",
+		desc: "Nacheckoの小窝",
+		siteurl: "https://tbmiao.dpdns.org/",
+		tags: ["博客"],
+		weight: 8,
+		enabled: true,
+	},
+
+	{
+		title: "番茄主理人",
+		imgurl: "https://q1.qlogo.cn/g?b=qq&nk=20447289&s=640",
+		desc: "坐而言不如起而行.",
+		siteurl: "https://fqzlr.com/",
+		tags: ["博客"],
+		weight: 8,
+		enabled: true,
+	},
+		{
+		title: "MmzMing的博客",
+		imgurl: "https://i.stardots.io/784774835/StarDots-2026052116374135506.jpg",
+		desc: "菲比啾比",
+		siteurl: "https://tblog.mmzhiku.xyz/",
+		tags: ["博客"],
+		weight: 8,
+		enabled: true,
+	},
+	{
+		title: "团子和蛋糕",
+		imgurl: "https://re.tsh520.cn/zl/tx.webp",
+		desc: "如果你喜欢那么欢迎来到我的世界！",
+		siteurl: "https://blog.tsh520.cn/",
+		tags: ["博客"],
+		weight: 8,
+		enabled: true,
+	},
+	{
+		title: "AnKode",
+		imgurl: "https://blog.anxko.cn/logo.webp",
+		desc: "欢迎你！来自远方的朋友 ₍˄·͈༝·͈˄*₎◞ ̑̑",
+		siteurl: "https://blog.anxko.cn",
+		tags: ["博客"],
+		weight: 8,
+		enabled: false,
+	},
+	{
+		"title": "L!!!!ght",
+		"imgurl": "https://easyimg.kejk.cn/i/4484873c-c2cc-4b3d-bc35-5c72ed01cfd9.webp",
+		"desc": "阳光正好，慢慢前行。",
+		"siteurl": "https://sunlight.kejk.cn",
+		"tags": ["博客"],
+		"weight": 8,
+		"enabled": true
+	},
+	{
+	"title": "Eric-Terminal的博客",
+	"imgurl": "https://assets.ericterminal.com/logo-transparent.png",
+	"desc": "刃は鞘に、心は花に",
+	"siteurl": "https://blog.ericterminal.com",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "woodfish的博客",
+	"imgurl": "https://pic1.imgdb.cn/item/682f3d1658cb8da5c807b704.jpg",
+	"desc": "是一名 学生 / ACMer / 前端开发 / 电子音乐制作人",
+	"siteurl": "https://www.woodfish.site/",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "Narcssu Notes",
+	"imgurl": "https://q1.qlogo.cn/g?b=qq&nk=1928325064&s=640",
+	"desc": "这个博客仍在缓慢施工中",
+	"siteurl": "https://blog.narcssu.top/",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "Hyde Blog",
+	"imgurl": "https://seasir.top/assets/avatar.avif",
+	"desc": "人心中的成见是一座大山",
+	"siteurl": "https://seasir.top/",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "拾光の博客",
+	"imgurl": "https://weavatar.com/api/avatar/ff2a232e034fb7677c9f211c5979619f3f4818302ae2cf2a11ea74af530e7758?s=50&t=1780753762637",
+	"desc": "拾取散落的时光碎片",
+	"siteurl": "https://blog.mistfly.xyz",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "清羽飞扬",
+	"imgurl": "https://blog.liushen.fun/favicon.ico",
+	"desc": "柳影曳曳，清酒孤灯，扬笔撒墨，心境如霜",
+	"siteurl": "https://blog.liushen.fun/",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "安知鱼",
+	"imgurl": "https://npm.elemecdn.com/anzhiyu-blog-static@1.0.4/img/avatar.jpg",
+	"desc": "生活明朗，万物可爱",
+	"siteurl": "https://blog.anheyu.com/",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "雨雪冰屋",
+	"imgurl": "https://iamyukino.cn/favicon.ico",
+	"desc": "一隅雨雪一炉窝，可能会融化持久堆？",
+	"siteurl": "https://iamyukino.cn/",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "桃之夭夭",
+	"imgurl": "https://tzyy-1330068502.cos.ap-beijing.myqcloud.com/1.png",
+	"desc": "桃之夭夭的小屋",
+	"siteurl": "https://taozhiyy.top",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "mccsjs",
+	"imgurl": "https://blog.seln.cn/img/ico.jpg",
+	"desc": "点一盏灯，等待一个迷路的夜🍁",
+	"siteurl": "https://blog.seln.cn",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "年华",
+	"imgurl": "https://q1.qlogo.cn/g?b=qq&nk=1323860289&s=640",
+	"desc": "分享生活和技术。",
+	"siteurl": "https://blog.520781.xyz",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "JustPureH2O 的博客",
+	"imgurl": "https://justpureh2o.cn/avatar.jpg",
+	"desc": "穷方圆平直之情，尽规矩准绳之用",
+	"siteurl": "https://justpureh2o.cn",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "JerryLife",
+	"imgurl": "https://img.jerry-nis.top/d8703c5c-4c4a-49cc-bd94-3363c9eda2d8.png",
+	"desc": "Enjoy life",
+	"siteurl": "https://jerry-nis.top",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+	{
+	"title": "Sigrika",
+	"imgurl": "https://sigrika.fans/avatar.avif",
+	"desc": "海洛耙耙柑批发中~",
+	"siteurl": "https://sigrika.fans/",
+	"tags": ["博客"],
+	"weight": 8,
+	"enabled": true
+	},
+];
+
+// 获取启用的友链并进行排序
+export const getEnabledFriends = (): FriendLink[] => {
+	const friends = friendsConfig.filter((friend) => friend.enabled);
+
+	if (friendsPageConfig.randomizeSort) {
+		return friends.sort(() => Math.random() - 0.5);
+	}
+
+	return friends.sort((a, b) => b.weight - a.weight);
+};

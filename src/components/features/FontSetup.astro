@@ -1,0 +1,124 @@
+---
+/**
+ * FontSetup.astro
+ *
+ * 统一管理字体加载，支持两种字体来源：
+ * 1. Astro Font API（<Font /> 组件）：fontsList 中定义的字体，由 Astro 自动下载、缓存、优化
+ * 2. CDN 远程字体：cdnFonts 中定义的字体，通过 <link> 标签加载远程 CSS 样式表
+ *
+ * 字体的 fallback 由 fontsList 中各字体的 fallbacks 字段控制（Astro Font API 处理），
+ * CDN 字体的 fallback 由其 CSS 样式表自带的 @font-face 中的 font-family 声明控制。
+ */
+import { Font } from "astro:assets";
+import { fontConfig, fontsList, cdnFonts } from "@/config";
+import { collectUsedFontCssVars } from "@/utils/fontHelper";
+
+// 收集所有需要加载的 CSS 变量名
+const allCssVars = fontConfig.enable
+	? collectUsedFontCssVars(fontConfig)
+	: new Set<string>();
+
+// 构建 cssVariable → FontDefinition 的映射，用于区分 Astro 字体
+const astroFontByVar = new Map<string, (typeof fontsList)[number]>();
+for (const f of fontsList) {
+	if (f.cssVariable) astroFontByVar.set(f.cssVariable, f);
+}
+
+// 分离 Astro Font API 字体和 CDN 字体
+const astroFontVars: string[] = [];
+const cdnFontEntries: Array<{ cssVar: string; cdn: (typeof cdnFonts)[string] }> = [];
+
+for (const cssVar of allCssVars) {
+	if (cssVar === "system") continue;
+	if (astroFontByVar.has(cssVar)) {
+		astroFontVars.push(cssVar);
+	} else if (cdnFonts[cssVar]) {
+		cdnFontEntries.push({ cssVar, cdn: cdnFonts[cssVar] });
+	}
+}
+
+// 解析 selected 为数组
+const selectedIds: string[] =
+	fontConfig.enable && fontConfig.selected
+		? Array.isArray(fontConfig.selected)
+			? fontConfig.selected
+			: [fontConfig.selected]
+		: [];
+
+// 过滤出非 system 的字体（用于 body font-family 和 preload 判断）
+const selectedFontVars = selectedIds.filter((v) => v !== "system");
+
+// 生成 body 的 font-family 值
+const SYSTEM_FONT_STACK =
+	"system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif";
+const bodyFontFamily =
+	selectedFontVars.length > 0
+		? [...selectedFontVars.map((v) => `var(${v})`), SYSTEM_FONT_STACK].join(
+				", ",
+			)
+		: SYSTEM_FONT_STACK;
+
+// 各区域字体 CSS 变量值
+const bannerTitleFontVar = fontConfig.enable
+	? fontConfig.bannerTitleFont || ""
+	: "";
+const bannerSubtitleFontVar = fontConfig.enable
+	? fontConfig.bannerSubtitleFont || ""
+	: "";
+const navbarTitleFontVar = fontConfig.enable
+	? fontConfig.navbarTitleFont || ""
+	: "";
+---
+
+<!-- CDN 远程字体：通过 <link> 加载远程 CSS 样式表 -->
+{
+	cdnFontEntries.map(({ cssVar, cdn }) => (
+		<link rel="stylesheet" href={cdn.src} />
+	))
+}
+
+<!-- Astro Font API 字体：自动下载、缓存并生成优化的 @font-face -->
+{
+	astroFontVars.map((cssVar) => (
+		<Font
+			cssVariable={cssVar}
+			preload={selectedFontVars.includes(cssVar)}
+		/>
+	))
+}
+
+<!-- 区域字体 CSS 变量 + body 字体 -->
+{
+	fontConfig.enable &&
+	(bannerTitleFontVar || bannerSubtitleFontVar || navbarTitleFontVar || selectedFontVars.length > 0) && (
+		<style
+			set:html={`
+			${bannerTitleFontVar || bannerSubtitleFontVar || navbarTitleFontVar ? `:root {
+				${bannerTitleFontVar ? `--font-banner-title: var(${bannerTitleFontVar}, inherit);` : ""}
+				${bannerSubtitleFontVar ? `--font-banner-subtitle: var(${bannerSubtitleFontVar}, inherit);` : ""}
+				${navbarTitleFontVar ? `--font-navbar-title: var(${navbarTitleFontVar}, inherit);` : ""}
+			}` : ""}
+
+			${cdnFontEntries.length > 0 ? `:root {
+				${cdnFontEntries.map(({ cssVar, cdn }) => `${cssVar}: "${cdn.family}";`).join("\n\t\t\t")}
+			}` : ""}
+
+			body {
+				font-family: ${bodyFontFamily};
+			}
+		`}
+		/>
+	)
+}
+
+<script>
+	if (document.fonts && typeof document.fonts.ready !== "undefined") {
+		document.fonts.ready
+			.then(() => {
+				document.dispatchEvent(new CustomEvent("fontsLoaded"));
+			})
+			.catch((error) => {
+				console.warn("Font loading failed:", error);
+			});
+	}
+</script>

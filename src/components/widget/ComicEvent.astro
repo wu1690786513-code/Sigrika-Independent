@@ -1,0 +1,741 @@
+---
+import { Icon } from "astro-icon/components";
+import WidgetLayout from "@/components/common/WidgetLayout.astro";
+import { comicEvents, comicEventConfig, defaultComicPoster } from "@/config/comicEvents";
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+
+const { class: className, style } = Astro.props;
+
+// 生成唯一ID
+const widgetId = `comic-${Math.random().toString(36).substr(2, 9)}`;
+
+const getDisplayEvents = () => {
+  const now = new Date();
+  const { sortOrder, passedCount = 3, futureCount = 3 } = comicEventConfig;
+  
+  const passedEvents = comicEvents.filter(event => {
+    const endDate = event.endDate ? new Date(event.endDate) : new Date(event.startDate);
+    endDate.setHours(23, 59, 59, 999);
+    return endDate < now;
+  }).sort((a, b) => {
+    const aEnd = new Date(a.endDate || a.startDate);
+    const bEnd = new Date(b.endDate || b.startDate);
+    return bEnd.getTime() - aEnd.getTime();
+  }).slice(0, passedCount);
+  
+  const onGoingEvents = comicEvents.filter(event => {
+    const startDate = new Date(event.startDate);
+    const endDate = event.endDate ? new Date(event.endDate) : new Date(event.startDate);
+    endDate.setHours(23, 59, 59, 999);
+    return startDate <= now && endDate >= now;
+  }).sort((a, b) => {
+    const aEnd = new Date(a.endDate || a.startDate);
+    const bEnd = new Date(b.endDate || b.startDate);
+    return aEnd.getTime() - bEnd.getTime();
+  }).slice(0, 3);
+  
+  const futureEvents = comicEvents.filter(event => {
+    const startDate = new Date(event.startDate);
+    return startDate > now;
+  }).sort((a, b) => {
+    const aStart = new Date(a.startDate);
+    const bStart = new Date(b.startDate);
+    return aStart.getTime() - bStart.getTime();
+  }).slice(0, futureCount);
+  
+  if (sortOrder === 'futureFirst') {
+    return [...onGoingEvents, ...futureEvents, ...passedEvents];
+  } else {
+    return [...passedEvents, ...onGoingEvents, ...futureEvents];
+  }
+};
+
+const displayEvents = getDisplayEvents();
+const currentIndex = 0;
+const currentEvent = displayEvents[currentIndex];
+
+// 计算倒计时目标日期：优先使用goingDate，否则使用startDate
+const targetDate = currentEvent?.goingDate || currentEvent?.startDate || '';
+
+// 获取价格文本
+const getPriceText = (event) => {
+  if (event.priceText) {
+    return event.priceText;
+  }
+  if (event.preSalePrice && event.onSitePrice) {
+    return `预售${event.preSalePrice}元 | 现场${event.onSitePrice}元`;
+  }
+  return null;
+};
+
+// 获取海报图片，支持空字符串使用默认值
+const getPoster = (event) => {
+  if (event.poster && event.poster.trim() !== '') {
+    return event.poster;
+  }
+  return defaultComicPoster;
+};
+
+// 提取日期部分（去掉时间）
+const getDatePart = (dateStr) => {
+  if (!dateStr) return '';
+  return dateStr.split(' ')[0];
+};
+---
+
+<WidgetLayout id="comic-event-widget" name="最近漫展" class={className} style={style}  isCollapsed={true} moreUrl="/comic-events/">
+  <div class="comic-event-container" data-widget-id={widgetId}>
+    {displayEvents.length > 0 ? (
+      <>
+        <!-- 轮播内容区域 -->
+        <div class="carousel-content">
+          {displayEvents.map((event, index) => {
+            const eventTargetDate = event.goingDate || event.startDate;
+            return (
+              <div 
+                key={index} 
+                class={`carousel-item ${index === currentIndex ? 'active' : ''}`}
+                data-event-index={index}
+              >
+                <!-- 标题区域 -->
+                <div class="mb-3">
+                  <p class="text-base font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2">
+                    <Icon is:inline name="material-symbols:festival" class="info-icon text-[var(--primary)]" />
+                    <span>{event.name}</span>
+                  </p>
+                </div>
+
+                <!-- 海报区域 -->
+                <div class="poster-wrapper mb-3">
+                  {event.url ? (
+                    <a href={event.url} target="_blank" rel="noopener noreferrer" class="poster-link" title="戳我查看详情ฅ^•ﻌ•^ฅ">
+                      <img 
+                        src={getPoster(event)} 
+                        alt={event.name}
+                        class="comic-poster"
+                        loading="lazy"
+                      />
+                    </a>
+                  ) : (
+                    <img 
+                      src={getPoster(event)} 
+                      alt={event.name}
+                      class="comic-poster"
+                      loading="lazy"
+                    />
+                  )}
+                </div>
+
+                <!-- 倒计时/状态区域 -->
+                <div class="countdown-section text-center mb-3">
+                  <p class="countdown-prefix text-sm text-neutral-500 dark:text-neutral-400 mb-2">距离开展：</p>
+                  <div class="countdown-wrap" data-target-date={eventTargetDate} data-on-going-text={event.onGoingText || '主包正在逛展位'} data-passed-text={event.passedText ?? ''}>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">天</span>
+                    </div>
+                    <span class="countdown-separator">:</span>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">时</span>
+                    </div>
+                    <span class="countdown-separator">:</span>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">分</span>
+                    </div>
+                    <span class="countdown-separator">:</span>
+                    <div class="countdown-item">
+                      <span class="countdown-number">--</span>
+                      <span class="countdown-label">秒</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 信息区域 -->
+                <div class="info-section space-y-2 text-sm">
+                  <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                    <Icon name="material-symbols:location-on" class="info-icon text-[var(--primary)]" />
+                    <span class="truncate">{event.location}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                    <Icon name="material-symbols:calendar-month-outline-rounded" class="info-icon text-[var(--primary)]" />
+                    <span class="truncate">
+                      开展：{getDatePart(event.startDate)}{event.endDate ? ` ~ ${getDatePart(event.endDate)}` : ''}
+                    </span>
+                  </div>
+                  {event.goingDate && (
+                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                      <Icon name="material-symbols:navigation-outline" class="info-icon text-[var(--primary)]" />
+                      <span class="truncate">赴约：{getDatePart(event.goingDate)} </span>
+                    </div>
+                  )}
+                  {getPriceText(event) && (
+                    <div class="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
+                      <Icon name="mdi:ticket-outline" class="info-icon shrink-0 text-[var(--primary)]" />
+                      <span class="price-label shrink-0" title={getPriceText(event)}>票价：{getPriceText(event)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <!-- 轮播指示器 -->
+        <div class="carousel-indicators-container">
+          <button class="carousel-arrow carousel-arrow-left" style="color: var(--content-meta)" data-direction="prev">
+            <Icon name="material-symbols:chevron-left" class="arrow-icon" />
+          </button>
+          <div class="carousel-indicators">
+            {displayEvents.map((_, index) => (
+              <button 
+                key={index} 
+                class={`indicator-dot ${index === currentIndex ? 'active' : ''}`}
+                data-index={index}
+              ></button>
+            ))}
+          </div>
+          <button class="carousel-arrow carousel-arrow-right" style="color: var(--content-meta)" data-direction="next">
+            <Icon name="material-symbols:chevron-right" class="arrow-icon" />
+          </button>
+        </div>
+      </>
+    ) : (
+      <div class="text-center py-8 text-neutral-500 dark:text-neutral-400">
+        <p>暂无漫展信息</p>
+      </div>
+    )}
+  </div>
+</WidgetLayout>
+
+<script is:inline>
+window.addEventListener('DOMContentLoaded', function() {
+  const displays = document.querySelectorAll('.countdown-wrap');
+  
+  displays.forEach(function(display) {
+    const targetDateStr = display.dataset.targetDate;
+    const onGoingText = display.dataset.onGoingText || '主包正在逛展位';
+    // 直接获取 passedText，不使用默认值替换空字符串
+    const passedText = display.dataset.passedText;
+    
+    if (!targetDateStr) return;
+
+    // 支持两种格式：YYYY-MM-DD 或 YYYY-MM-DD HH:mm:ss
+    const dateParts = targetDateStr.split(' ');
+    const datePart = dateParts[0];
+    const timePart = dateParts[1] || '00:00:00';
+    
+    const parts = datePart.split('-');
+    if (parts.length !== 3) return;
+    
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1;
+    const day = parseInt(parts[2]);
+    
+    // 解析时间部分
+    const timeParts = timePart.split(':');
+    const hours = timeParts.length >= 1 ? parseInt(timeParts[0]) : 0;
+    const minutes = timeParts.length >= 2 ? parseInt(timeParts[1]) : 0;
+    const seconds = timeParts.length >= 3 ? parseInt(timeParts[2]) : 0;
+    
+    const targetDate = new Date(year, month, day, hours, minutes, seconds);
+    const targetTime = targetDate.getTime();
+
+    // 获取前缀元素
+    const section = display.closest('.countdown-section');
+    const prefix = section ? section.querySelector('.countdown-prefix') : null;
+
+    let intervalId = null;
+
+    function updateDisplay() {
+      const now = new Date();
+      const nowTime = now.getTime();
+      const diff = targetTime - nowTime;
+      
+      // 判断是否是当天且已到目标时间
+      const isToday = now.getFullYear() === year && 
+                     now.getMonth() === month && 
+                     now.getDate() === day;
+      
+      // 获取当前时间的时分秒
+      const nowHours = now.getHours();
+      const nowMinutes = now.getMinutes();
+      const nowSeconds = now.getSeconds();
+      
+      // 判断是否已到目标时间（时分秒都大于等于）
+      const hasReachedTarget = isToday && 
+                              (nowHours > hours || 
+                               (nowHours === hours && nowMinutes > minutes) || 
+                               (nowHours === hours && nowMinutes === minutes && nowSeconds >= seconds));
+
+      if (hasReachedTarget) {
+        // 当天且已到目标时间：显示"主包正在逛展位"，隐藏前缀
+        if (prefix) prefix.style.display = 'none';
+        
+        // 使用内联样式确保生效
+        display.innerHTML = `
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+            <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 12px; border-radius: 6px; text-align: center; min-width: 140px;">
+              ${onGoingText}
+            </span>
+          </div>
+        `;
+        
+        // 停止重复渲染
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        return;
+      }
+
+      if (diff < 0) {
+        // 已过去：隐藏前缀
+        if (prefix) prefix.style.display = 'none';
+        const passedDays = Math.floor(Math.abs(diff) / (1000 * 60 * 60 * 24));
+        
+        // 使用内联样式确保生效
+        if (passedText && passedText.trim() !== '') {
+          // passedText 存在时，支持 {days} 占位符
+          const displayText = passedText.replace('{days}', passedDays);
+          display.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+              <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background-color: rgba(0, 0, 0, 0.05); padding: 6px 12px; border-radius: 6px; text-align: center; min-width: 140px;">
+                ${displayText}
+              </span>
+            </div>
+          `;
+        } else {
+          // passedText 为空时渲染"已经过去了x天"，统一主题色，放在一个容器内
+          display.innerHTML = `
+            <div style="display: flex; align-items: baseline; justify-content: center; background-color: rgba(0, 0, 0, 0.05); padding: 8px 16px; border-radius: 8px; gap: 4px;">
+              <span style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">
+                已经过去了
+              </span>
+              <span style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">
+                ${passedDays}
+              </span>
+              <span style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">
+                天
+              </span>
+            </div>
+          `;
+        }
+        
+        // 停止重复渲染
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        return;
+      }
+
+      // 倒计时模式：显示前缀，更新数字
+      if (prefix) prefix.style.display = 'block';
+      
+      // 如果是第一次进入倒计时模式或DOM已被替换，重新创建结构
+      if (!display.querySelector('.countdown-item')) {
+        display.innerHTML = `
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">天</span>
+          </div>
+          <span class="countdown-separator">:</span>
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">时</span>
+          </div>
+          <span class="countdown-separator">:</span>
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">分</span>
+          </div>
+          <span class="countdown-separator">:</span>
+          <div class="countdown-item">
+            <span class="countdown-number">--</span>
+            <span class="countdown-label">秒</span>
+          </div>
+        `;
+      }
+      
+      const nums = display.querySelectorAll('.countdown-number');
+      if (nums.length >= 4) {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        nums[0].textContent = days;
+        nums[1].textContent = String(hours).padStart(2, '0');
+        nums[2].textContent = String(minutes).padStart(2, '0');
+        nums[3].textContent = String(seconds).padStart(2, '0');
+      }
+    }
+
+    updateDisplay();
+    intervalId = setInterval(updateDisplay, 1000);
+  });
+  
+  // 添加滚轮控制水平滚动
+  const priceWrappers = document.querySelectorAll('.price-scroll-wrapper');
+  priceWrappers.forEach(function(wrapper) {
+    wrapper.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      this.scrollLeft += e.deltaY;
+    }, { passive: false });
+  });
+  
+  // 轮播功能
+  const carouselContainers = document.querySelectorAll('.comic-event-container');
+  carouselContainers.forEach(function(container) {
+    const items = container.querySelectorAll('.carousel-item');
+    const indicators = container.querySelectorAll('.indicator-dot');
+    const totalItems = items.length;
+    let currentIndex = 0;
+    let carouselIntervalId = null;
+    
+    function showItem(index) {
+      // 隐藏所有项
+      items.forEach((item, i) => {
+        item.classList.remove('active');
+        indicators[i]?.classList.remove('active');
+      });
+      // 显示当前项
+      items[index]?.classList.add('active');
+      indicators[index]?.classList.add('active');
+      currentIndex = index;
+    }
+    
+    function nextItem() {
+      const nextIndex = (currentIndex + 1) % totalItems;
+      showItem(nextIndex);
+    }
+    
+    // 点击指示器切换
+    indicators.forEach((indicator, index) => {
+      indicator.addEventListener('click', function() {
+        showItem(index);
+      });
+    });
+    
+    // 点击箭头切换
+    const arrows = container.querySelectorAll('.carousel-arrow');
+    arrows.forEach((arrow) => {
+      arrow.addEventListener('click', function() {
+        const direction = this.dataset.direction;
+        if (direction === 'prev') {
+          const prevIndex = (currentIndex - 1 + totalItems) % totalItems;
+          showItem(prevIndex);
+        } else {
+          nextItem();
+        }
+      });
+    });
+    
+    // 自动轮播，每5秒切换一次
+    if (totalItems > 1) {
+      carouselIntervalId = setInterval(nextItem, 5000);
+      
+      // hover时暂停轮播
+      container.addEventListener('mouseenter', function() {
+        if (carouselIntervalId) {
+          clearInterval(carouselIntervalId);
+          carouselIntervalId = null;
+        }
+      });
+      
+      // mouseleave时恢复轮播
+      container.addEventListener('mouseleave', function() {
+        if (!carouselIntervalId && totalItems > 1) {
+          carouselIntervalId = setInterval(nextItem, 5000);
+        }
+      });
+    }
+  });
+});
+</script>
+
+<style>
+  .comic-event-container {
+    padding: 0;
+  }
+
+  .poster-wrapper {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 8px;
+    position: relative;
+    aspect-ratio: 3 / 2;
+  }
+
+  .poster-link {
+    display: block;
+    overflow: hidden;
+    border-radius: 8px;
+    width: 100%;
+    height: 100%;
+  }
+
+  .comic-poster {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+
+  .poster-link:hover .comic-poster {
+    transform: scale(1.05);
+  }
+
+  .countdown-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .countdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 40px;
+  }
+
+  .countdown-number {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .dark .countdown-number {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  .countdown-label {
+    font-size: 0.625rem;
+    color: var(--content-meta);
+    margin-top: 2px;
+  }
+
+  .countdown-separator {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    align-self: center;
+    line-height: 1;
+    padding-bottom: 20px;
+  }
+
+  .countdown-status {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+  }
+
+  .countdown-status.on-going .status-text {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-align: center;
+    min-width: 100px;
+    display: inline-block;
+    letter-spacing: 0.05em;
+  }
+
+  /* 轮播样式 */
+  .carousel-content {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .carousel-item {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .carousel-item.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .carousel-indicators-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-bottom: 8px;
+  }
+
+  .carousel-arrow {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    border-radius: 4px;
+  }
+
+  .carousel-arrow:hover {
+    color: var(--primary) !important;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .arrow-icon {
+    width: 18px;
+    height: 18px;
+    color: inherit;
+    fill: currentColor;
+  }
+
+  .carousel-indicators {
+    display: flex;
+    gap: 6px;
+  }
+
+  .indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.15);
+    border: 1.5px solid var(--content-meta);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .dark .indicator-dot {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--content-meta);
+  }
+
+  .indicator-dot:hover {
+    border-color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+
+  .dark .indicator-dot:hover {
+    border-color: var(--primary);
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .indicator-dot.active {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.2);
+  }
+
+  :global(.dark .comic-event-container .indicator-dot.active) {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 8px var(--primary);
+    border-width: 2px;
+  }
+
+  .price-scroll-wrapper {
+    overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .price-text {
+    flex: 1;
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    cursor: help;
+  }
+
+  .price-label {
+    flex-shrink: 0;
+  }
+
+  .countdown-status.passed {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .countdown-status.passed .status-text {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--content-meta);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .countdown-status.passed .status-days {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  .countdown-status.passed .status-label {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .dark .countdown-status.passed .status-label {
+    color: var(--primary);
+  }
+
+  .info-section {
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--neutral-200);
+  }
+
+  .dark .info-section {
+    border-top-color: var(--neutral-700);
+  }
+
+  .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .info-icon {
+    font-size: 1rem;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+</style>

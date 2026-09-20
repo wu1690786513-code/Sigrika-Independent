@@ -1,0 +1,850 @@
+---
+import { getEntry } from "astro:content";
+import Comment from "@components/comment/index.astro";
+import { Icon } from "astro-icon/components";
+import {
+	commentConfig,
+	friendsPageConfig,
+	getEnabledFriends,
+	siteConfig,
+} from "@/config";
+import I18nKey from "@/i18n/i18nKey";
+import { i18n } from "@/i18n/translation";
+import MainGridLayout from "@/layouts/MainGridLayout.astro";
+
+// 检查页面是否启用
+if (!siteConfig.pages.friends) {
+	return Astro.redirect("/404/");
+}
+
+const friendsPost = await getEntry("spec", "friends");
+
+if (!friendsPost) {
+	throw new Error("friends page content not found");
+}
+
+// 检查评论系统是否启用
+const isCommentEnabled =
+	commentConfig?.type &&
+	commentConfig.type !== "none" &&
+	friendsPageConfig.showComment !== false;
+
+// 使用配置文件中的友链数据，按权重排序
+const items = getEnabledFriends();
+const allTags = [...new Set(items.flatMap((item) => item.tags || []))].sort();
+
+// 页面标题和描述
+const title = friendsPageConfig.title || i18n(I18nKey.friends);
+const description =
+	friendsPageConfig.description || i18n(I18nKey.friendsDescription);
+
+// 站点信息和注意事项（带默认值）
+const siteInfo = friendsPageConfig.site ?? {
+	name: "Sigrika-善良耙耙柑🍊",
+	desc: "记录我的二次元之旅",
+	url: "https://qwq.sigrika.cc/",
+	avatar: "https://qwq.sigrika.cc/assets/images/avatar.gif",
+};
+const notes = friendsPageConfig.notes ?? [];
+
+const escapedSiteName = (siteInfo.name || "").replace(/'/g, "\\'");
+const escapedSiteDesc = (siteInfo.desc || "").replace(/'/g, "\\'");
+const escapedSiteUrl = (siteInfo.url || "").replace(/'/g, "\\'");
+const escapedSiteAvatar = (siteInfo.avatar || "").replace(/'/g, "\\'");
+const copyAllOnClick = `navigator.clipboard.writeText('站点名称：${escapedSiteName}\\n站点描述：${escapedSiteDesc}\\n站点链接：${escapedSiteUrl}\\n头像链接：${escapedSiteAvatar}');this.querySelectorAll('svg')[0].classList.add('hidden');this.querySelectorAll('svg')[1].classList.remove('hidden');setTimeout(()=>{this.querySelectorAll('svg')[0].classList.remove('hidden');this.querySelectorAll('svg')[1].classList.add('hidden')},1500)`;
+---
+
+<MainGridLayout title={title} description={description}>
+  <div
+    class="flex w-full rounded-(--radius-large) overflow-hidden relative min-h-32"
+  >
+    <div class="card-base z-10 px-9 py-6 relative w-full">
+      <!-- 页面标题和描述 -->
+      <div class="mb-4">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div
+              class="h-8 w-8 rounded-lg bg-(--primary) flex items-center justify-center text-white dark:text-black/70 shrink-0"
+            >
+              <Icon is:inline name="material-symbols:group" class="text-[1.5rem]" />
+            </div>
+            <div class="text-3xl font-bold text-neutral-900 dark:text-neutral-100 truncate">
+              {title}
+            </div>
+          </div>
+          {/* 右侧操作按钮：随机访问 + 自助申请 */}
+          <div class="flex items-center gap-2 shrink-0">
+            <button
+              id="random-friend-btn"
+              type="button"
+              class="friend-action-btn relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-(--primary) dark:text-white border border-(--primary) hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(0,0,0,0.15)] transition-all duration-200 text-sm font-medium cursor-pointer"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="1em"
+                height="1em"
+                viewBox="0 0 512 512"
+                class="text-base"
+              >
+                <!-- Icon from File Icons by John Gardner - https://github.com/file-icons/icons/blob/master/LICENSE.md -->
+                <path
+                  fill="currentColor"
+                  d="M470.435 45.423L16.827 221.249c-18.254 8.188-24.428 24.585-4.412 33.484l116.37 37.173l281.368-174.79c15.363-10.973 31.091-8.047 17.557 4.024L186.053 341.075l-7.591 93.076c7.031 14.371 19.905 14.438 28.117 7.295l66.858-63.589l114.505 86.187c26.595 15.826 41.066 5.613 46.788-23.394l75.105-357.47c7.798-35.705-5.5-51.437-39.4-37.757"
+                />
+              </svg>
+              <span class="hidden sm:inline">随机访问</span>
+            </button>
+            <button
+              id="apply-friend-btn"
+              type="button"
+              class="friend-action-btn relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-(--primary) text-white dark:text-white hover:-translate-y-0.5 hover:shadow-[0_8px_25px_rgba(0,0,0,0.15)] transition-all duration-200 text-sm font-medium cursor-pointer"
+            >
+              <svg data-v-2d63c78e="" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="10543" width="18" height="18"><path data-v-2d63c78e="" d="M535.630769 821.169231l-41.353846-5.907693s-27.569231-5.907692-41.353846-11.815384c-7.876923-1.969231-17.723077 0-23.630769 5.907692l-9.846154 9.846154c-57.107692 57.107692-149.661538 63.015385-208.738462 11.815385-66.953846-57.107692-68.923077-159.507692-7.876923-220.553847l149.661539-149.661538c19.692308-19.692308 43.323077-31.507692 66.953846-39.384615 31.507692-7.876923 64.984615-5.907692 94.523077 5.907692 17.723077 7.876923 35.446154 17.723077 51.2 33.476923 7.876923 7.876923 13.784615 15.753846 19.692307 25.6 7.876923 13.784615 25.6 15.753846 35.446154 3.938462l55.138462-55.138462c7.876923-7.876923 7.876923-19.692308 1.969231-29.538462-7.876923-11.815385-17.723077-21.661538-27.569231-31.507692-13.784615-13.784615-29.538462-27.569231-47.261539-37.415384-27.569231-17.723077-59.076923-29.538462-92.553846-35.446154-61.046154-11.815385-128-1.969231-183.138461 27.56923-21.661538 11.815385-43.323077 27.569231-61.046154 45.292308l-143.753846 143.753846C17.723077 622.276923 9.846154 791.630769 110.276923 897.969231c104.369231 114.215385 281.6 116.184615 389.907692 7.876923l49.23077-49.230769c13.784615-9.846154 3.938462-33.476923-13.784616-35.446154zM897.969231 114.215385c-108.307692-100.430769-277.661538-92.553846-380.061539 11.815384L472.615385 169.353846c-13.784615 13.784615-3.938462 37.415385 13.784615 39.384616 27.569231 1.969231 55.138462 7.876923 82.707692 15.753846 7.876923 1.969231 17.723077 0 23.63077-5.907693l9.846153-9.846153c57.107692-57.107692 149.661538-63.015385 208.738462-11.815385 66.953846 57.107692 68.923077 159.507692 7.876923 220.553846L669.538462 567.138462c-19.692308 19.692308-43.323077 31.507692-66.953847 39.384615-31.507692 7.876923-64.984615 5.907692-94.523077-5.907692-17.723077-7.876923-35.446154-17.723077-51.2-33.476923-7.876923-7.876923-13.784615-15.753846-19.692307-25.6-7.876923-13.784615-25.6-15.753846-35.446154-3.938462l-55.138462 55.138462c-7.876923 7.876923-7.876923 19.692308-1.96923 29.538461 7.876923 11.815385 17.723077 21.661538 27.56923 31.507692 13.784615 13.784615 31.507692 27.569231 47.261539 37.415385 27.569231 17.723077 59.076923 29.538462 90.584615 35.446154 61.046154 11.815385 128 1.969231 183.138462-27.569231 21.661538-11.815385 43.323077-27.569231 61.046154-45.292308l149.661538-149.661538c110.276923-108.307692 106.338462-285.538462-5.907692-389.907692z" fill="currentColor" p-id="10544"></path></svg>
+              <span class="hidden sm:inline">自助申请</span>
+            </button>
+          </div>
+        </div>
+        {
+          description && (
+            <p class="text-base text-neutral-600 dark:text-neutral-400 leading-relaxed mb-4">
+              {description}
+            </p>
+          )
+        }
+      </div>
+
+      <!-- 搜索框 -->
+      {
+        items.length > 0 && (
+          <friend-filter class="mb-6">
+            <div class="relative mb-3">
+              <Icon is:inline
+                name="material-symbols:search"
+                class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-neutral-500 text-lg pointer-events-none"
+              />
+              <input
+                type="text"
+                data-search
+                placeholder={i18n(I18nKey.searchFriends) || "搜索友链..."}
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-(--line-divider) bg-transparent text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 focus:border-(--primary) focus:ring-1 focus:ring-(--primary) outline-none transition-all duration-200 text-sm"
+              />
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                data-tag="all"
+                class="category-pill px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200"
+                data-active
+              >
+                {i18n(I18nKey.all)}
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  data-tag={tag}
+                  class="category-pill px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </friend-filter>
+        )
+      }
+
+      <!-- 动态友链加载状态 -->
+      <div id="friends-loading" class="hidden my-4">
+        <div class="flex items-center justify-center gap-2 text-(--content-meta)">
+          <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+          </svg>
+          <span>加载中...</span>
+        </div>
+      </div>
+
+      <div class="friends-grid my-4" id="friends-grid">
+        {
+          items.length === 0 && (
+            <div class="col-span-full flex flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-500">
+              <Icon is:inline name="material-symbols:group-off-outline" class="text-4xl mb-3" />
+              <div class="text-sm">{i18n(I18nKey.friendsEmpty)}</div>
+            </div>
+          )
+        }
+        {
+          items.map((item) => (
+            <a
+              href={item.siteurl}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-tags={item.tags?.join(",")}
+              class="friend-card group flex items-center gap-3 p-2.5 rounded-xl border border-(--line-divider) hover:border-(--primary) hover:bg-(--card-bg) transition-all duration-300 hover:shadow-lg relative overflow-hidden"
+            >
+              {/* 背景装饰 - 仅悬停显示 */}
+              <div class="absolute inset-0 bg-(--primary) opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none" />
+
+              {/* 头像 */}
+              <div class="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform duration-300">
+                <img
+                  src={item.imgurl}
+                  alt={item.title}
+                  class="w-full h-full object-cover"
+                />
+              </div>
+
+              {/* 内容 */}
+              <div class="grow min-w-0 flex flex-col justify-center gap-0.5">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold text-base text-neutral-900 dark:text-neutral-100 group-hover:text-(--primary) transition-colors truncate pr-4">
+                    {item.title}
+                  </div>
+                  {/* 外部链接图标 */}
+                  <Icon is:inline
+                    name="material-symbols:arrow-outward-rounded"
+                    class="text-(--primary) text-lg opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300"
+                  />
+                </div>
+
+                <div
+                  class="text-sm text-neutral-500 dark:text-neutral-400 line-clamp-1"
+                  title={item.desc}
+                >
+                  {item.desc}
+                </div>
+
+                {/* 标签 */}
+                <div class="flex flex-wrap gap-1 mt-1">
+                  {item.tags && item.tags.length > 0
+                    ? item.tags
+                        .slice(0, 3)
+                        .map((tag) => (
+                          <span class="text-[0.65rem] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors duration-300">
+                            {tag}
+                          </span>
+                        ))
+                    : null}
+                </div>
+              </div>
+            </a>
+          ))
+        }
+      </div>
+
+      {/* 搜索无结果提示 */}
+      <div class="friends-empty hidden flex-col items-center justify-center py-12 text-neutral-400 dark:text-neutral-500">
+        <Icon is:inline name="material-symbols:search-off-rounded" class="text-4xl mb-3" />
+        <div class="text-sm">{i18n(I18nKey.searchNoResults)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <div class="card-base z-10 px-9 py-6 relative w-full mb-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* 左栏：本站在线信息 */}
+        <div class="rounded-2xl border border-(--line-divider) overflow-hidden flex flex-col">
+          <div class="p-5 sm:p-6 flex flex-col flex-1">
+            <div class="flex items-center gap-4 mb-5">
+              <div class="relative shrink-0">
+                <div class="w-16 h-16 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 ring-2 ring-(--primary)/20">
+                  <img
+                    src={siteInfo.avatar}
+                    alt={siteInfo.name}
+                    class="w-full h-full object-cover"
+                  />
+                </div>
+                <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-(--primary) flex items-center justify-center shadow">
+                  <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                </div>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-neutral-900 dark:text-neutral-100">{siteInfo.name}</h3>
+                <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{siteInfo.desc}</p>
+              </div>
+            </div>
+
+            {/* 一键复制所有信息按钮 */}
+            <button
+              onclick={copyAllOnClick}
+              class="w-full flex items-center justify-center gap-2 rounded-lg bg-(--primary) text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer mb-3"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              <svg class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <span>一键复制所有信息</span>
+            </button>
+
+            <div class="space-y-2.5 flex-1">
+              {[
+                { label: "站点名称", value: siteInfo.name },
+                { label: "站点描述", value: siteInfo.desc },
+                { label: "站点链接", value: siteInfo.url },
+                { label: "头像链接", value: siteInfo.avatar },
+              ].map((item) => (
+                <div class="flex items-center justify-between gap-2 rounded-lg bg-black/5 dark:bg-white/5 px-3 py-2">
+                  <div class="min-w-0">
+                    <p class="text-[0.65rem] text-neutral-400 dark:text-neutral-500 mb-0.5">{item.label}</p>
+                    <p class="text-xs font-medium truncate text-neutral-900 dark:text-neutral-100">{item.value}</p>
+                  </div>
+                  <button onclick={`navigator.clipboard.writeText('${item.value.replace(/'/g, "\\'")}');this.querySelectorAll('svg')[0].classList.add('hidden');this.querySelectorAll('svg')[1].classList.remove('hidden');setTimeout(()=>{this.querySelectorAll('svg')[0].classList.remove('hidden');this.querySelectorAll('svg')[1].classList.add('hidden')},1500)`} class="shrink-0 w-7 h-7 flex items-center justify-center rounded-md bg-black/10 dark:bg-white/10 text-neutral-900 dark:text-neutral-100 hover:opacity-80 transition-opacity cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <svg class="w-3.5 h-3.5 hidden text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </button>
+                </div>
+              ))}
+
+             {/* 底部注意事项 */}
+    <div class="rounded-2xl overflow-hidden  z-10 px-0 py-6 relative w-full">
+      <h3 class="text-base font-bold mb-4 flex items-center gap-2 text-neutral-900 dark:text-neutral-100">
+        <svg class="w-4.5 h-4.5 text-(--primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        注意事项
+      </h3>
+      <div class="space-y-3 text-sm text-neutral-600 dark:text-neutral-400">
+        {notes.map((item) => (
+          <div class="flex items-baseline gap-2.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-(--primary) shrink-0 translate-y-[-2px]"></span>
+            <p><strong class="text-neutral-800 dark:text-neutral-200">{item.title}</strong>：{item.content}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+            </div>
+
+            
+          </div>
+        </div>
+
+        {/* 右栏：自助申请 */}
+        <div class="rounded-2xl border border-(--line-divider) overflow-hidden flex flex-col">
+          <div class="p-5 sm:p-6 flex flex-col flex-1">
+            <h3 class="text-lg font-bold mb-5 flex items-center gap-2 text-neutral-900 dark:text-neutral-100">
+              <span class="w-7 h-7 rounded-lg bg-(--primary)/10 flex items-center justify-center text-(--primary)">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M11 17H7q-2.075 0-3.537-1.463T2 12t1.463-3.537T7 7h4v2H7q-1.25 0-2.125.875T4 12t.875 2.125T7 15h4zm-3-4v-2h8v2zm5 4v-2h4q1.25 0 2.125-.875T20 12t-.875-2.125T17 9h-4V7h4q2.075 0 3.538 1.463T22 12t-1.463 3.538T17 17z"/></svg>
+              </span>
+              自助申请
+            </h3>
+
+            <div id="friend-apply-steps" class="space-y-0 flex-1">
+              <div class="flex gap-3.5">
+                <div class="flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-full bg-(--primary) text-white text-xs font-bold flex items-center justify-center shrink-0">1</div>
+                  <div class="w-0.5 flex-1 bg-(--line-divider) my-1.5"></div>
+                </div>
+                <div class="pb-4">
+                  <p class="font-semibold text-sm mb-1 text-neutral-900 dark:text-neutral-100">添加本站友链</p>
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">请先在您的网站友链页面添加本站信息</p>
+                </div>
+              </div>
+
+              <div class="flex gap-3.5">
+                <div class="flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-full bg-(--primary) text-white text-xs font-bold flex items-center justify-center shrink-0">2</div>
+                  <div class="w-0.5 flex-1 bg-(--line-divider) my-1.5"></div>
+                </div>
+                <div class="pb-4 flex-1 min-w-0">
+                  <p class="font-semibold text-sm mb-1 text-neutral-900 dark:text-neutral-100">填写申请信息：</p>
+                  <form id="friend-link-form" class="space-y-3">
+                    <div>
+                      <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">站点名称 <span class="text-red-500">*</span></label>
+                      <input type="text" name="title" required placeholder="您的站点名称" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">站点描述 <span class="text-red-500">*</span></label>
+                      <input type="text" name="desc" required placeholder="您的站点描述" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">站点链接 <span class="text-red-500">*</span></label>
+                      <input type="url" name="siteUrl" required placeholder="https://example.com" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">头像链接 <span class="text-red-500">*</span></label>
+                      <input type="url" name="imgUrl" required placeholder="https://example.com/avatar.png" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">联系邮箱（可选）</label>
+                      <input type="email" name="email" placeholder="方便站长必要时联系您" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-neutral-900 dark:text-neutral-100 mb-1">留言（可选）</label>
+                      <textarea name="message" rows="2" placeholder="例如已添加本站友链的页面地址" class="w-full rounded-lg bg-black/5 dark:bg-white/5 border border-(--line-divider) px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-(--primary)/30 focus:border-(--primary) transition-colors resize-none"></textarea>
+                    </div>
+                    <div class="pt-1">
+                      <button type="button" id="friend-submit-btn" class="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-(--primary) text-white hover:opacity-90 transition-opacity text-sm font-medium cursor-pointer w-full disabled:opacity-50 disabled:pointer-events-none">
+                        <svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2657" width="16" height="16"><path d="M711.5008 695.9872l-268.4672-83.0208L711.5008 302.592l-351.488 310.3744L153.6 530.688 814.72 179.2l-103.2192 516.7872z m-268.4672 124.1344v-145.0752l82.9952 41.1136-82.9952 103.9616z" fill="#ffffff" p-id="2658"></path></svg>
+                        <span>提交申请</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <div class="flex gap-3.5">
+                <div class="flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-full bg-(--primary) text-white text-xs font-bold flex items-center justify-center shrink-0">3</div>
+                </div>
+                <div>
+                  <p class="font-semibold text-sm mb-1 text-neutral-900 dark:text-neutral-100">等待审核</p>
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">确认信息无误后会尽快添加您的友链</p>
+                </div>
+              </div>
+            </div>
+
+            <div id="friend-form-success" class="hidden flex-col items-center justify-center gap-3 py-8 text-center">
+              <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div>
+                <p class="font-semibold text-green-600 dark:text-green-400">申请已提交！</p>
+                <p class="text-xs text-green-500/80 dark:text-green-400/80 mt-1">审核通过后会尽快添加您的友链，请耐心等待</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+  </div>
+
+  <!-- 评论区 -->
+  {isCommentEnabled && (
+    <div class="mt-4">
+      <Comment post={friendsPost} customPath="/friends/" />
+    </div>
+  )}
+
+  <script slot="head" is:inline>
+    if (!customElements.get("friend-filter")) {
+      class FriendFilter extends HTMLElement {
+        selectedTag = "all";
+
+        constructor() {
+          super();
+        }
+
+        connectedCallback() {
+          this.addEventListener("click", this.handleClick);
+          this.addEventListener("input", this.handleInput);
+        }
+
+        disconnectedCallback() {
+          this.removeEventListener("click", this.handleClick);
+          this.removeEventListener("input", this.handleInput);
+        }
+
+        handleClick(e) {
+          const target = e.target;
+          const button = target.closest("button");
+          if (!button) return;
+
+          this.selectedTag = button.dataset.tag;
+          const filters = this.querySelectorAll("button");
+
+          filters.forEach((f) => {
+            f.removeAttribute("data-active");
+          });
+          button.setAttribute("data-active", "");
+
+          this.applyFilters();
+        }
+
+        handleInput(e) {
+          if (e.target instanceof HTMLInputElement && e.target.hasAttribute("data-search")) {
+            this.applyFilters();
+          }
+        }
+
+        applyFilters() {
+          const container = this.closest(".card-base");
+          if (!container) return;
+
+          const input = this.querySelector("[data-search]");
+          const query = (input?.value || "").toLowerCase().trim();
+          const cards = container.querySelectorAll(".friend-card");
+
+          let hasVisible = false;
+
+          cards.forEach((card) => {
+            const cardEl = card;
+            const tags = (cardEl.dataset.tags || "").split(",");
+            const name = (cardEl.querySelector(".font-bold")?.textContent || "").toLowerCase();
+            const desc = (cardEl.querySelector(".line-clamp-1")?.textContent || "").toLowerCase();
+
+            const tagMatch =
+              this.selectedTag === "all" ||
+              (this.selectedTag && tags.includes(this.selectedTag));
+            const searchMatch =
+              !query ||
+              name.includes(query) ||
+              desc.includes(query) ||
+              tags.some((t) => t.toLowerCase().includes(query));
+
+            if (tagMatch && searchMatch) {
+              cardEl.style.display = "";
+              cardEl.classList.add("animate-fade-in-up");
+              hasVisible = true;
+            } else {
+              cardEl.style.display = "none";
+              cardEl.classList.remove("animate-fade-in-up");
+            }
+          });
+
+          const emptyEl = container.querySelector(".friends-empty");
+          if (emptyEl) {
+            emptyEl.classList.toggle("hidden", hasVisible);
+            emptyEl.classList.toggle("flex", !hasVisible);
+          }
+        }
+      }
+      customElements.define("friend-filter", FriendFilter);
+    }
+  </script>
+
+  <script is:inline>
+    // 申请友链表单逻辑
+    function initFriendForm() {
+      // 获取表单、提交按钮、成功提示、步骤容器
+      var form = document.getElementById('friend-link-form');
+      var submitBtn = document.getElementById('friend-submit-btn');
+      var successEl = document.getElementById('friend-form-success');
+      var stepsEl = document.getElementById('friend-apply-steps');
+
+      // 防止重复初始化（swup 切换页面时会再次触发）
+      if (!form || !submitBtn || submitBtn.dataset.initialized) return;
+
+      // 防重复提交标记
+      var isSubmitting = false;
+
+      submitBtn.dataset.initialized = 'true';
+      submitBtn.addEventListener('click', async function() {
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        // 读取表单字段并去掉首尾空格
+        var title = form.querySelector('input[name="title"]').value.trim();
+        var desc = form.querySelector('input[name="desc"]').value.trim();
+        var siteUrl = form.querySelector('input[name="siteUrl"]').value.trim();
+        var imgUrl = form.querySelector('input[name="imgUrl"]').value.trim();
+        var emailEl = form.querySelector('input[name="email"]');
+        var messageEl = form.querySelector('textarea[name="message"]');
+        var email = emailEl ? emailEl.value.trim() : '';
+        var message = messageEl ? messageEl.value.trim() : '';
+
+        // 校验：任一必填项为空则弹 toast 并返回
+        if (!title || !desc || !siteUrl || !imgUrl) {
+          isSubmitting = false;
+          var toast = document.createElement('div');
+          toast.className = 'cc-toast error';
+          toast.textContent = '请填写完整信息';
+          document.body.appendChild(toast);
+          setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(function() { toast.remove(); }, 300); }, 3000);
+          return;
+        }
+
+        // 进入提交状态：禁用按钮、文案改为"提交中..."
+        submitBtn.disabled = true;
+        submitBtn.querySelector('span').textContent = '提交中...';
+
+        try {
+          var postBody = {
+            title: title,
+            desc: desc,
+            siteurl: siteUrl,
+            imgurl: imgUrl,
+            email: email || '',
+            message: message || '',
+            type: '博客'
+          };
+
+          var res = await fetch('https://friends.sigrika.cc/api/friends', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(postBody)
+          });
+
+          var data;
+          var rawText = await res.text();
+
+          try {
+            data = JSON.parse(rawText);
+          } catch (e) {
+            throw new Error('服务器响应格式异常，请稍后重试');
+          }
+
+          if (!res.ok) throw new Error(data.msg || ('提交失败（HTTP ' + res.status + '）'));
+          if (!data.success) throw new Error(data.msg || '提交失败，请稍后重试');
+
+          if (stepsEl) stepsEl.style.display = 'none';
+          successEl.classList.remove('hidden');
+          successEl.style.display = 'flex';
+        } catch (err) {
+          console.error('[Friend API] 提交失败:', err);
+
+          var msg;
+          if (err.message === 'Failed to fetch' || err.message.indexOf('NetworkError') !== -1) {
+            msg = '网络连接失败或被服务器拒绝，请检查网络或稍后重试';
+          } else {
+            msg = err.message || '提交失败，请稍后重试';
+          }
+          var toast = document.createElement('div');
+          toast.className = 'cc-toast error';
+          toast.textContent = msg;
+          document.body.appendChild(toast);
+          setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(function() { toast.remove(); }, 300); }, 3000);
+        } finally {
+          // 恢复按钮状态
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.querySelector('span').textContent = '提交申请';
+        }
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initFriendForm);
+    } else {
+      initFriendForm();
+    }
+
+    document.addEventListener('swup:contentReplaced', initFriendForm);
+  </script>
+
+  <script is:inline>
+    function renderFriendCard(item) {
+      var rawTags = item.tags || item.type;
+      var tags = Array.isArray(rawTags) ? rawTags : (rawTags ? String(rawTags).split(',') : []);
+      tags = tags.map(function(t) { return t.trim(); }).filter(function(t) { return t; });
+      var tagsHtml = '';
+      if (tags.length > 0) {
+        tagsHtml = '<div class="flex flex-wrap gap-1 mt-1">' +
+          tags.slice(0, 3).map(function(tag) {
+            return '<span class="text-[0.65rem] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors duration-300">' + tag + '</span>';
+          }).join('') +
+        '</div>';
+      }
+      return '<a href="' + item.siteurl + '" target="_blank" rel="noopener noreferrer" data-tags="' + tags.join(',') + '" class="friend-card group flex items-center gap-3 p-2.5 rounded-xl border border-(--line-divider) hover:border-(--primary) hover:bg-(--card-bg) transition-all duration-300 hover:shadow-lg relative overflow-hidden animate-fade-in-up">' +
+        '<div class="absolute inset-0 bg-(--primary) opacity-0 group-hover:opacity-5 transition-opacity duration-300 pointer-events-none"></div>' +
+        '<div class="relative w-16 h-16 shrink-0 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-black/5 dark:border-white/5 group-hover:scale-105 transition-transform duration-300">' +
+          '<img src="' + item.imgurl + '" alt="' + item.title + '" class="w-full h-full object-cover" loading="lazy" />' +
+        '</div>' +
+        '<div class="grow min-w-0 flex flex-col justify-center gap-0.5">' +
+          '<div class="flex items-center justify-between">' +
+            '<div class="font-bold text-base text-(--btn-content) group-hover:text-(--primary) transition-colors truncate pr-4">' + item.title + '</div>' +
+            '<svg class="text-(--primary) text-lg opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="m16 8.4l-8.9 8.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7L14.6 7H7q-.425 0-.712-.288T6 6t.288-.712T7 5h10q.425 0 .713.288T18 6v10q0 .425-.288.713T17 17t-.712-.288T16 16z"/></svg>' +
+          '</div>' +
+          '<div class="text-sm text-(--content-meta) line-clamp-1" title="' + item.desc + '">' + item.desc + '</div>' +
+          tagsHtml +
+        '</div>' +
+      '</a>';
+    }
+
+    function loadDynamicFriends() {
+      var loading = document.getElementById('friends-loading');
+      var grid = document.getElementById('friends-grid');
+      if (!grid) return;
+
+      if (loading) loading.classList.remove('hidden');
+
+      fetch('https://friends.sigrika.cc/api/friends')
+        .then(function(res) {
+          if (!res.ok) throw new Error('网络请求失败（HTTP ' + res.status + '）');
+          return res.text().then(function(text) {
+            try {
+              return JSON.parse(text);
+            } catch (e) {
+              throw new Error('服务器响应格式异常');
+            }
+          });
+        })
+        .then(function(data) {
+          if (!data.success) throw new Error(data.msg || '加载失败');
+          var friends = data.data;
+          if (Array.isArray(friends) && friends.length > 0) {
+            friends.sort(function(a, b) {
+              return (Number(b.weight) || 0) - (Number(a.weight) || 0);
+            });
+            var html = friends.map(function(item) {
+              return renderFriendCard(item);
+            }).join('');
+            grid.insertAdjacentHTML('beforeend', html);
+
+            // 将动态数据中的新标签合并到顶部 tab 栏
+            var tagBar = document.querySelector('friend-filter .flex.flex-wrap.gap-2');
+            if (tagBar) {
+              var existingTags = [];
+              tagBar.querySelectorAll('button[data-tag]').forEach(function(btn) {
+                existingTags.push(btn.dataset.tag);
+              });
+              friends.forEach(function(item) {
+                var rawTags = item.tags || item.type;
+                var itemTags = Array.isArray(rawTags) ? rawTags : (rawTags ? String(rawTags).split(',') : []);
+                itemTags.forEach(function(t) {
+                  t = t.trim();
+                  if (t && existingTags.indexOf(t) === -1) {
+                    existingTags.push(t);
+                    var newBtn = document.createElement('button');
+                    newBtn.setAttribute('data-tag', t);
+                    newBtn.className = 'category-pill px-3 py-1.5 rounded-full text-sm font-medium transition-colors duration-200';
+                    newBtn.textContent = t;
+                    tagBar.appendChild(newBtn);
+                  }
+                });
+              });
+            }
+
+            var inputEl = document.querySelector('[data-search]');
+            if (inputEl) {
+              inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          }
+        })
+        .catch(function(err) {
+          var msg = err.message || '加载动态友链失败';
+          if (err.message === 'Failed to fetch' || err.message.indexOf('NetworkError') !== -1) {
+            msg = '动态友链加载失败：网络连接失败或 API 不可达';
+          }
+          console.error(msg, err);
+        })
+        .finally(function() {
+          if (loading) loading.classList.add('hidden');
+        });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadDynamicFriends);
+    } else {
+      loadDynamicFriends();
+    }
+
+    document.addEventListener('swup:contentReplaced', loadDynamicFriends);
+  </script>
+
+  <script is:inline>
+    // 顶部按钮逻辑：随机访问友链 + 滚动到申请表单
+    function initFriendsHeaderButtons() {
+      var randomBtn = document.getElementById('random-friend-btn');
+      var applyBtn = document.getElementById('apply-friend-btn');
+
+      function showToast(msg) {
+        var toast = document.createElement('div');
+        toast.className = 'cc-toast error';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(function() { toast.remove(); }, 300); }, 3000);
+      }
+
+      // 随机访问：从当前可见的友链卡片中随机选一个，在新标签页打开
+      if (randomBtn && !randomBtn.dataset.initialized) {
+        randomBtn.dataset.initialized = 'true';
+        randomBtn.addEventListener('click', function() {
+          var cards = document.querySelectorAll('#friends-grid .friend-card');
+          var validCards = [];
+          cards.forEach(function(card) {
+            if (card.href && card.style.display !== 'none') {
+              validCards.push(card);
+            }
+          });
+
+          if (validCards.length === 0) {
+            showToast('暂无可访问的友链');
+            return;
+          }
+
+          var randomCard = validCards[Math.floor(Math.random() * validCards.length)];
+          window.open(randomCard.href, '_blank', 'noopener,noreferrer');
+        });
+      }
+
+      // 申请友链：平滑滚动到申请表单，并短暂高亮提示
+      if (applyBtn && !applyBtn.dataset.initialized) {
+        applyBtn.dataset.initialized = 'true';
+        applyBtn.addEventListener('click', function() {
+          var target = document.getElementById('friend-apply-steps') || document.getElementById('friend-link-form');
+          if (!target) return;
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('friend-apply-highlight');
+          setTimeout(function() { target.classList.remove('friend-apply-highlight'); }, 1800);
+        });
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initFriendsHeaderButtons);
+    } else {
+      initFriendsHeaderButtons();
+    }
+    document.addEventListener('swup:contentReplaced', initFriendsHeaderButtons);
+  </script>
+
+  <style is:global>
+    .friends-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+    }
+
+    /* 友链申请表单的轻提示 */
+    .cc-toast {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 0.7rem 1.2rem;
+      border-radius: 0.75rem;
+      font-size: 0.85rem;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.8);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .cc-toast.error {
+      background: rgba(220, 38, 38, 0.95);
+    }
+
+    /* 申请友链按钮点击后的高亮动画 */
+    .friend-apply-highlight {
+      animation: friend-apply-fade 1.8s ease-out;
+      border-radius: 1rem;
+    }
+    @keyframes friend-apply-fade {
+      0% { outline: 2px solid var(--primary); outline-offset: 8px; }
+      100% { outline: 2px solid transparent; outline-offset: 12px; }
+    }
+
+    /* 按钮闪光效果 */
+    .friend-action-btn {
+      overflow: hidden;
+    }
+    .friend-action-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent);
+      transition: left 0.6s ease;
+      pointer-events: none;
+    }
+    .friend-action-btn:hover::before {
+      left: 100%;
+    }
+
+    /* 按钮内发光效果 */
+    .friend-action-btn::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.15);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .friend-action-btn:hover::after {
+      opacity: 1;
+    }
+  </style>
+</MainGridLayout>

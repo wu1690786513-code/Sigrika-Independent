@@ -1,0 +1,2450 @@
+---
+import MainGridLayout from "@layouts/MainGridLayout.astro";
+import { getCollection } from "astro:content";
+import { getPostUrlBySlug, removeFileExtension, getTagUrl } from "@utils/url-utils";
+
+// ========== 1. 读取文章数据 ==========
+const allPosts = await getCollection("posts", ({ data }) => {
+  return import.meta.env.PROD ? data.draft !== true : true;
+});
+
+// ========== 2. 收集标签 ==========
+const tagMap = new Map<string, { count: number; postIds: string[] }>();
+for (const post of allPosts) {
+  for (const tag of (post.data.tags || [])) {
+    if (!tagMap.has(tag)) tagMap.set(tag, { count: 0, postIds: [] });
+    const t = tagMap.get(tag)!;
+    t.count++;
+    t.postIds.push(post.id);
+  }
+}
+
+// 标签按出现次数排序
+const sortedTags = Array.from(tagMap.entries()).sort((a, b) => b[1].count - a[1].count);
+const counts = sortedTags.map(([_, v]) => v.count);
+const maxCount = Math.max(...counts, 1);
+const minCount = Math.min(...counts, 1);
+const countRange = maxCount - minCount || 1;
+const medianCount = counts[Math.floor(counts.length / 2)] || 1;
+
+const tagNodes = sortedTags.map(([name, info]) => {
+  const normalized = (info.count - minCount) / countRange;
+  const radius = 5 + normalized * 14; // 5~19px
+  return {
+    id: name,
+    name,
+    count: info.count,
+    url: getTagUrl(name),
+    radius: Math.round(radius * 10) / 10,
+    isHighFreq: info.count >= medianCount,
+    postIds: info.postIds,
+  };
+});
+
+// ========== 3. 计算标签间关联（共享文章数）并裁剪弱关联 ==========
+const tagPostSets = new Map<string, Set<string>>();
+for (const t of tagNodes) {
+  tagPostSets.set(t.id, new Set(t.postIds));
+}
+
+const rawLinks: { source: string; target: string; strength: number }[] = [];
+for (let i = 0; i < tagNodes.length; i++) {
+  for (let j = i + 1; j < tagNodes.length; j++) {
+    const a = tagNodes[i].id;
+    const b = tagNodes[j].id;
+    const setA = tagPostSets.get(a)!;
+    const setB = tagPostSets.get(b)!;
+    let shared = 0;
+    for (const pid of setA) if (setB.has(pid)) shared++;
+    if (shared >= 2) { // 裁剪：只保留共享>=2篇的关联
+      rawLinks.push({ source: a, target: b, strength: shared });
+    }
+  }
+}
+
+// ========== 4. 文章数据（用于标签详情视图） ==========
+const postNodes = allPosts.map(post => ({
+  id: post.id,
+  title: post.data.title,
+  url: getPostUrlBySlug(removeFileExtension(post.id)),
+  published: post.data.published?.toISOString?.() || String(post.data.published),
+  description: post.data.description || "",
+  category: post.data.category || "未分类",
+  tags: post.data.tags || [],
+}));
+
+// ========== 4.5 分类数据（用于全部分类视图） ==========
+const categoryMap = new Map<string, { count: number; postIds: string[] }>();
+for (const post of allPosts) {
+  const category = post.data.category || "未分类";
+  if (!categoryMap.has(category)) categoryMap.set(category, { count: 0, postIds: [] });
+  const c = categoryMap.get(category)!;
+  c.count++;
+  c.postIds.push(post.id);
+}
+
+const categoryNodes = Array.from(categoryMap.entries()).map(([name, info]) => ({
+  id: name,
+  name,
+  count: info.count,
+  postIds: info.postIds,
+  radius: Math.max(8, 6 + info.count * 0.5),
+}));
+
+// ========== 5. 序列化数据 ==========
+const graphData = {
+  tags: tagNodes.map(t => ({
+    id: t.id,
+    name: t.name,
+    count: t.count,
+    url: t.url,
+    radius: t.radius,
+    isHighFreq: t.isHighFreq,
+  })),
+  tagLinks: rawLinks.map(l => ({
+    source: l.source,
+    target: l.target,
+    strength: l.strength,
+  })),
+  posts: postNodes.map(p => ({
+    id: p.id,
+    title: p.title,
+    url: p.url,
+    published: p.published,
+    description: p.description,
+    category: p.category,
+    tags: p.tags,
+    isPost: true,
+  })),
+  categories: categoryNodes,
+  stats: {
+    totalPosts: allPosts.length,
+    totalTags: tagNodes.length,
+    totalLinks: rawLinks.length,
+    totalCategories: categoryNodes.length,
+  },
+};
+---
+
+
+  <Fragment slot="head">
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" is:inline></script>
+  </Fragment>
+
+  <div class="obsidian-graph" id="obsidianGraph">
+    <!-- 顶部工具栏 -->
+    <div class="graph-toolbar card-base">
+      <div class="toolbar-left">
+        <h1 class="graph-title" id="graphTitle">次元星球</h1>
+        <span class="graph-stats" id="graphStats">{graphData.stats.totalPosts} 篇文章 · {graphData.stats.totalTags} 个标签 · {graphData.stats.totalLinks} 条关联</span>
+      </div>
+      <div class="toolbar-right">
+        <button class="back-btn hidden" id="backBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          <span>返回总览</span>
+        </button>
+        <div class="search-box">
+          <input type="text" class="search-input" id="graphSearch" placeholder="初次访问请刷新网页" autocomplete="off"/>
+          <button class="search-btn" id="graphSearchBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </button>
+        </div>
+        <button class="reset-btn" id="graphReset" title="重置视图">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Tab栏单独一行 -->
+    <div class="toolbar-tabs card-base" id="toolbarTabs">
+      <div class="tab-bar" id="tabBar">
+        <button class="tab-item active" id="tabPosts" data-view="posts">
+<div class="text-(--primary) text-xl"> <svg width="1em" height="1em" data-icon="material-symbols:article-outline">   <symbol id="ai:material-symbols:article-outline" viewBox="0 0 24 24"><path fill="currentColor" d="M7 17h7v-2H7zm0-4h10v-2H7zm0-4h10V7H7zM5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v14q0 .825-.587 1.413T19 21zm0-2h14V5H5zM5 5v14z"></path></symbol><use href="#ai:material-symbols:article-outline"></use>  </svg> </div>
+
+        <span>全部文章</span>
+        </button>
+        <button class="tab-item" id="tabCategories" data-view="categories">
+        <div class="text-(--primary) text-xl"> <svg width="1em" height="1em" data-icon="material-symbols:folder-outline">   <symbol id="ai:material-symbols:folder-outline" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-8.825l-2-2H4zm0 0V6z"></path></symbol><use href="#ai:material-symbols:folder-outline"></use>  </svg> </div>
+          <span>全部分类</span>
+        </button>
+        <button class="tab-item" id="tabTags" data-view="tags">
+          <div class="text-(--primary) text-xl"> <svg width="1em" height="1em" data-icon="material-symbols:label-outline">   <symbol id="ai:material-symbols:label-outline" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h11q.475 0 .9.213t.7.587L22 12l-5.4 7.2q-.275.375-.7.588T15 20zm0-2h11l4.5-6L15 6H4zm5.5-6"></path></symbol><use href="#ai:material-symbols:label-outline"></use>  </svg> </div>
+          <span>全部标签</span>
+        </button>
+        <button class="tab-item" id="tabRandom" data-view="random">
+          <div class="text-(--primary) text-xl"> 
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">
+              <path d="M0 0h20v20H0z" fill="none" />
+              <path fill="currentColor" d="M16 0a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4zm0 2H4a2 2 0 0 0-1.995 1.85L2 4v12a2 2 0 0 0 1.85 1.995L4 18h12a2 2 0 0 0 1.995-1.85L18 16V4a2 2 0 0 0-1.85-1.995zm-1 11a2 2 0 1 1 0 4a2 2 0 0 1 0-4m-5-5a2 2 0 1 1 0 4a2 2 0 0 1 0-4M5 3a2 2 0 1 1 0 4a2 2 0 0 1 0-4" />
+            </svg>
+          </div>
+          <span>随机漫步</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 图谱画布 -->
+    <div class="graph-canvas-wrapper card-base" id="graphWrapper">
+      <svg id="graphSvg" width="100%" height="100%">
+        <defs>
+          <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <g id="graphViewport">
+          <g id="graphLinks"></g>
+          <g id="graphNodes"></g>
+          <g id="graphLabels"></g>
+        </g>
+      </svg>
+
+      <!-- 悬浮提示 - 文章卡片 -->
+      <div id="graphTooltipPost" class="graph-tooltip graph-tooltip-post hidden">
+        <div class="tooltip-card tooltip-card-post">
+          <!-- 关闭按钮 -->
+          <button class="tooltip-close" id="tooltipClosePost" aria-label="关闭">✕</button>
+          <!-- 头部装饰 -->
+          <div class="tooltip-header">
+            <div class="tooltip-name" id="tooltipNamePost"></div>
+            <div class="tooltip-stats" id="tooltipStatsPost"></div>
+          </div>
+          
+          <!-- 内容区域 -->
+          <div class="tooltip-content">
+            <!-- 文章描述 -->
+            <div class="tooltip-posts" id="tooltipPostsPost"></div>
+            
+            <!-- 标签区域 -->
+            <div class="tooltip-tags" id="tooltipTagsPost"></div>
+          </div>
+          
+          <!-- 底部操作 -->
+          <div class="tooltip-footer">
+            <div class="tooltip-hint" id="tooltipHintPost"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 悬浮提示 - 标签/分类卡片 -->
+      <div id="graphTooltipTag" class="graph-tooltip graph-tooltip-tag hidden">
+        <div class="tooltip-card tooltip-card-tag">
+          <!-- 关闭按钮 -->
+          <button class="tooltip-close" id="tooltipCloseTag" aria-label="关闭">✕</button>
+          <!-- 头部装饰 -->
+          <div class="tooltip-header">
+            <div class="tooltip-name" id="tooltipNameTag"></div>
+            <div class="tooltip-stats" id="tooltipStatsTag"></div>
+          </div>
+          
+          <!-- 内容区域 -->
+          <div class="tooltip-content">
+            <div class="tooltip-section">
+              <div class="section-title">
+                <span class="section-icon">📄</span>
+                <span>最近几篇</span>
+              </div>
+              <div class="tooltip-posts" id="tooltipPostsTag"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 缩放指示器 -->
+      <div class="zoom-badge" id="zoomBadge">100%</div>
+    </div>
+  </div>
+
+<script is:inline data-astro-rerun define:vars={{ graphData }}>
+(function() {
+  if (window.__obsidianGraphCleanup) {
+    window.__obsidianGraphCleanup();
+    window.__obsidianGraphCleanup = null;
+  }
+
+  const RAW = graphData;
+  const wrapper = document.getElementById("graphWrapper");
+  const container = document.getElementById("obsidianGraph");
+  if (!wrapper) return;
+
+  // 等待 D3 加载完成（稳定版）
+function tryInit() {
+  if (window.d3) {
+    initGraph();
+  } else {
+    setTimeout(tryInit, 30);
+  }
+}
+// 兼容首次硬加载与 Astro 视图过渡导航：
+// - 首次加载时 readyState 为 'loading'，等待 DOMContentLoaded
+// - 视图过渡导航时 readyState 已为 'complete'，直接初始化
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', tryInit);
+} else {
+  tryInit();
+}
+
+  const d3 = window.d3;
+  const svg = d3.select("#graphSvg");
+  const viewport = d3.select("#graphViewport");
+  
+  // 文章卡片元素
+  const tooltipPost = document.getElementById("graphTooltipPost");
+  const tooltipNamePost = document.getElementById("tooltipNamePost");
+  const tooltipStatsPost = document.getElementById("tooltipStatsPost");
+  const tooltipPostsPost = document.getElementById("tooltipPostsPost");
+  const tooltipTagsPost = document.getElementById("tooltipTagsPost");
+  const tooltipHintPost = document.getElementById("tooltipHintPost");
+  const tooltipClosePost = document.getElementById("tooltipClosePost");
+  
+  // 标签/分类卡片元素
+  const tooltipTag = document.getElementById("graphTooltipTag");
+  const tooltipNameTag = document.getElementById("tooltipNameTag");
+  const tooltipStatsTag = document.getElementById("tooltipStatsTag");
+  const tooltipPostsTag = document.getElementById("tooltipPostsTag");
+  const tooltipHintTag = document.getElementById("tooltipHintTag");
+  const tooltipCloseTag = document.getElementById("tooltipCloseTag");
+  
+  let tooltipCurrentNode = null;
+  let tooltipCurrentPage = 1;
+  let isTooltipHoveredPost = false;
+  let isTooltipHoveredTag = false;
+  
+  // 隐藏tooltip的延迟计时器
+  let hideTooltipTimer = null;
+  const HIDE_DELAY = 200; // 延迟200ms隐藏，确保tooltip能捕获mouseenter
+
+  function hideTooltip() {
+    // 清除之前的计时器
+    if (hideTooltipTimer) {
+      clearTimeout(hideTooltipTimer);
+      hideTooltipTimer = null;
+    }
+    
+    // 延迟隐藏，给tooltip足够的时间来判断鼠标是否真的离开了
+    hideTooltipTimer = setTimeout(() => {
+      // 只有当tooltip没有被hover时才隐藏
+      if (!isTooltipHoveredPost && !isTooltipHoveredTag) {
+        tooltipPost.classList.add("hidden");
+        tooltipTag.classList.add("hidden");
+        tooltipCurrentNode = null;
+        tooltipCurrentPage = 1;
+      }
+      hideTooltipTimer = null;
+    }, HIDE_DELAY);
+  }
+
+  // 取消隐藏tooltip
+  function cancelHideTooltip() {
+    if (hideTooltipTimer) {
+      clearTimeout(hideTooltipTimer);
+      hideTooltipTimer = null;
+    }
+  }
+  
+  let isDragging = false;  // 拖拽状态标志
+  const zoomBadge = document.getElementById("zoomBadge");
+  const backBtn = document.getElementById("backBtn");
+  const graphTitle = document.getElementById("graphTitle");
+  const graphStats = document.getElementById("graphStats");
+
+  // ========== 尺寸 & 边界 ==========
+  let width = wrapper.clientWidth || 800;
+  let height = wrapper.clientHeight || 500;
+  let cx = width / 2;
+  let cy = height / 2;
+  let boundaryR = Math.min(width, height) * 0.72;
+
+  const isMobile = window.innerWidth < 768;
+
+  // ========== 状态 ==========
+  let currentView = 'posts'; // 'posts' | 'tags' | 'categories' | 'category-detail' | 'random'
+  let activeTag = null;
+  let activeCategory = null;
+  let currentZoom = d3.zoomIdentity;
+  let simulation = null;
+  let tickCount = 0;
+  let postDragTicks = 0;
+  let idleTimer = null;
+  let resizeTimer = null;
+  let isVisible = false;
+  let hasInitialized = false;
+
+  // ========== 数据准备 ==========
+  // 移动端过滤低频标签
+  const visibleTagIds = new Set(
+    isMobile ? RAW.tags.filter(t => t.count >= 3).map(t => t.id) : RAW.tags.map(t => t.id)
+  );
+
+  const allTagNodes = RAW.tags.map(d => ({ ...d, x: cx + (Math.random() - 0.5) * boundaryR * 0.9, y: cy + (Math.random() - 0.5) * boundaryR * 0.9 }));
+  const allTagLinks = RAW.tagLinks.filter(l => visibleTagIds.has(l.source) && visibleTagIds.has(l.target));
+
+  // 移除闲置检测，让模拟持续运行
+  function resetIdleTimer() {} // 空函数，保持兼容
+
+  // ========== 缩放行为 ==========
+  const zoomBehavior = d3.zoom()
+    .scaleExtent([0.35, 3])
+    .on("zoom", function(event) {
+      currentZoom = event.transform;
+      viewport.attr("transform", event.transform);
+      zoomBadge.textContent = Math.round(event.transform.k * 100) + "%";
+      // 标签默认全显示，不再根据缩放级别控制
+    });
+
+  svg.call(zoomBehavior).on("dblclick.zoom", null);
+
+  function resetZoom() {
+    // 手机端默认放大到65%，桌面端自适应
+    const mobileScale = 0.65;
+    const desktopScale = Math.min(width / 900, height / 600, 1) * 0.92;
+    const s = isMobile ? mobileScale : desktopScale;
+    // 以画布中心为基准进行缩放，确保居中
+    const tx = width / 2 * (1 - s);
+    const ty = height / 2 * (1 - s);
+    svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(s));
+  }
+
+  // ========== 力导向模拟 ==========
+  function createSimulation(nodes, links) {
+    if (simulation) simulation.stop();
+    tickCount = 0;
+
+    // 移动端优化参数
+    const mobileFactor = isMobile ? 0.6 : 1;
+
+    const sim = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id).distance(d => {
+        // 关联越强距离越近
+        const base = currentView === 'tags' ? 120 : 80;
+        return base / Math.sqrt((d.strength || 1) + 0.3);
+      }).strength(d => {
+        const baseStrength = currentView === 'tags'
+          ? Math.min(0.4, (d.strength || 1) * 0.18)
+          : 0.4;
+        return baseStrength * (isMobile ? 0.5 : 1); // 移动端力强度减半
+      }))
+      .force("charge", d3.forceManyBody().strength(d => {
+        // 标签节点斥力大，文章节点斥力小
+        const baseCharge = d.isPost ? -80 : -150;
+        return baseCharge * mobileFactor;
+      }).distanceMax(isMobile ? 150 : 220)) // 移动端减少作用距离
+      .force("center", d3.forceCenter(cx, cy).strength(isMobile ? 0.08 : 0.02)) // 移动端增强向心力
+      .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 5).strength(isMobile ? 0.3 : 0.4))
+      // 移动端取消边界检测以提升性能，通过调整力参数确保小球保持在屏幕内
+      .alpha(isMobile ? 0.25 : 0.4)
+      .alphaDecay(isMobile ? 0.035 : 0.02) // 移动端更快衰减，更快稳定
+      .velocityDecay(isMobile ? 0.4 : 0.25) // 移动端更快减速
+      .stop(); // 先停止，等待渲染后启动
+
+    return sim;
+  }
+
+  // 移动端模拟自动停止定时器
+  let mobileStopTimer = null;
+  function scheduleMobileStop() {
+    if (mobileStopTimer) clearTimeout(mobileStopTimer);
+    if (isMobile) {
+      mobileStopTimer = setTimeout(() => {
+        if (simulation) {
+          simulation.stop();
+        }
+      }, 6000); // 移动端6秒后停止模拟
+    }
+  }
+
+  // ========== 渲染函数 ==========
+  function renderGraph(nodes, links) {
+    const linkG = d3.select("#graphLinks");
+    const nodeG = d3.select("#graphNodes");
+    const labelG = d3.select("#graphLabels");
+
+    // 清空旧内容
+    linkG.selectAll("*").remove();
+    nodeG.selectAll("*").remove();
+    labelG.selectAll("*").remove();
+
+    // --- 连线 ---
+    const linkSel = linkG.selectAll("line")
+      .data(links)
+      .join("line")
+      .attr("class", d => `graph-link l-${escClass(d.source.id || d.source)}-${escClass(d.target.id || d.target)}`)
+      .attr("stroke-width", d => Math.max(0.6, Math.min(2.5, (d.strength || 1) * 0.5)))
+      .attr("stroke-linecap", "round");
+
+    // --- 节点 ---
+    const nodeSel = nodeG.selectAll("circle")
+      .data(nodes)
+      .join("circle")
+      .attr("class", d => `graph-node n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} ${d.isHighFreq ? 'is-high' : 'is-low'}`)
+      .attr("r", d => d.radius || 6)
+      .attr("cursor", "pointer")
+      .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+    // --- 标签 ---
+    const labelSel = labelG.selectAll("text")
+      .data(nodes)
+      .join("text")
+      .attr("class", d => `graph-label n-${escClass(d.id)} ${d.isPost ? 'is-post' : ''} is-visible`)
+      .attr("text-anchor", "middle")
+      .attr("dy", d => -(d.radius || 6) - 5)
+      .attr("font-size", d => d.isPost ? 9 : Math.max(10, Math.min(13, 9 + (d.radius || 6) * 0.25)))
+      .attr("font-weight", d => d.isHighFreq ? "600" : "400")
+      .text(d => d.title || d.name);
+
+    // 绑定交互
+    nodeSel
+      .on("mouseenter", function(event, d) {
+        // 如果正在拖动，不触发hover效果
+        if (isDragging) return;
+        
+        // 取消任何待执行的隐藏操作
+        cancelHideTooltip();
+        
+        const nid = d.id;
+        
+        // 先添加 is-hovered 类，再添加 highlight-mode，避免闪烁
+        d3.select(this).classed("is-hovered", true);
+        container.classList.add("highlight-mode");
+
+        // 标记关联的连线和节点
+        const connectedIds = new Set();
+        links.forEach(l => {
+          const sid = l.source.id || l.source;
+          const tid = l.target.id || l.target;
+          if (sid === nid || tid === nid) {
+            connectedIds.add(sid === nid ? tid : sid);
+            d3.select(`.l-${escClass(sid)}-${escClass(tid)}`).classed("is-connected", true);
+            d3.select(`.l-${escClass(tid)}-${escClass(sid)}`).classed("is-connected", true);
+          }
+        });
+
+        d3.selectAll(".graph-node").each(function(n) {
+          if (n.id === nid) return;
+          d3.select(this).classed("is-connected", connectedIds.has(n.id));
+        });
+
+        d3.selectAll(".graph-label").each(function(n) {
+          if (n.id === nid) {
+            d3.select(this).classed("is-hovered", true);
+          } else if (connectedIds.has(n.id)) {
+            d3.select(this).classed("is-connected", true);
+          } else {
+            d3.select(this).classed("is-hovered", false).classed("is-connected", false);
+          }
+        });
+
+        showTooltip(event, d);
+      })
+      .on("mouseleave", function(event, d) {
+        // 如果正在拖动，不触发mouseleave效果
+        if (isDragging) return;
+        
+        // 先移除 highlight-mode，再移除 is-hovered，避免闪烁
+        container.classList.remove("highlight-mode");
+        d3.select(this).classed("is-hovered", false);
+        d3.selectAll(".graph-link").classed("is-connected", false);
+        d3.selectAll(".graph-node").classed("is-connected", false);
+        d3.selectAll(".graph-label").classed("is-hovered", false).classed("is-connected", false);
+        
+        hideTooltip();
+      })
+      .on("click", function(event, d) {
+        event.stopPropagation();
+        if (d.isPost && d.url) {
+          window.open(d.url, "_blank");
+        } else if (!d.isPost) {
+          // 根据当前视图判断是分类还是标签
+          if (currentView === 'categories') {
+            // 点击分类 → 切换到分类详情视图
+            switchToCategoryDetailView(d);
+          } else {
+            // 点击标签 → 切换到文章-标签视图
+            switchToPostView(d);
+          }
+        }
+      });
+
+    return { linkSel, nodeSel, labelSel };
+  }
+
+  function escClass(s) {
+    return String(s).replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+  }
+
+  // ========== 视图切换：标签总览 ==========
+  function switchToTagView() {
+    currentView = 'tags';
+    activeTag = null;
+    activeCategory = null;
+    backBtn.classList.add("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
+    graphTitle.textContent = "全部标签";
+    graphStats.textContent = `${RAW.stats.totalTags} 个标签 · ${RAW.stats.totalLinks} 条关联`;
+
+    // 显示所有标签节点，不移除任何节点
+    const nodes = allTagNodes.map(n => ({ ...n }));
+    const links = allTagLinks.map(l => ({ ...l }));
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    // 启动模拟，持续运行
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    simulation.alpha(0.25);
+    resetZoom();
+    resetIdleTimer();
+    scheduleMobileStop(); // 移动端6秒后自动停止模拟
+  }
+  // ========== 视图切换：全部分类 ==========
+  function switchToCategoryView() {
+    currentView = 'categories';
+    activeTag = null;
+    activeCategory = null;
+    backBtn.classList.add("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
+    graphTitle.textContent = "全部分类";
+    graphStats.textContent = `${RAW.stats.totalPosts} 篇文章 · ${RAW.stats.totalCategories} 个分类`;
+
+    // 显示所有分类节点
+    const nodes = RAW.categories.map(c => ({ ...c }));
+    const links = [];
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    resetZoom();
+    resetIdleTimer();
+    scheduleMobileStop(); // 移动端6秒后自动停止模拟
+  }
+  // ========== 视图切换：分类详情（点击分类后） ==========
+  function switchToCategoryDetailView(categoryNode) {
+    currentView = 'category-detail';
+    activeTag = null;
+    activeCategory = categoryNode.id;
+    backBtn.classList.remove("hidden");
+    document.getElementById("toolbarTabs").classList.add("hidden");
+    graphTitle.textContent = `「${categoryNode.name}」分类`;
+
+    // 找到该分类下的所有文章
+    const relatedPosts = RAW.posts.filter(p => p.category === categoryNode.id);
+    graphStats.textContent = `${relatedPosts.length} 篇文章`;
+
+    // 中心分类节点
+    const centerNode = {
+      ...categoryNode,
+      x: cx,
+      y: cy,
+      radius: 22,
+    };
+
+    // 文章节点：围绕中心分布
+    const postNodes = relatedPosts.map((p, i) => ({
+      id: p.id,
+      name: p.title,
+      title: p.title,
+      url: p.url,
+      isPost: true,
+      radius: 5,
+      x: cx + (Math.random() - 0.5) * boundaryR * 0.9,
+      y: cy + (Math.random() - 0.5) * boundaryR * 0.9,
+      published: p.published,
+      description: p.description,
+      category: p.category,
+      tags: p.tags,
+    }));
+
+    // 文章-分类连线
+    const postLinks = postNodes.map(p => ({
+      source: p.id,
+      target: categoryNode.id,
+      strength: 1,
+    }));
+
+    const nodes = [centerNode, ...postNodes];
+    const links = postLinks;
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    tickCount = 0;
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    resetZoom();
+    resetIdleTimer();
+    scheduleMobileStop(); // 移动端6秒后自动停止模拟
+  }
+  // ========== 视图切换：文章-标签详情 ==========
+  function switchToPostView(tagNode) {
+    currentView = 'posts';
+    activeTag = tagNode.id;
+    activeCategory = null;
+    backBtn.classList.remove("hidden");
+    document.getElementById("toolbarTabs").classList.add("hidden");
+    graphTitle.textContent = `「${tagNode.name}」关联图谱`;
+
+    // 找到包含该标签的文章
+    const relatedPosts = RAW.posts.filter(p => p.tags.includes(tagNode.id));
+    graphStats.textContent = `${relatedPosts.length} 篇关联文章`;
+
+    // 中心标签节点
+    const centerNode = {
+      ...tagNode,
+      x: cx,
+      y: cy,
+      radius: 22,
+      isHighFreq: true,
+    };
+
+    // 文章节点：围绕中心分布
+    const postNodes = relatedPosts.map((p, i) => ({
+      id: p.id,
+      name: p.title,
+      title: p.title,
+      url: p.url,
+      isPost: true,
+      radius: 5,
+      x: cx + (Math.random() - 0.5) * boundaryR * 0.9,
+      y: cy + (Math.random() - 0.5) * boundaryR * 0.9,
+      published: p.published,
+      description: p.description,
+      category: p.category,
+      tags: p.tags,
+    }));
+
+    // 文章-标签连线
+    const postLinks = postNodes.map(p => ({
+      source: p.id,
+      target: tagNode.id,
+      strength: 1,
+    }));
+
+    const nodes = [centerNode, ...postNodes];
+    const links = postLinks;
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    tickCount = 0;
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    resetZoom();
+    resetIdleTimer();
+    scheduleMobileStop(); // 移动端6秒后自动停止模拟
+  }
+  // ========== 视图切换：全部文章 ==========
+  function switchToAllPostsView() {
+    currentView = 'posts';
+    activeTag = null;
+    activeCategory = null;
+    backBtn.classList.add("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
+    graphTitle.textContent = "次元星球";
+    graphStats.textContent = `共计${RAW.stats.totalPosts} 篇文章`;
+
+    // 按发布时间排序，最近的文章在中心附近
+    const sortedPosts = [...RAW.posts].sort((a, b) => 
+      new Date(b.published || 0) - new Date(a.published || 0)
+    );
+
+    // 文章节点：计算目标位置（爱心形状分布，均匀采样）
+    // 爱心曲线参数方程：x = 16 * sin³(t), y = -(13*cos(t) - 5*cos(2t) - 2*cos(3t) - cos(4t))
+    const heartScale = boundaryR * 0.8 / 18; // 爱心大小
+    const n = sortedPosts.length;
+    
+    // 数值积分计算爱心曲线总弧长，用于均匀分布
+    const dt = 0.01;
+    let totalArcLength = 0;
+    const arcLengths = [0]; // 累计弧长
+    let px = 16 * Math.pow(Math.sin(0), 3);
+    let py = -(13 * Math.cos(0) - 5 * Math.cos(0) - 2 * Math.cos(0) - Math.cos(0));
+    for (let t = dt; t <= Math.PI * 2 + dt; t += dt) {
+      const x = 16 * Math.pow(Math.sin(t), 3);
+      const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+      totalArcLength += Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+      arcLengths.push(totalArcLength);
+      px = x; py = y;
+    }
+    
+    // 均匀采样：根据弧长确定每个点的参数 t
+    const getHeartPoint = (arcLen) => {
+      // 找到对应的参数区间
+      for (let i = 0; i < arcLengths.length - 1; i++) {
+        if (arcLengths[i + 1] >= arcLen) {
+          const localT = (arcLen - arcLengths[i]) / (arcLengths[i + 1] - arcLengths[i]);
+          const t = (i + localT) * dt;
+          const hx = 16 * Math.pow(Math.sin(t), 3);
+          const hy = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+          return { x: cx + hx * heartScale, y: cy + hy * heartScale };
+        }
+      }
+      // 最后一个点
+      const t = Math.PI * 2;
+      return {
+        x: cx + 16 * Math.pow(Math.sin(t), 3) * heartScale,
+        y: cy + (-(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t))) * heartScale
+      };
+    };
+    
+    const postNodes = sortedPosts.map((p, i) => {
+      // 均匀分布：每个点沿弧长间隔相同
+      const targetArcLen = (i / n) * totalArcLength;
+      const target = getHeartPoint(targetArcLen);
+      // 从外围入场：初始位置在边界圆上随机位置
+      const startAngle = Math.random() * Math.PI * 2;
+      const startR = boundaryR * (0.85 + Math.random() * 0.15);
+      return {
+        id: p.id,
+        name: p.title,
+        title: p.title,
+        url: p.url,
+        isPost: true,
+        radius: Math.max(4, 7 - i * 0.02),
+        x: cx + Math.cos(startAngle) * startR,
+        y: cy + Math.sin(startAngle) * startR,
+        startX: cx + Math.cos(startAngle) * startR,
+        startY: cy + Math.sin(startAngle) * startR,
+        targetX: target.x,
+        targetY: target.y,
+        published: p.published,
+        description: p.description,
+        category: p.category,
+        tags: p.tags,
+      };
+    });
+
+    // 全部文章视图不显示连线
+    const nodes = postNodes;
+    const links = [];
+
+    const els = renderGraph(nodes, links);
+    
+    // 初始时隐藏所有节点（透明度为0）
+    els.nodeSel.style("opacity", 0);
+    els.labelSel.style("opacity", 0);
+
+    // 外围入场动画：小球从边界飞向目标位置
+    const totalDuration = 3000; // 总动画时长
+    const staggerDelay = 20; // 每个节点延迟
+    const startTime = performance.now();
+    const totalNodes = nodes.length;
+
+    function animate(currentTime) {
+      const elapsed = currentTime - startTime;
+      const globalProgress = Math.min(1, elapsed / totalDuration);
+      
+      nodes.forEach((node, index) => {
+        // 计算每个节点的入场时间（外围先入场，越靠中心越晚）
+        const nodeProgress = Math.max(0, Math.min(1, (globalProgress * totalDuration - index * staggerDelay) / (totalDuration - totalNodes * staggerDelay)));
+        
+        if (nodeProgress > 0) {
+          // 使用缓动函数：easeOutQuart 让入场更自然
+          const easedProgress = 1 - Math.pow(1 - nodeProgress, 4);
+          
+          // 从外围位置向目标位置移动
+          node.x = node.startX + (node.targetX - node.startX) * easedProgress;
+          node.y = node.startY + (node.targetY - node.startY) * easedProgress;
+          
+          // 更新DOM位置和透明度
+          els.nodeSel.filter(d => d.id === node.id)
+            .attr("cx", node.x)
+            .attr("cy", node.y)
+            .style("opacity", easedProgress);
+          els.labelSel.filter(d => d.id === node.id)
+            .attr("x", node.x)
+            .attr("y", node.y)
+            .style("opacity", easedProgress);
+        }
+      });
+
+      if (elapsed < totalDuration) {
+        requestAnimationFrame(animate);
+      } else {
+        // 动画完成后设置最终位置并启动物理模拟
+        nodes.forEach(node => {
+          node.x = node.targetX;
+          node.y = node.targetY;
+          node.vx = 0;
+          node.vy = 0;
+        });
+        
+        els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y).style("opacity", 1);
+        els.labelSel.attr("x", d => d.x).attr("y", d => d.y).style("opacity", 1);
+        
+        // 启动物理模拟（优化手机端性能，保持散开效果）
+        simulation = createSimulation(nodes, links);
+        simulation
+          .alpha(0.6)  // 增加初始活跃度，让散开更明显
+          .alphaDecay(0.015)  // 减慢衰减速度
+          .velocityDecay(0.12);  // 减慢速度衰减
+
+        simulation
+          .force("charge", d3.forceManyBody().strength(-28).distanceMax(110))  // 增强斥力，让节点散开
+          .force("center", d3.forceCenter(cx, cy).strength(0.01))  // 适当的向心力
+          .force("collision", d3.forceCollide().radius(d => (d.radius || 6) + 6).strength(0.4));  // 适当的碰撞检测
+
+        tickCount = 0;
+        simulation.on("tick", () => {
+          tickCount++;
+          els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+          els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+        });
+        
+        simulation.restart();
+      }
+    }
+
+    requestAnimationFrame(animate);
+
+    resetZoom();
+    resetIdleTimer();
+  }
+
+  // ========== 视图切换：随机漫步 ==========
+  function switchToRandomView() {
+    currentView = 'random';
+    activeTag = null;
+    activeCategory = null;
+    backBtn.classList.add("hidden");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
+    graphTitle.textContent = "随机漫步";
+    graphStats.textContent = "会邂逅哪段记忆呢";
+
+    // 随机挑选10篇文章
+    const shuffled = [...RAW.posts].sort(() => Math.random() - 0.5);
+    const randomPosts = shuffled.slice(0, Math.min(10, RAW.posts.length));
+
+    // 文章节点：球体放大显示
+    const postNodes = randomPosts.map((p, i) => {
+      const angle = (i / randomPosts.length) * Math.PI * 2;
+      const radiusFactor = Math.sqrt(Math.random());
+      const r = radiusFactor * boundaryR * 0.6; // 适当放大，更分散
+      return {
+        id: p.id,
+        name: p.title,
+        title: p.title,
+        url: p.url,
+        isPost: true,
+        radius: 8 + Math.random() * 4, // 适当放大
+        x: cx + Math.cos(angle) * r,
+        y: cy + Math.sin(angle) * r,
+        published: p.published,
+        description: p.description,
+        category: p.category,
+        tags: p.tags,
+      };
+    });
+
+    // 文章之间的关联
+    const postLinks = [];
+    for (let i = 0; i < postNodes.length; i++) {
+      for (let j = i + 1; j < postNodes.length; j++) {
+        const a = postNodes[i];
+        const b = postNodes[j];
+        const sharedTags = (a.tags || []).filter(t => (b.tags || []).includes(t)).length;
+        if (sharedTags >= 1) {
+          postLinks.push({
+            source: a.id,
+            target: b.id,
+            strength: sharedTags,
+          });
+        }
+      }
+    }
+
+    const nodes = postNodes;
+    const links = postLinks;
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    tickCount = 0;
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    // 随机漫步模式适当放大显示
+    const mobileScale = 0.8;
+    const desktopScale = Math.min(width / 800, height / 500, 1) * 0.95;
+    const s = isMobile ? mobileScale : desktopScale;
+    const tx = width / 2 * (1 - s);
+    const ty = height / 2 * (1 - s);
+    svg.transition().duration(500).call(zoomBehavior.transform, d3.zoomIdentity.translate(tx, ty).scale(s));
+    resetIdleTimer();
+  }
+
+  // ========== 拖拽节点 ==========
+  function dragstarted(event, d) {
+    if (!event.active) {
+      simulation.alphaTarget(0.25).restart();
+    }
+    d.fx = d.x;
+    d.fy = d.y;
+    d3.select(this).classed("is-dragging", true).classed("is-hovered", true);
+    postDragTicks = 0;
+    simulation.on("tick.postdrag", null);
+    isDragging = true;  // 设置拖拽状态
+  }
+
+  function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+    const dx = event.x - cx;
+    const dy = event.y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const limit = boundaryR - (d.radius || 6) - 12;
+    if (dist > limit) {
+      const angle = Math.atan2(dy, dx);
+      d.fx = cx + Math.cos(angle) * limit;
+      d.fy = cy + Math.sin(angle) * limit;
+    }
+  }
+
+  function dragended(event, d) {
+    if (!event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+    d3.select(this).classed("is-dragging", false).classed("is-hovered", false);
+    isDragging = false;  // 清除拖拽状态
+
+    // 拖拽结束后继续运行，不停止模拟
+  }
+
+  // ========== Tooltip ==========
+  function showTooltip(event, d) {
+    if (isDragging) return;  // 拖拽时不显示tooltip
+    tooltipCurrentNode = d;
+    tooltipCurrentPage = 1;
+    
+    // 立即隐藏所有tooltip（不用延迟，避免与showTooltip冲突）
+    tooltipPost.classList.add("hidden");
+    tooltipTag.classList.add("hidden");
+    
+    if (d.isPost) {
+      showPostTooltip(event, d);
+    } else {
+      showTagTooltip(event, d);
+    }
+  }
+  
+  // 显示文章卡片
+  function showPostTooltip(event, d) {
+    if (d.url) {
+      tooltipNamePost.innerHTML = `<a href="${d.url}" target="_blank" style="color: inherit; text-decoration: none; cursor: pointer;">${d.title || d.name}</a>`;
+    } else {
+      tooltipNamePost.textContent = d.title || d.name;
+    }
+    
+    // 文章详情
+    if (d.category) {
+      tooltipStatsPost.innerHTML = `<span class="stat-item category-clickable" data-category="${d.category}" style="cursor: pointer;">${d.category}</span>`;
+    } else {
+      tooltipStatsPost.innerHTML = '';
+    }
+    
+    if (d.published) {
+      const date = new Date(d.published);
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      tooltipStatsPost.innerHTML += `<span class="stat-divider">·</span><span class="stat-item">${dateStr}</span>`;
+    }
+    
+    // 为分类添加点击事件
+    tooltipStatsPost.querySelectorAll('.category-clickable').forEach(catEl => {
+      catEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const categoryId = catEl.getAttribute('data-category');
+        const categoryNode = RAW.categories.find(c => c.id === categoryId);
+        if (categoryNode) {
+          hideTooltip();
+          switchToCategoryDetailView(categoryNode);
+        }
+      });
+    });
+    
+    // 文章列表区域显示描述
+    tooltipPostsPost.innerHTML = `<div class="post-description">${d.description || '暂无描述'}</div>`;
+    
+    // 获取文章的标签
+    const postTags = d.tags || [];
+    if (postTags.length > 0) {
+      const tagIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M0 0h24v24H0z" fill="none"/><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"><path stroke-linejoin="round" d="M15.244 21.366a2.164 2.164 0 0 1-3.061 0l-8.549-8.549A2.16 2.16 0 0 1 3 11.287V5.164C3 3.97 3.97 3 5.164 3h6.123c.573 0 1.124.228 1.53.634l8.549 8.549a2.164 2.164 0 0 1 0 3.061z"/><path d="M6.5 6.5L7 7"/></g></svg>`;
+      tooltipTagsPost.innerHTML = `<div class="tags-list" style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">${tagIcon}${postTags.slice(0, 6).map(t => `<span class="tag-item tag-clickable" data-tag="${t}" style="cursor: pointer;">#${t}</span>`).join(' ')}</div>`;
+      
+      // 为标签添加点击事件
+      tooltipTagsPost.querySelectorAll('.tag-clickable').forEach(tagEl => {
+        tagEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tagId = tagEl.getAttribute('data-tag');
+          const tagNode = RAW.tags.find(t => t.id === tagId);
+          if (tagNode) {
+            hideTooltip();
+            switchToPostView(tagNode);
+          }
+        });
+      });
+    } else {
+      tooltipTagsPost.innerHTML = '';
+    }
+    
+    tooltipHintPost.innerHTML = '<a href="' + d.url + '" target="_blank" class="hint-link"><span class="hint-icon">Tips：点击查看文章</a>';
+    
+    // 显示文章卡片
+    tooltipPost.classList.remove("hidden");
+    
+    positionTooltip(event, tooltipPost);
+  }
+  
+  // 显示标签/分类卡片
+  function showTagTooltip(event, d) {
+    tooltipNameTag.textContent = d.title || d.name;
+    
+    // 标签或分类详情
+    tooltipStatsTag.innerHTML = `<span class="stat-item">${d.count} 篇文章</span>`;
+    
+    // 根据当前视图判断是分类还是标签
+    const isCategory = currentView === 'categories' || currentView === 'category-detail';
+    
+    // 获取所有关联文章，按发布时间排序
+    const relatedPosts = RAW.posts
+      .filter(p => isCategory ? p.category === d.id : p.tags.includes(d.id))
+      .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
+    
+    const pageSize = 5;
+    const totalPages = Math.ceil(relatedPosts.length / pageSize);
+    const displayPosts = relatedPosts.slice((tooltipCurrentPage - 1) * pageSize, tooltipCurrentPage * pageSize);
+    
+    // 渲染文章列表
+    if (relatedPosts.length > 0) {
+      tooltipPostsTag.innerHTML = '';
+      displayPosts.forEach((post, index) => {
+        tooltipPostsTag.innerHTML += `
+          <div class="post-item">
+            <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}</span>
+            <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
+          </div>
+        `;
+      });
+      
+      // 添加翻页按钮
+      if (totalPages > 1) {
+        tooltipPostsTag.innerHTML += `
+          <div class="tooltip-pagination">
+            <span class="pagination-btn prev" ${tooltipCurrentPage <= 1 ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipPrevPage()">‹</span>
+            <span class="pagination-info">${tooltipCurrentPage}/${totalPages}</span>
+            <span class="pagination-btn next" ${tooltipCurrentPage >= totalPages ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipNextPage()">›</span>
+          </div>
+        `;
+      }
+    } else {
+      tooltipPostsTag.innerHTML = '<div class="empty-state">暂无关联文章</div>';
+    }
+    
+    // 显示标签卡片
+    tooltipTag.classList.remove("hidden");
+    
+    positionTooltip(event, tooltipTag);
+  }
+  
+  // 定位tooltip
+  function positionTooltip(event, tooltipEl) {
+    const rect = wrapper.getBoundingClientRect();
+    const padding = 16; // 安全边距
+    let x = event.clientX - rect.left + 12;
+    let y = event.clientY - rect.top - 8;
+    const ttRect = tooltipEl.getBoundingClientRect();
+    
+    // 确保卡片不会超出右侧边界
+    if (x + ttRect.width > rect.width - padding) {
+      x = rect.width - ttRect.width - padding;
+    }
+    // 确保卡片不会超出左侧边界
+    if (x < padding) {
+      x = padding;
+    }
+    // 确保卡片不会超出底部边界
+    if (y + ttRect.height > rect.height - padding) {
+      y = rect.height - ttRect.height - padding;
+    }
+    // 确保卡片不会超出顶部边界
+    if (y < padding) {
+      y = padding;
+    }
+    
+    tooltipEl.style.left = x + "px";
+    tooltipEl.style.top = y + "px";
+  }
+
+  function tooltipPrevPage() {
+    if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
+    if (tooltipCurrentPage > 1) {
+      tooltipCurrentPage--;
+      updateTooltipPosts();
+    }
+  }
+
+  function tooltipNextPage() {
+    if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
+    
+    // 根据当前视图判断是分类还是标签
+    const isCategory = currentView === 'categories' || currentView === 'category-detail';
+    const relatedPosts = RAW.posts.filter(p => isCategory ? p.category === tooltipCurrentNode.id : p.tags.includes(tooltipCurrentNode.id));
+    
+    const totalPages = Math.ceil(relatedPosts.length / 5);
+    if (tooltipCurrentPage < totalPages) {
+      tooltipCurrentPage++;
+      updateTooltipPosts();
+    }
+  }
+
+  function updateTooltipPosts() {
+    if (!tooltipCurrentNode || tooltipCurrentNode.isPost) return;
+    
+    // 根据当前视图判断是分类还是标签
+    const isCategory = currentView === 'categories' || currentView === 'category-detail';
+    
+    const relatedPosts = RAW.posts
+      .filter(p => isCategory ? p.category === tooltipCurrentNode.id : p.tags.includes(tooltipCurrentNode.id))
+      .sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
+    
+    const pageSize = 5;
+    const totalPages = Math.ceil(relatedPosts.length / pageSize);
+    const displayPosts = relatedPosts.slice((tooltipCurrentPage - 1) * pageSize, tooltipCurrentPage * pageSize);
+    
+    tooltipPostsTag.style.opacity = '0';
+    setTimeout(() => {
+      tooltipPostsTag.innerHTML = '';
+      displayPosts.forEach((post, index) => {
+        tooltipPostsTag.innerHTML += `
+          <div class="post-item">
+            <span class="post-number">${(tooltipCurrentPage - 1) * pageSize + index + 1}</span>
+            <a href="${post.url}" target="_blank" class="post-title">${post.title}</a>
+          </div>
+        `;
+      });
+      
+      // 更新页码
+      if (totalPages > 1) {
+        tooltipPostsTag.innerHTML += `
+          <div class="tooltip-pagination">
+            <span class="pagination-btn prev" ${tooltipCurrentPage <= 1 ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipPrevPage()">‹</span>
+            <span class="pagination-info">${tooltipCurrentPage}/${totalPages}</span>
+            <span class="pagination-btn next" ${tooltipCurrentPage >= totalPages ? 'style="opacity:0.5;cursor:not-allowed;border-color:#b9b9b9;color:#b9b9b9;"' : 'style="cursor:pointer;"'} onclick="tooltipNextPage()">›</span>
+          </div>
+        `;
+      }
+      
+      tooltipPostsTag.style.opacity = '1';
+    }, 100);
+  }
+
+  window.tooltipPrevPage = tooltipPrevPage;
+  window.tooltipNextPage = tooltipNextPage;
+
+  // 点击按钮切换到标签详情视图
+  function switchToTagDetailView(tagId) {
+    tooltipTag.classList.add("hidden");
+    const tagNode = allTagNodes.find(t => t.id === tagId);
+    if (tagNode) {
+      switchToPostView(tagNode);
+    }
+  }
+
+  window.switchToTagDetailView = switchToTagDetailView;
+  window.switchToCategoryDetailView = switchToCategoryDetailView;
+
+  // 文章卡片鼠标事件 - 使用mouseover/mouseout确保子元素也能触发
+  tooltipPost.addEventListener("mouseover", (e) => {
+    // 确保事件来自tooltip本身或其子元素
+    if (e.target === tooltipPost || tooltipPost.contains(e.target)) {
+      isTooltipHoveredPost = true;
+      cancelHideTooltip();
+    }
+  });
+
+  tooltipPost.addEventListener("mouseout", (e) => {
+    // 检查鼠标是否真的离开了tooltip（而不是移动到子元素）
+    const relatedTarget = e.relatedTarget;
+    if (!tooltipPost.contains(relatedTarget)) {
+      isTooltipHoveredPost = false;
+      hideTooltip();
+    }
+  });
+
+  tooltipClosePost.addEventListener("click", (e) => {
+    e.stopPropagation();
+    tooltipPost.classList.add("hidden");
+    tooltipCurrentNode = null;
+    tooltipCurrentPage = 1;
+    isTooltipHoveredPost = false;
+  });
+
+  // 标签卡片鼠标事件
+  tooltipTag.addEventListener("mouseover", (e) => {
+    if (e.target === tooltipTag || tooltipTag.contains(e.target)) {
+      isTooltipHoveredTag = true;
+      cancelHideTooltip();
+    }
+  });
+
+  tooltipTag.addEventListener("mouseout", (e) => {
+    const relatedTarget = e.relatedTarget;
+    if (!tooltipTag.contains(relatedTarget)) {
+      isTooltipHoveredTag = false;
+      hideTooltip();
+    }
+  });
+
+  tooltipCloseTag.addEventListener("click", (e) => {
+    e.stopPropagation();
+    tooltipTag.classList.add("hidden");
+    tooltipCurrentNode = null;
+    tooltipCurrentPage = 1;
+    isTooltipHoveredTag = false;
+  });
+
+  // ========== 搜索 ==========
+  const searchInput = document.getElementById("graphSearch");
+  const searchBtn = document.getElementById("graphSearchBtn");
+
+  // 视图切换：搜索结果
+  function switchToSearchView(keyword) {
+    currentView = 'search';
+    activeTag = null;
+    activeCategory = null;
+    backBtn.classList.remove("hidden");
+    document.getElementById("toolbarTabs").classList.add("hidden");
+    graphTitle.textContent = `搜索「${keyword}」`;
+
+    // 查找匹配的节点（标签和文章）
+    const matchedNodes = [];
+    const matchedIds = new Set();
+
+    // 匹配标签
+    RAW.tags.forEach(tag => {
+      if (tag.name.toLowerCase().includes(keyword.toLowerCase())) {
+        matchedNodes.push({ ...tag, isTag: true });
+        matchedIds.add(tag.id);
+      }
+    });
+
+    // 匹配文章
+    RAW.posts.forEach(post => {
+      if (post.title.toLowerCase().includes(keyword.toLowerCase()) ||
+          post.description.toLowerCase().includes(keyword.toLowerCase()) ||
+          post.tags.some(t => t.toLowerCase().includes(keyword.toLowerCase()))) {
+        matchedNodes.push({ ...post });
+        matchedIds.add(post.id);
+      }
+    });
+
+    // 如果没有匹配结果
+    if (matchedNodes.length === 0) {
+      graphStats.textContent = "未找到匹配内容";
+      // 显示空状态
+      const nodes = [];
+      const links = [];
+      const els = renderGraph(nodes, links);
+      simulation = createSimulation(nodes, links);
+      return;
+    }
+
+    graphStats.textContent = `找到 ${matchedNodes.length} 个相关结果`;
+
+    // 构建节点和连线
+    const nodes = [];
+    const links = [];
+
+    // 添加匹配的节点，按相关性排序后放置在中心附近
+    matchedNodes.sort((a, b) => {
+      // 标题匹配优先于描述匹配
+      const aTitleMatch = a.title?.toLowerCase().includes(keyword.toLowerCase()) ? 1 : 0;
+      const bTitleMatch = b.title?.toLowerCase().includes(keyword.toLowerCase()) ? 1 : 0;
+      return bTitleMatch - aTitleMatch;
+    });
+
+    matchedNodes.forEach((node, i) => {
+      const angle = (i / matchedNodes.length) * Math.PI * 2;
+      const radiusFactor = Math.sqrt(i / matchedNodes.length);
+      const r = radiusFactor * boundaryR * 0.6; // 放在中心附近
+      nodes.push({
+        ...node,
+        radius: node.radius || (node.isPost ? 5 : 10),
+        x: cx + Math.cos(angle) * r,
+        y: cy + Math.sin(angle) * r,
+      });
+    });
+
+    // 添加文章和标签之间的关联
+    nodes.forEach(node => {
+      if (node.isPost && node.tags) {
+        node.tags.forEach(tagId => {
+          const tagNode = nodes.find(n => n.id === tagId);
+          if (tagNode) {
+            links.push({
+              source: node.id,
+              target: tagId,
+              strength: 1,
+            });
+          }
+        });
+      }
+    });
+
+    // 添加标签之间的关联（共享文章的标签）
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        if (!a.isPost && !b.isPost) {
+          // 检查是否有共同的文章
+          const sharedPosts = RAW.posts.filter(p => 
+            p.tags.includes(a.id) && p.tags.includes(b.id)
+          );
+          if (sharedPosts.length > 0) {
+            links.push({
+              source: a.id,
+              target: b.id,
+              strength: sharedPosts.length,
+            });
+          }
+        }
+      }
+    }
+
+    const els = renderGraph(nodes, links);
+    simulation = createSimulation(nodes, links);
+
+    simulation.on("tick", () => {
+      tickCount++;
+      els.linkSel
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+      els.nodeSel.attr("cx", d => d.x).attr("cy", d => d.y);
+      els.labelSel.attr("x", d => d.x).attr("y", d => d.y);
+    });
+
+    simulation.restart();
+    
+    // 搜索结果放大并聚焦到结果中心
+    setTimeout(() => {
+      if (nodes.length > 0) {
+        // 计算节点边界
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        nodes.forEach(n => {
+          const r = n.radius || 8;
+          minX = Math.min(minX, n.x - r);
+          maxX = Math.max(maxX, n.x + r);
+          minY = Math.min(minY, n.y - r);
+          maxY = Math.max(maxY, n.y + r);
+        });
+        const padding = 60;
+        const contentW = maxX - minX + padding * 2;
+        const contentH = maxY - minY + padding * 2;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const scale = Math.min(1.8, Math.min(width / contentW, height / contentH) * 0.9);
+        const tx = width / 2 - centerX * scale;
+        const ty = height / 2 - centerY * scale;
+        const transform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+        svg.transition().duration(500).call(zoom.transform, transform);
+        currentZoom = transform;
+      }
+    }, 100);
+    
+    resetIdleTimer();
+  }
+
+  function doSearch() {
+    const kw = searchInput.value.trim();
+    if (!kw) {
+      // 清空搜索时返回当前视图
+      switchView(currentView === 'search' ? 'posts' : currentView);
+      return;
+    }
+    
+    // 切换到搜索视图
+    switchToSearchView(kw);
+  }
+
+  let searchDebounce;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(doSearch, 250);
+  });
+  searchBtn.addEventListener("click", doSearch);
+  searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+
+  // ========== 返回总览 ==========
+  backBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false).style("display", "");
+    document.getElementById("toolbarTabs").classList.remove("hidden");
+    // 返回总览时根据当前活动状态切换到对应视图
+    if (activeCategory) {
+      switchView('categories');
+    } else {
+      switchView('tags');
+    }
+  });
+
+  // ========== 重置视图 ==========
+  document.getElementById("graphReset").addEventListener("click", () => {
+    searchInput.value = "";
+    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false).style("display", "");
+    // 重置到当前选中的tab视图
+    if (currentView === 'posts' && activeTag) {
+      const tag = allTagNodes.find(t => t.id === activeTag);
+      if (tag) switchToPostView(tag);
+    } else if (currentView === 'category-detail' && activeCategory) {
+      const category = RAW.categories.find(c => c.id === activeCategory);
+      if (category) switchToCategoryDetailView(category);
+    } else {
+      switchView(currentView);
+    }
+  });
+
+  // ========== resize 防抖 ==========
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      width = wrapper.clientWidth || 800;
+      height = wrapper.clientHeight || 500;
+      cx = width / 2;
+      cy = height / 2;
+      boundaryR = Math.min(width, height) * 0.72;
+      updateBoundary();
+      if (simulation) {
+        simulation.force("center", d3.forceCenter(cx, cy).strength(0.035));
+        simulation.alpha(0.3).restart();
+      }
+    }, 150);
+  });
+
+  // ========== Tab切换 ==========
+  function switchView(viewType) {
+    searchInput.value = "";
+    d3.selectAll(".graph-node, .graph-link, .graph-label").classed("is-dimmed", false).style("display", "");
+    
+    // 更新tab状态
+    document.querySelectorAll(".tab-item").forEach(el => el.classList.remove("active"));
+    document.querySelector(`[data-view="${viewType}"]`)?.classList.add("active");
+    
+    switch(viewType) {
+      case "posts":
+        switchToAllPostsView();
+        break;
+      case "categories":
+        switchToCategoryView();
+        break;
+      case "tags":
+        switchToTagView();
+        break;
+      case "random":
+        switchToRandomView();
+        break;
+    }
+  }
+
+  // Tab点击事件
+  document.querySelectorAll(".tab-item").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const viewType = tab.getAttribute("data-view");
+      if (viewType) {
+        switchView(viewType);
+      }
+    });
+  });
+
+  // ========== 初始化 ==========
+  function initGraph() {
+    if (hasInitialized) return;
+    hasInitialized = true;
+    switchView('posts'); // 默认显示全部文章视图
+  }
+
+  // 如果 D3 已加载且 wrapper 在视口内，立即初始化
+  if (window.d3) {
+    const rect = wrapper.getBoundingClientRect();
+    const inViewport = rect.top < window.innerHeight && rect.bottom > 0;
+    if (inViewport) {
+      initGraph();
+    } else {
+      // 使用 IntersectionObserver 懒加载
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !hasInitialized) {
+            initGraph();
+            observer.disconnect();
+          }
+        });
+      }, { threshold: 0.1 });
+      observer.observe(wrapper);
+    }
+  }
+
+  // ========== 清理函数 ==========
+  window.__obsidianGraphCleanup = function() {
+    if (simulation) simulation.stop();
+    svg.on(".zoom", null);
+    clearTimeout(idleTimer);
+    clearTimeout(resizeTimer);
+    hasInitialized = false;
+  };
+})();
+</script>
+
+<style>
+  /* 小球颜色变量 - 固定为 rgb(232, 122, 105) */
+  :root {
+    --ball-color:  var(--primary);
+  }
+  
+  .obsidian-graph {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  /* 工具栏 */
+  .graph-toolbar {
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.875rem;
+  }
+  .toolbar-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .graph-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.3;
+  }
+  .graph-stats {
+    font-size: 0.8125rem;
+    color: var(--content-meta);
+  }
+  .toolbar-center {
+    display: none;
+  }
+  .toolbar-tabs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+  }
+  .toolbar-tabs.hidden {
+    display: none;
+  }
+  .tab-bar {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: color-mix(in srgb, var(--ball-color) 6%, transparent);
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--ball-color) 15%, transparent);
+  }
+  .tab-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .tab-item:hover {
+    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
+    color: var(--text-primary);
+  }
+  .tab-item svg {
+    flex-shrink: 0;
+    vertical-align: middle;
+    color: var(--ball-color);
+  }
+  .tab-item span {
+    vertical-align: middle;
+    word-break: keep-all;
+  }
+  .tab-bar.hidden {
+    display: none;
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--line-color);
+    background: var(--card-bg);
+    color: var(--ball-color);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .back-btn:hover {
+    background: var(--btn-plain-bg-hover);
+    border-color: var(--ball-color);
+  }
+  .back-btn.hidden { display: none; }
+
+.search-box {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--line-color);
+    border-radius: 0.625rem;
+    overflow: hidden;
+    background: var(--card-bg);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    /* width: 200px; 删掉固定宽 */
+    min-width: 280px; /* 设置最小宽度防止过窄 */
+}
+  .search-box:focus-within {
+    border-color: var(--ball-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ball-color) 25%, transparent);
+  }
+  .search-input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    background: transparent;
+    color: var(--deep-text);
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .search-input::placeholder { color: var(--content-meta); opacity: 0.55; }
+  .search-btn, .reset-btn {
+    padding: 0.5rem 0.625rem;
+    border: none;
+    background: var(--btn-regular-bg);
+    color: var(--btn-content);
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+  .search-btn svg, .reset-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: inherit;
+    stroke: currentColor;
+    fill: none;
+  }
+  .search-btn:hover, .reset-btn:hover { background: var(--btn-regular-bg-hover); }
+  .reset-btn { border-radius: 0.5rem; }
+
+  /* 画布 */
+  .graph-canvas-wrapper {
+    position: relative;
+    overflow: hidden;
+    min-height: 480px;
+    height: 65vh;
+    background: var(--page-bg);
+    border-radius: var(--radius-large);
+    border: 1px solid var(--line-color);
+  }
+  .graph-canvas-wrapper svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /* 缩放指示器 */
+  .zoom-badge {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: color-mix(in srgb, var(--ball-color) 20%, transparent);
+    color: var(--deep-text);
+    font-size: 0.6875rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    pointer-events: none;
+    user-select: none;
+    backdrop-filter: blur(4px);
+  }
+
+  /* 移动端适配 */
+  @media (max-width: 768px) {
+    .obsidian-graph { padding: 0.5rem; }
+    .graph-toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      padding: 0.75rem 0.875rem;
+    }
+    .toolbar-left {
+      text-align: center;
+      align-items: center;
+    }
+    .toolbar-right {
+      justify-content: center;
+    }
+    .toolbar-tabs {
+      padding: 0.375rem 0.5rem;
+      margin-top: 0.25rem;
+    }
+    .tab-bar {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.15rem;
+      padding: 0.15rem;
+    }
+    .tab-item {
+      padding: 0.3125rem 0.5rem;
+      font-size: 0.7rem;
+      gap: 0.2rem;
+    }
+    .tab-item svg {
+      width: 15px;
+      height: 15px;
+    }
+    .search-box { width: 100%; max-width: 100%; }
+    .graph-canvas-wrapper {
+      min-height: 340px;
+      height: 55vh;
+    }
+    .graph-title { font-size: 1.1rem; }
+    .graph-stats { font-size: 0.75rem; }
+    .back-btn { font-size: 0.8125rem; padding: 0.375rem 0.625rem; }
+  }
+
+   /* Tooltip */
+  .graph-tooltip {
+    position: absolute;
+    z-index: 100;
+    pointer-events: auto;
+  }
+  .graph-tooltip.hidden { display: none; }
+  
+  /* 卡片主体 - 文章卡片 */
+  .tooltip-card-post {
+    background: color-mix(in srgb, var(--ball-color) 8%, var(--page-bg));
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--ball-color) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ball-color) 22%, transparent);
+    backdrop-filter: blur(10px);
+    width: 320px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  
+  /* 卡片主体 - 标签/分类卡片 */
+  .tooltip-card-tag {
+    background: color-mix(in srgb, var(--ball-color) 8%, var(--page-bg));
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--ball-color) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ball-color) 22%, transparent);
+    backdrop-filter: blur(10px);
+    width: 320px;
+    padding: 18px 20px;
+    position: relative;
+  }
+  
+  /* 关闭按钮 */
+  .tooltip-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ball-color) 20%, transparent);
+    border-radius: 50%;
+    color: var(--ball-color);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+    padding: 0;
+    line-height: 1;
+  }
+  .tooltip-close:hover {
+    background: color-mix(in srgb, var(--ball-color) 20%, transparent);
+    border-color: color-mix(in srgb, var(--ball-color) 40%, transparent);
+    transform: scale(1.1);
+  }
+  
+  /* 头部区域 */
+  .tooltip-header {
+    position: relative;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--ball-color) 18%, transparent);
+  }
+  .tooltip-name {
+    position: relative;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tooltip-name::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--ball-color);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .tooltip-name:hover {
+    transform: translateX(4px);
+  }
+  .tooltip-stats {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--content-meta);
+  }
+  .stat-item {
+    padding: 1px 6px;
+    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
+    color: var(--ball-color);
+    border-radius: 8px;
+    font-weight: 500;
+  }
+  .stat-divider {
+    opacity: 0.5;
+  }
+  
+  /* 内容区域 */
+  .tooltip-content {
+    padding: 0;
+  }
+  .tooltip-section {
+    margin-bottom: 0;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--content-meta);
+    margin-bottom: 12px;
+  }
+  .section-icon {
+    font-size: 14px;
+  }
+  
+  /* 文章列表容器 */
+  .tooltip-posts {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: opacity 0.15s ease;
+  }
+  
+  /* 动态生成的内容需要 :global() */
+  :global(.post-item) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 6px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  :global(.post-item:hover) {
+    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
+  }
+  :global(.post-number) {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--ball-color) 15%, transparent);
+    color: var(--ball-color);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  :global(.post-title) {
+    flex: 1;
+    font-size: 15px;
+    color: var(--text-primary);
+    line-height: 1.4;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform: translateX(0);
+    position: relative;
+    padding-left: 8px;
+  }
+  :global(.post-title)::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 60%;
+    background: linear-gradient(90deg, var(--ball-color) 0%, color-mix(in srgb, var(--ball-color) 60%, transparent) 100%);
+    border-radius: 2px;
+    transition: width 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  :global(.post-title:hover) {
+    color: var(--ball-color);
+    text-shadow: 0 2px 8px color-mix(in srgb, var(--ball-color) 30%, transparent);
+    transform: translateX(6px);
+    padding-left: 12px;
+  }
+  :global(.post-title:hover::before) {
+    width: 4px;
+  }
+  
+  /* 分页区域 - 动态生成 */
+  :global(.tooltip-pagination) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 16px;
+    padding: 14px 0;
+    margin: 14px 0 0 !important;
+    border-top: 1px solid color-mix(in srgb, var(--ball-color) 18%, transparent);
+    width: 100%;
+    min-height: 48px;
+  }
+  :global(.pagination-btn) {
+    width: 36px !important;
+    height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    border: 1px solid var(--ball-color) !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    font-size: 20px !important;
+    color: var(--ball-color) !important;
+    line-height: 1 !important;
+    font-weight: bold !important;
+    float: none !important;
+    text-align: center !important;
+  }
+  :global(.pagination-btn:hover:not([style*="opacity:0.5"])) {
+    background: color-mix(in srgb, var(--ball-color) 12%, transparent) !important;
+    border-color: color-mix(in srgb, var(--ball-color) 60%, transparent) !important;
+  }
+  :global(.tooltip-pagination .pagination-info) {
+    font-size: 15px;
+    color: var(--text-primary);
+    flex-shrink: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: center !important;
+    float: none !important;
+    font-weight: 500;
+  }
+  
+  /* 文章描述 - 动态生成 */
+  :global(.post-description) {
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+    padding: 8px 10px 8px 18px;
+    background: color-mix(in oklch, var(--ball-color) 5%, transparent);
+    border-radius: 8px;
+    position: relative;
+    border: none;
+  }
+  :global(.post-description)::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 18px;
+    background-color: var(--ball-color);
+    border-radius: 3px;
+  }
+  
+  /* 空状态 - 动态生成 */
+  :global(.empty-state) {
+    text-align: center;
+    padding: 10px;
+    color: var(--content-meta);
+    font-size: 0.75rem;
+  }
+  
+  /* 标签区域容器 */
+  .tooltip-tags {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+  .tags-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--content-meta);
+    margin-bottom: 8px;
+  }
+  
+  /* 标签内容 - 动态生成 */
+  :global(.tags-list) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  :global(.tag-item) {
+    padding: 3px 10px;
+    background: color-mix(in srgb, var(--ball-color) 10%, transparent);
+    color: var(--ball-color);
+    font-size: 12px;
+    border-radius: 12px;
+    font-weight: 500;
+  }
+  :global(.tag-clickable:hover) {
+    background: color-mix(in srgb, var(--ball-color) 25%, transparent);
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+  }
+  :global(.category-clickable:hover) {
+    background: color-mix(in srgb, var(--ball-color) 25%, transparent);
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+  }
+  
+  /* 底部区域 */
+  .tooltip-footer {
+    margin-top: 14px;
+    padding: 14px 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--ball-color) 18%, transparent);
+  }
+  .tooltip-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+  .hint-icon {
+    font-size: 14px;
+    transition: transform 0.2s ease;
+  }
+  :global(.hint-link) {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--ball-color) !important;
+    font-weight: 600;
+    text-decoration: none !important;
+    width: 100%;
+    padding: 14px 20px;
+    background: color-mix(in srgb, var(--ball-color) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ball-color) 30%, transparent);
+    border-radius: 12px;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--ball-color) 10%, transparent);
+    box-sizing: border-box;
+    cursor: pointer !important;
+    user-select: none;
+  }
+  .global(.hint-link:hover) {
+    background: color-mix(in srgb, var(--ball-color) 22%, transparent) !important;
+    border-color: color-mix(in srgb, var(--ball-color) 40%, transparent) !important;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--ball-color) 18%, transparent) !important;
+    transform: translateY(-2px);
+    cursor: pointer !important;
+  }
+  .global(.hint-link:active) {
+    transform: translateY(0);
+    box-shadow: 0 1px 6px color-mix(in srgb, var(--ball-color) 10%, transparent);
+  }
+  
+
+
+</style>
+
+<!-- Tooltip 全局样式 -->
+<style is:global>
+     /* 节点 - 使用小球颜色 */
+  .graph-node {
+    will-change: cx, cy, r, filter;
+    transition: r 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease, fill 0.25s ease;
+    cursor: pointer;
+    fill: var(--ball-color);
+    stroke: black;
+    stroke-width: 1.5;
+    stroke-opacity: 1;
+  }
+  .graph-node.is-high {
+    stroke-width: 1.5;
+  }
+  .graph-node.is-low {
+    stroke-width: 1;
+  }
+  .graph-node.is-post {
+    stroke-width: 1;
+  }
+  .graph-node.is-hovered {
+    fill: color-mix(in srgb, var(--ball-color) 85%, black);
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ball-color) 70%, transparent)) drop-shadow(0 0 16px color-mix(in srgb, var(--ball-color) 40%, transparent));
+    stroke-width: 0;
+    stroke-opacity: 0;
+  }
+  .graph-node.is-dragging {
+    fill: color-mix(in srgb, var(--ball-color) 85%, black);
+    filter: drop-shadow(0 0 12px color-mix(in srgb, var(--ball-color) 80%, transparent)) drop-shadow(0 0 20px color-mix(in srgb, var(--ball-color) 50%, transparent));
+    stroke-width: 0;
+    stroke-opacity: 0;
+  }
+
+  /* 高亮模式 */
+  .highlight-mode .graph-node { opacity: 0.25; }
+  .highlight-mode .graph-node.is-hovered { opacity: 1; }
+  .highlight-mode .graph-node.is-connected { opacity: 0.7; }
+  .highlight-mode .graph-link { opacity: 0.06; }
+  .highlight-mode .graph-link.is-connected { opacity: 1; }
+  /* 高亮模式下标签保持可见，只调整非hover/非connected标签的透明度 */
+  .highlight-mode .graph-label { opacity: 0.4; }
+  .highlight-mode .graph-label.is-hovered { opacity: 1; }
+  .highlight-mode .graph-label.is-connected { opacity: 0.7; }
+
+  /* 搜索暗淡 */
+  .graph-node.is-dimmed { opacity: 0.12 !important; }
+  .graph-link.is-dimmed { opacity: 0.02 !important; }
+  .graph-label.is-dimmed { opacity: 0 !important; }
+
+  /* 连线 */
+  .graph-link {
+    will-change: x1, y1, x2, y2;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    stroke: color-mix(in srgb, var(--ball-color) 35%, transparent);
+  }
+
+  /* 标签 */
+  .graph-label {
+    will-change: x, y, opacity;
+    font-family: 'Roboto', 'LXGW WenKai Screen', sans-serif;
+    pointer-events: none;
+    text-shadow:
+      0 0 4px var(--page-bg),
+      0 0 8px var(--page-bg),
+      0 1px 2px var(--page-bg);
+    fill: var(--text-primary);
+    opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .graph-label.is-hovered {
+    opacity: 1;
+    transform: translateY(-5px);
+  }
+
+  /* 手机端响应式适配 */
+  @media (max-width: 768px) {
+    /* 移动端性能优化：简化动画和效果 */
+    .graph-node {
+      transition: none !important;
+      filter: none !important;
+    }
+    .graph-node.is-hovered {
+      filter: none !important;
+    }
+    .graph-node.is-dragging {
+      filter: none !important;
+    }
+    
+    .graph-label {
+      text-shadow: none !important;
+      font-size: 10px !important;
+    }
+    
+    .graph-link {
+      stroke-width: 0.8 !important;
+    }
+    
+    :global(.post-title) {
+      transition: none !important;
+      text-shadow: none !important;
+    }
+    :global(.post-title::before) {
+      display: none !important;
+    }
+    :global(.post-title:hover) {
+      transform: none !important;
+      padding-left: 8px !important;
+    }
+    
+    :global(.pagination-btn) {
+      transition: none !important;
+    }
+    
+    .tooltip-card-post,
+    .tooltip-card-tag {
+      width: calc(100vw - 32px) !important;
+      max-width: 280px;
+      padding: 14px 16px;
+      box-sizing: border-box;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .tooltip-close {
+      top: 8px;
+      right: 10px;
+      width: 22px;
+      height: 22px;
+      font-size: 12px;
+    }
+    
+    .tooltip-name {
+      font-size: 16px;
+      line-height: 1.3;
+    }
+    
+    .tooltip-stats {
+      font-size: 12px;
+    }
+    
+    :global(.post-description) {
+      font-size: 0.75rem;
+      padding: 6px 8px;
+    }
+    
+    :global(.post-item) {
+      padding: 5px 6px;
+      font-size: 13px;
+    }
+    
+    .hint-link {
+      padding: 12px 16px;
+      font-size: 13px;
+      transition: none !important;
+      box-shadow: none !important;
+    }
+    .hint-link:hover {
+      transform: none !important;
+      box-shadow: none !important;
+    }
+  }
+
+</style>
