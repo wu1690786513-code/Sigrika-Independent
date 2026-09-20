@@ -9,7 +9,7 @@ export const profileConfig: ProfileConfig = {
 	avatar: "/assets/images/sigrika-avatar.jpg",
 
 	// 名字
-	name: "纯鹿人",
+	name: "星云",
 
 	// 个人签名
 	bio: "嘻嘻",
