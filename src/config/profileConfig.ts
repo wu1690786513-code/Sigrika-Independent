@@ -9,7 +9,7 @@ export const profileConfig: ProfileConfig = {
 	avatar: "/assets/images/sigrika-avatar.jpg",
 
 	// 名字
-	name: "Sigrika",
+	name: "纯鹿人",
 
 	// 个人签名
 	bio: "嘻嘻",
@@ -21,11 +21,11 @@ export const profileConfig: ProfileConfig = {
 	// `pnpm add @iconify-json/<icon-set-name>`
 	// showName: true 时显示图标和名称，false 时只显示图标
 	links: [
-		{
-			name: "抖音",
-			icon: "fa7-brands:tiktok",
-			url: "https://www.douyin.com/user/MS4wLjABAAAAXeEuTMchdR4JFWHouhu92ll4-jqVwZSFb4fGH79f7n0?previous_page=app_code_link",
-		},
+		// {
+		// 	name: "抖音",
+		// 	icon: "fa7-brands:tiktok",
+		// 	url: "https://www.douyin.com/user/MS4wLjABAAAAXeEuTMchdR4JFWHouhu92ll4-jqVwZSFb4fGH79f7n0?previous_page=app_code_link",
+		// },
 		// {
 		// 	name: "Bilibili",
 		// 	icon: "fa7-brands:bilibili",
